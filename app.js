@@ -100,7 +100,9 @@
   const truthNumber = document.querySelector("#truth-number");
   const truthText = document.querySelector("#truth-text");
   const truthSpin = document.querySelector("#truth-spin");
+  const diceTable = document.querySelector("#dice-table");
   const diceCup = document.querySelector("#dice-cup");
+  const diceCupLabel = document.querySelector("#dice-cup-label");
   const diceValues = document.querySelector("#dice-values");
   const diceStatus = document.querySelector("#dice-status");
   const diceRoll = document.querySelector("#dice-roll");
@@ -132,6 +134,7 @@
   let diceLocked = false;
   let diceTimer = null;
   let diceCurrent = [1, 1, 1, 1, 1];
+  let diceReadyToReveal = false;
 
   function localDateString(date) {
     const year = date.getFullYear();
@@ -324,6 +327,7 @@
     document.querySelectorAll("[data-thing-filter]").forEach((button) => button.addEventListener("click", () => setThingsFilter(button.dataset.thingFilter)));
     truthSpin.addEventListener("click", spinTruth);
     diceRoll.addEventListener("click", rollDice);
+    diceCup.addEventListener("click", revealDice);
     diceNext.addEventListener("click", resetDiceRound);
 
     window.addEventListener("resize", scheduleDodgeRecalculation, { passive: true });
@@ -893,9 +897,14 @@
   function rollDice() {
     if (diceRolling || diceLocked) return;
     diceRolling = true;
+    diceReadyToReveal = false;
     diceRoll.disabled = true;
     diceNext.disabled = true;
     diceStatus.textContent = "骰盅摇起来了…";
+    diceTable.classList.remove("is-open");
+    diceTable.classList.add("is-covered", "is-shaking");
+    diceCup.disabled = true;
+    diceCupLabel.textContent = "正在摇骰子";
     if (diceTimer) clearInterval(diceTimer);
     diceTimer = setInterval(() => renderDice(Array.from({ length: 5 }, () => Math.floor(Math.random() * 6) + 1), true), 100);
     setTimeout(() => {
@@ -903,20 +912,47 @@
       diceTimer = null;
       diceCurrent = Array.from({ length: 5 }, () => Math.floor(Math.random() * 6) + 1);
       diceRolling = false;
-      diceLocked = true;
       renderDice(diceCurrent);
-      const straight = new Set(diceCurrent).size === 5;
-      diceStatus.textContent = straight ? `顺子！${diceCurrent.join("、")}，五个点数都不重复` : `本局点数：${diceCurrent.join("、")}，已经锁住`;
+      diceReadyToReveal = true;
+      diceTable.classList.remove("is-shaking");
+      diceCup.disabled = false;
+      diceCupLabel.textContent = "点击掀开骰盅";
+      diceStatus.textContent = "骰子已经摇好，手动点骰盅掀开看看。";
+      diceRoll.textContent = "等待开盅";
+    }, 900);
+  }
+
+  function revealDice() {
+    if (!diceReadyToReveal || diceRolling) return;
+    diceReadyToReveal = false;
+    diceTable.classList.remove("is-covered");
+    diceTable.classList.add("is-open");
+    diceCup.disabled = true;
+    const straight = new Set(diceCurrent).size === 5;
+    if (straight) {
+      diceLocked = false;
+      diceStatus.textContent = `顺子！${diceCurrent.join("、")}，五个点数都不重复，可以重新摇。`;
+      diceRoll.disabled = false;
+      diceRoll.textContent = "重新摇";
+      diceNext.disabled = true;
+    } else {
+      diceLocked = true;
+      diceStatus.textContent = `本局点数：${diceCurrent.join("、")}，已经锁住。`;
       diceRoll.textContent = "本局已锁定";
       diceNext.disabled = false;
-    }, 900);
+    }
   }
 
   function resetDiceRound() {
     if (diceRolling) return;
     diceLocked = false;
+    diceReadyToReveal = false;
     diceCurrent = [1, 1, 1, 1, 1];
     renderDice(diceCurrent);
+    diceTable.classList.remove("is-open", "is-shaking");
+    diceTable.classList.add("is-covered");
+    diceCup.disabled = true;
+    diceCupLabel.textContent = "摇骰子后掀开";
     diceStatus.textContent = "新的一局准备好了，只能摇一次。";
     diceRoll.disabled = false;
     diceRoll.textContent = "摇骰子";

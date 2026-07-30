@@ -978,8 +978,15 @@ h1 {
 .truth-spin { width: min(100%, 410px); margin-top: 20px; background: #a877c7; }
 
 .dice-screen { justify-content: center; }
-.dice-cup { display: grid; width: min(100%, 330px); min-height: 235px; margin: 30px auto 0; padding: 22px; place-items: center; border: 4px solid var(--ink); border-radius: 52% 52% 18px 18px; background: #a877c7; box-shadow: 9px 9px 0 #e9d9f1; }
-.dice-values { display: grid; grid-template-columns: repeat(3, 64px); justify-content: center; gap: 12px; width: 100%; }
+.dice-table { position: relative; display: grid; width: min(100%, 330px); min-height: 235px; margin: 30px auto 0; padding: 22px; place-items: center; overflow: hidden; border: 3px solid var(--ink); border-radius: 8px; background: #e6cba6; box-shadow: 9px 9px 0 #ead8e4; }
+.dice-values { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(3, 64px); justify-content: center; gap: 12px; width: 100%; transition: opacity 180ms ease; }
+.dice-cup { position: absolute; z-index: 2; inset: 17px; display: grid; padding: 0; place-items: center; border: 4px solid var(--ink); border-radius: 52% 52% 18px 18px; color: #fff; background: #a877c7; box-shadow: 6px 7px 0 rgba(73, 50, 58, 0.2); cursor: pointer; font-size: 16px; font-weight: 900; transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1), opacity 260ms ease; }
+.dice-cup:disabled { cursor: default; }
+.dice-table.is-covered .dice-values { opacity: 0; }
+.dice-table.is-shaking .dice-cup { animation: cup-shake 130ms linear infinite; }
+.dice-table.is-open { overflow: visible; }
+.dice-table.is-open .dice-cup { pointer-events: none; opacity: 0.96; transform: translateY(-170px) rotate(-9deg); }
+@keyframes cup-shake { 0%, 100% { transform: rotate(-4deg) translateX(-5px); } 50% { transform: rotate(4deg) translateX(5px); } }
 .dice-face { display: grid; width: 64px; height: 64px; place-items: center; border: 2px solid var(--ink); border-radius: 8px; color: var(--ink); background: #fffdfb; box-shadow: 3px 3px 0 rgba(63, 44, 53, 0.18); font-size: 46px; line-height: 1; }
 .dice-face.is-rolling { animation: dice-shake 120ms linear infinite; }
 @keyframes dice-shake { 0%, 100% { transform: rotate(-4deg) translateY(0); } 50% { transform: rotate(4deg) translateY(-3px); } }
