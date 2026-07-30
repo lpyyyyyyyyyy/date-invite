@@ -52,6 +52,18 @@
             <span class="home-card-icon yellow-icon" aria-hidden="true">♥</span><span><strong>我们的小日子</strong><small>看看已经相伴多久，或离特别一天还有多远</small></span><b aria-hidden="true">→</b>
           </button>
         </section>
+        <section class="home-group" aria-labelledby="things-group-title">
+          <p id="things-group-title">我们的清单</p>
+          <button class="home-card things-open" type="button">
+            <span class="home-card-icon blue-icon" aria-hidden="true">100</span><span><strong>蔡子珊和刘平壹要一起做的 100 件事</strong><small>把想一起完成的小事，一件一件打上勾</small></span><b aria-hidden="true">→</b>
+          </button>
+        </section>
+        <section class="home-group" aria-labelledby="game-group-title">
+          <p id="game-group-title">游戏区</p>
+          <button class="home-card game-open" type="button">
+            <span class="home-card-icon purple-icon" aria-hidden="true">?</span><span><strong>两个人的小游戏</strong><small>把害羞的话交给转盘来问</small></span><b aria-hidden="true">→</b>
+          </button>
+        </section>
       </div>
       <section class="next-date-card" aria-labelledby="next-date-title">
         <p id="next-date-title">下次约会行动</p>
@@ -308,10 +320,11 @@
 
     <section class="screen anniversary-screen" data-screen="9" aria-labelledby="step-9-title" hidden>
       <button class="back-button" type="button" data-back="0" aria-label="返回空间首页"><span aria-hidden="true">←</span></button>
+      <button class="anniversary-add" id="anniversary-add" type="button" aria-label="添加纪念日" title="添加纪念日">＋</button>
       <p class="eyebrow">OUR SPECIAL DAYS</p>
       <h1 id="step-9-title" tabindex="-1">纪念日</h1>
       <p class="supporting-copy compact-copy">把值得记住的日子，都悄悄放在这里。</p>
-      <form class="anniversary-form" id="anniversary-form">
+      <form class="anniversary-form" id="anniversary-form" hidden>
         <label for="anniversary-name">这一天叫什么</label>
         <input id="anniversary-name" type="text" maxlength="24" placeholder="例如：在一起纪念日">
         <fieldset class="anniversary-mode"><legend>想怎么记录</legend><div>
@@ -325,6 +338,53 @@
         <button class="primary-button coral-button" type="submit">收下这个纪念日</button>
       </form>
       <div class="anniversary-list" id="anniversary-list" aria-live="polite"></div>
+    </section>
+
+    <section class="screen things-screen" data-screen="10" aria-labelledby="step-10-title" hidden>
+      <button class="back-button" type="button" data-back="0" aria-label="返回空间首页"><span aria-hidden="true">←</span></button>
+      <p class="eyebrow">OUR 100 LITTLE THINGS</p>
+      <h1 id="step-10-title" tabindex="-1">蔡子珊和刘平壹<br>要一起做的 100 件事</h1>
+      <p class="supporting-copy compact-copy">慢慢来，我们有很多很多时间。</p>
+      <section class="things-progress" aria-labelledby="things-progress-label">
+        <div><p id="things-progress-label">已经完成</p><strong id="things-progress-count">0 / 100</strong></div>
+        <div class="things-progress-track" role="progressbar" id="things-progress-bar" aria-label="100 件事完成进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="things-progress-fill"></span></div>
+      </section>
+      <div class="thing-filters" role="group" aria-label="清单筛选"><button type="button" data-thing-filter="all" aria-pressed="true">全部</button><button type="button" data-thing-filter="todo" aria-pressed="false">还没做</button><button type="button" data-thing-filter="done" aria-pressed="false">已完成</button></div>
+      <ol class="things-list" id="things-list" aria-live="polite"></ol>
+    </section>
+
+    <section class="screen game-screen" data-screen="11" aria-labelledby="step-11-title" hidden>
+      <button class="back-button" type="button" data-back="0" aria-label="返回空间首页"><span aria-hidden="true">←</span></button>
+      <p class="eyebrow">JUST US TWO</p>
+      <h1 id="step-11-title" tabindex="-1">游戏区</h1>
+      <p class="supporting-copy compact-copy">有些话，交给游戏来开场。</p>
+      <button class="game-card truth-open" type="button">
+        <span class="game-card-icon" aria-hidden="true">♥</span><span><strong>真心话转盘</strong><small>1,000 个问题，随机抽一个认真回答</small></span><b aria-hidden="true">→</b>
+      </button>
+      <button class="game-card dice-open" type="button">
+        <span class="game-card-icon dice-icon" aria-hidden="true">⚄</span><span><strong>大话骰子</strong><small>一局摇一次，五个骰子开盅见真章</small></span><b aria-hidden="true">→</b>
+      </button>
+    </section>
+
+    <section class="screen truth-screen" data-screen="12" aria-labelledby="step-12-title" hidden>
+      <button class="back-button" type="button" data-back="11" aria-label="返回游戏区"><span aria-hidden="true">←</span></button>
+      <p class="eyebrow">TRUTH WHEEL</p>
+      <h1 id="step-12-title" tabindex="-1">真心话</h1>
+      <p class="supporting-copy compact-copy">1,000 个问题已经混在一起，转到什么就认真回答什么。</p>
+      <div class="truth-wheel-wrap" aria-hidden="true"><canvas id="truth-wheel" width="600" height="600"></canvas><span class="truth-pointer">▼</span></div>
+      <article class="truth-question" aria-live="polite"><p id="truth-number">准备好了吗？</p><strong id="truth-text">点一下转盘，让它替你问一个问题。</strong></article>
+      <button class="primary-button coral-button truth-spin" id="truth-spin" type="button">转出一个问题</button>
+    </section>
+
+    <section class="screen dice-screen" data-screen="13" aria-labelledby="step-13-title" hidden>
+      <button class="back-button" type="button" data-back="11" aria-label="返回游戏区"><span aria-hidden="true">←</span></button>
+      <p class="eyebrow">LIAR'S DICE</p>
+      <h1 id="step-13-title" tabindex="-1">大话骰子</h1>
+      <p class="supporting-copy compact-copy">每局只能摇一次，开盅以后就认真喊点数。</p>
+      <div class="dice-cup" id="dice-cup" aria-label="五个骰子的骰盅"><div class="dice-values" id="dice-values" aria-live="polite"></div></div>
+      <p class="dice-status" id="dice-status" role="status" aria-live="polite">这一局还没摇骰子</p>
+      <button class="primary-button coral-button dice-roll" id="dice-roll" type="button">摇骰子</button>
+      <button class="secondary-button dice-next" id="dice-next" type="button" disabled>结束本局，重新摇</button>
     </section>
   </main>
 
@@ -340,6 +400,6 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   <div class="sr-only" id="movement-status" aria-live="polite"></div>
-  <script src="app.js?v=20260730-anniversary"></script>
+  <script src="app.js?v=20260730-things-games"></script>
 </body>
 </html>

@@ -4,7 +4,32 @@
   const STORAGE_KEY = "cute-date-invite-v1";
   const ARCHIVE_KEY = "cute-date-invite-archive-v1";
   const ANNIVERSARY_KEY = "cute-date-invite-anniversaries-v1";
+  const THINGS_KEY = "cute-date-invite-100-things-v1";
   const noLabels = ["不要", "再想想嘛", "点不到我", "真的不要吗"];
+  const hundredThings = [
+    "一起骑自行车", "穿对方挑选的衣服", "一起去露营", "一起看烟花", "一起坐热气球", "一起跑步健身", "一起唱歌", "亲手写信给对方", "一起过圣诞节", "一起打游戏",
+    "一起睡懒觉", "一起小酌", "一起去看艺术展", "一起去对方学校或公司附近看看", "一起吃冰", "一起吃冰镇西瓜", "一起逛超市", "一起吃早餐", "一起压马路", "一起看电影",
+    "为对方染一次头发", "给对方一个小惊喜", "一起成为更好的人", "一起搬家", "一起去沙漠旅行", "一起吃路边小吃", "拍照留念", "一起坐摩天轮", "一起坐过山车", "一起做手工",
+    "一起做蛋糕", "一起去草原骑马", "一起泡温泉", "一起打台球", "一起自己做晚餐", "给未来的对方写一封信", "一起骑车兜风", "一起改掉一个小毛病", "一起去吃一次自助餐", "一起庆祝生日",
+    "拍一组情侣写真", "一起散步", "背着对方走一段很长的路", "教对方一个自己的特长", "为对方设计一个表情包", "一起划船", "一起做饭", "情人节给对方准备惊喜", "一起准备一次烛光晚餐", "一起打扑克牌",
+    "一起吃火锅", "一起跳舞", "一起抓娃娃", "一起去海边", "一起捡贝壳", "一起看恐怖片", "一起去鬼屋", "一起画画", "一起看球赛", "一起蹦极",
+    "一起做情侣头像", "一起吃冰淇淋", "一起放孔明灯", "一起去寺庙祈福", "一起完成一幅拼图", "一起完成一本相册", "一起看一本书", "把头靠在对方身上玩手机", "一起坐缆车", "一起存钱",
+    "一起过七夕", "大方表达爱意", "一起自驾游旅行", "一起去动物园", "一起去海洋公园", "一起看一场演出", "一起去春游", "在朋友面前大方介绍彼此", "一起见对方的朋友", "一起看日出",
+    "一起看日落", "拥有一对情侣对戒", "一起拍婚纱照", "专心为对方做一件事", "做一件很不起眼但很用心的事", "一起牵手过马路", "一起爬山", "一起露营看星星", "一起溜冰", "一起打雪仗",
+    "一起慢慢变老", "学会十国语言说我爱你", "互赠对方一瓶香水", "一起献血", "一起洗碗", "一起养一只小植物", "一起做一次志愿者", "一起去看一场音乐节", "一起规划一次长途旅行", "一起设想未来的家"
+  ];
+  const gentleTruthTopics = ["我们第一次聊天", "第一次见面", "第一次牵手", "你对我的第一印象", "最喜欢我的一个瞬间", "最想重温的一次约会", "最想一起去的城市", "最治愈的小事", "我让你安心的地方", "你最想夸我的一件事", "最想被我理解的习惯", "最感谢我陪你的时刻", "想一起养成的习惯", "未来家里最想有的角落", "想和我一起学的技能", "最喜欢我们聊天的时间", "最期待我的一句话", "最喜欢我陪你吃饭的时刻", "最想交换的一天", "最想收藏的照片", "最想和我看的电影", "最适合我们的歌", "最想一起完成的清单", "最想带我认识的人", "最希望我们永远保留的默契"];
+  const boldTruthTopics = ["第一次对我心动", "最想对我说却忍住的话", "最想和我单独待着的夜晚", "最希望我主动做的事", "最害羞的一次想法", "最想收到我什么样的称呼", "最想和我尝试的浪漫约会", "最想被我抱住的时刻", "最想偷看我的哪个瞬间", "最想和我在雨里做的小事", "最希望我为你准备的惊喜", "最想和我去的私密约会地点", "最想让我记住的你的样子", "最敢不敢当面夸我的一句话", "最想和我一起熬夜做的事", "最想和我穿情侣装的场合", "最想把我介绍成什么身份", "最想和我一起实现的大胆愿望", "最期待我牵手或抱抱你的方式", "最期待我在你身边做的事", "最想和我分享的秘密", "最想让我们多一点的仪式感", "最想让我带给你的心动", "最想和我挑战的一件事", "最想和我约定的专属暗号"];
+  const truthQuestionFrames = [
+    (topic) => `关于“${topic}”，你脑海里第一个答案是什么？`, (topic) => `如果只说一句真话，关于“${topic}”你会说什么？`, (topic) => `关于“${topic}”，最难忘的细节是什么？`, (topic) => `关于“${topic}”，你最希望我知道什么？`, (topic) => `关于“${topic}”，你愿意认真讲给我听吗？`,
+    (topic) => `关于“${topic}”，你会给它打几分？为什么？`, (topic) => `关于“${topic}”，你最想改变的一点是什么？`, (topic) => `关于“${topic}”，下一次你想怎么做？`, (topic) => `关于“${topic}”，你会把哪个画面留在心里？`, (topic) => `关于“${topic}”，你最想听到我怎么回答？`,
+    (topic) => `关于“${topic}”，现在说出来会不会害羞？`, (topic) => `关于“${topic}”，你最想和我一起实现哪个版本？`, (topic) => `关于“${topic}”，你想把它写进我们的回忆录吗？`, (topic) => `关于“${topic}”，你会先告诉谁？`, (topic) => `关于“${topic}”，你觉得我猜得到吗？`,
+    (topic) => `关于“${topic}”，你最想让我做的一件事是什么？`, (topic) => `关于“${topic}”，如果只能保留一个细节，会选什么？`, (topic) => `关于“${topic}”，你最想什么时候再经历一次？`, (topic) => `关于“${topic}”，你会用哪三个词形容？`, (topic) => `关于“${topic}”，现在最想对我说什么？`
+  ];
+  const truthQuestions = shuffleTruthQuestions([
+    ...buildTruthQuestions(gentleTruthTopics, "日常"),
+    ...buildTruthQuestions(boldTruthTopics, "大胆")
+  ]);
   const corners = ["top-left", "top-right", "bottom-right", "bottom-left"];
   const oppositeCorner = {
     "top-left": "bottom-right",
@@ -60,12 +85,26 @@
   const rouletteChoose = document.querySelector("#roulette-choose");
   const rouletteClose = document.querySelector("#roulette-close");
   const anniversaryForm = document.querySelector("#anniversary-form");
+  const anniversaryAdd = document.querySelector("#anniversary-add");
   const anniversaryName = document.querySelector("#anniversary-name");
   const anniversaryDate = document.querySelector("#anniversary-date");
   const anniversaryDateLabel = document.querySelector("#anniversary-date-label");
   const anniversaryHelp = document.querySelector("#anniversary-help");
   const anniversaryError = document.querySelector("#anniversary-error");
   const anniversaryList = document.querySelector("#anniversary-list");
+  const thingsList = document.querySelector("#things-list");
+  const thingsProgressCount = document.querySelector("#things-progress-count");
+  const thingsProgressBar = document.querySelector("#things-progress-bar");
+  const thingsProgressFill = document.querySelector("#things-progress-fill");
+  const truthWheel = document.querySelector("#truth-wheel");
+  const truthNumber = document.querySelector("#truth-number");
+  const truthText = document.querySelector("#truth-text");
+  const truthSpin = document.querySelector("#truth-spin");
+  const diceCup = document.querySelector("#dice-cup");
+  const diceValues = document.querySelector("#dice-values");
+  const diceStatus = document.querySelector("#dice-status");
+  const diceRoll = document.querySelector("#dice-roll");
+  const diceNext = document.querySelector("#dice-next");
 
   let toastTimer = null;
   let menuTransitionTimer = null;
@@ -75,6 +114,7 @@
   let state = loadState();
   let archiveRecords = loadArchive();
   let anniversaries = loadAnniversaries();
+  let completedThings = loadCompletedThings();
   let archiveReturnScreen = 1;
   let activeMemoryRecordId = "";
   let selectedMood = "";
@@ -84,6 +124,14 @@
   let rouletteRotation = 0;
   let rouletteSpinning = false;
   let anniversaryMode = "since";
+  let thingsFilter = "all";
+  let truthRotation = 0;
+  let truthSpinning = false;
+  let lastTruthId = "";
+  let diceRolling = false;
+  let diceLocked = false;
+  let diceTimer = null;
+  let diceCurrent = [1, 1, 1, 1, 1];
 
   function localDateString(date) {
     const year = date.getFullYear();
@@ -193,6 +241,23 @@
     }
   }
 
+  function loadCompletedThings() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(THINGS_KEY) || "[]");
+      return new Set(Array.isArray(saved) ? saved.filter((index) => Number.isInteger(index) && index >= 0 && index < hundredThings.length) : []);
+    } catch (error) {
+      return new Set();
+    }
+  }
+
+  function persistCompletedThings() {
+    try {
+      localStorage.setItem(THINGS_KEY, JSON.stringify([...completedThings]));
+    } catch (error) {
+      showToast("浏览器未允许保存清单进度");
+    }
+  }
+
   function initialize() {
     document.querySelector(".progress").hidden = true;
     dateInput.min = getToday();
@@ -210,6 +275,10 @@
 
     document.querySelector(".home-plan").addEventListener("click", () => showScreen(1));
     document.querySelector(".anniversary-open").addEventListener("click", () => showScreen(9));
+    document.querySelector(".things-open").addEventListener("click", () => showScreen(10));
+    document.querySelector(".game-open").addEventListener("click", () => showScreen(11));
+    document.querySelector(".truth-open").addEventListener("click", () => showScreen(12));
+    document.querySelector(".dice-open").addEventListener("click", () => showScreen(13));
     yesButton.addEventListener("click", () => {
       state.activeRecordId = "";
       persistState();
@@ -250,7 +319,12 @@
     rouletteChoose.addEventListener("click", applyRouletteChoice);
     rouletteClose.addEventListener("click", () => rouletteDialog.close());
     anniversaryForm.addEventListener("submit", addAnniversary);
+    anniversaryAdd.addEventListener("click", toggleAnniversaryForm);
     document.querySelectorAll("[data-anniversary-mode]").forEach((button) => button.addEventListener("click", () => setAnniversaryMode(button.dataset.anniversaryMode)));
+    document.querySelectorAll("[data-thing-filter]").forEach((button) => button.addEventListener("click", () => setThingsFilter(button.dataset.thingFilter)));
+    truthSpin.addEventListener("click", spinTruth);
+    diceRoll.addEventListener("click", rollDice);
+    diceNext.addEventListener("click", resetDiceRound);
 
     window.addEventListener("resize", scheduleDodgeRecalculation, { passive: true });
     if ("ResizeObserver" in window) {
@@ -295,6 +369,9 @@
       setAnniversaryMode(anniversaryMode);
       renderAnniversaries();
     }
+    if (screenNumber === 10) renderThings();
+    if (screenNumber === 12) drawTruthWheel();
+    if (screenNumber === 13) renderDice(diceCurrent);
 
     window.scrollTo({ top: 0, behavior: "auto" });
     const heading = document.querySelector(`[data-screen="${screenNumber}"] h1`);
@@ -715,6 +792,193 @@
     }
   }
 
+  function buildTruthQuestions(topics, type) {
+    return topics.flatMap((topic, topicIndex) => truthQuestionFrames.map((frame, frameIndex) => ({
+      id: `${type}-${topicIndex}-${frameIndex}`,
+      type,
+      text: frame(topic)
+    })));
+  }
+
+  function shuffleTruthQuestions(questions) {
+    const result = [...questions];
+    for (let index = result.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+    }
+    return result;
+  }
+
+  function drawTruthWheel() {
+    const context = truthWheel.getContext("2d");
+    if (!context) return;
+    const size = truthWheel.width;
+    const center = size / 2;
+    const radius = center - 10;
+    const labels = ["真心话", "认真回答", "大胆一点", "只说实话", "有问必答", "悄悄说", "勇敢说", "心动题"];
+    const colors = ["#eadcf6", "#ffe1e7", "#d8f0e8", "#ffedb0", "#dbeaf8", "#f7d8df", "#d9f1e8", "#ffe6c9"];
+    const slice = Math.PI * 2 / labels.length;
+    context.clearRect(0, 0, size, size);
+    labels.forEach((label, index) => {
+      const start = -Math.PI / 2 + index * slice;
+      const middle = start + slice / 2;
+      context.beginPath();
+      context.moveTo(center, center);
+      context.arc(center, center, radius, start, start + slice);
+      context.closePath();
+      context.fillStyle = colors[index];
+      context.fill();
+      context.strokeStyle = "#49323a";
+      context.lineWidth = 3;
+      context.stroke();
+      context.save();
+      context.translate(center + Math.cos(middle) * radius * 0.63, center + Math.sin(middle) * radius * 0.63);
+      context.rotate(middle + Math.PI / 2);
+      context.fillStyle = "#49323a";
+      context.font = '800 26px "Microsoft YaHei", sans-serif';
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(label, 0, 0);
+      context.restore();
+    });
+    context.beginPath();
+    context.arc(center, center, 42, 0, Math.PI * 2);
+    context.fillStyle = "#a877c7";
+    context.fill();
+    context.strokeStyle = "#49323a";
+    context.lineWidth = 4;
+    context.stroke();
+    context.fillStyle = "#fff";
+    context.font = '900 29px "Microsoft YaHei", sans-serif';
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText("♥", center, center + 2);
+  }
+
+  function spinTruth() {
+    if (truthSpinning) return;
+    truthSpinning = true;
+    truthSpin.disabled = true;
+    truthText.textContent = "等转盘停下，这一次要认真回答。";
+    truthNumber.textContent = "正在从 1,000 个问题里抽取…";
+    const choices = truthQuestions.filter((question) => question.id !== lastTruthId);
+    const question = choices[Math.floor(Math.random() * choices.length)];
+    const target = -(Math.floor(Math.random() * 8) + 0.5) * 45;
+    const current = ((truthRotation % 360) + 360) % 360;
+    truthRotation += 5 * 360 + ((target - current + 360) % 360);
+    truthWheel.style.transform = `rotate(${truthRotation}deg)`;
+    setTimeout(() => {
+      truthSpinning = false;
+      lastTruthId = question.id;
+      truthNumber.textContent = `第 ${truthQuestions.indexOf(question) + 1} / 1000 题`;
+      truthText.textContent = question.text;
+      truthSpin.disabled = false;
+      truthSpin.textContent = "再转一个问题";
+      truthSpin.focus();
+    }, 2860);
+  }
+
+  function renderDice(values, rolling = false) {
+    const faces = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+    diceValues.replaceChildren();
+    values.forEach((value) => {
+      const face = document.createElement("span");
+      face.className = `dice-face${rolling ? " is-rolling" : ""}`;
+      face.textContent = faces[value - 1];
+      face.setAttribute("aria-label", `${value} 点`);
+      diceValues.append(face);
+    });
+  }
+
+  function rollDice() {
+    if (diceRolling || diceLocked) return;
+    diceRolling = true;
+    diceRoll.disabled = true;
+    diceNext.disabled = true;
+    diceStatus.textContent = "骰盅摇起来了…";
+    if (diceTimer) clearInterval(diceTimer);
+    diceTimer = setInterval(() => renderDice(Array.from({ length: 5 }, () => Math.floor(Math.random() * 6) + 1), true), 100);
+    setTimeout(() => {
+      if (diceTimer) clearInterval(diceTimer);
+      diceTimer = null;
+      diceCurrent = Array.from({ length: 5 }, () => Math.floor(Math.random() * 6) + 1);
+      diceRolling = false;
+      diceLocked = true;
+      renderDice(diceCurrent);
+      const straight = new Set(diceCurrent).size === 5;
+      diceStatus.textContent = straight ? `顺子！${diceCurrent.join("、")}，五个点数都不重复` : `本局点数：${diceCurrent.join("、")}，已经锁住`;
+      diceRoll.textContent = "本局已锁定";
+      diceNext.disabled = false;
+    }, 900);
+  }
+
+  function resetDiceRound() {
+    if (diceRolling) return;
+    diceLocked = false;
+    diceCurrent = [1, 1, 1, 1, 1];
+    renderDice(diceCurrent);
+    diceStatus.textContent = "新的一局准备好了，只能摇一次。";
+    diceRoll.disabled = false;
+    diceRoll.textContent = "摇骰子";
+    diceNext.disabled = true;
+  }
+
+  function setThingsFilter(filter) {
+    thingsFilter = ["all", "todo", "done"].includes(filter) ? filter : "all";
+    renderThings();
+  }
+
+  function renderThings() {
+    const completedCount = completedThings.size;
+    thingsProgressCount.textContent = `${completedCount} / ${hundredThings.length}`;
+    thingsProgressBar.setAttribute("aria-valuenow", String(completedCount));
+    thingsProgressFill.style.width = `${completedCount}%`;
+    document.querySelectorAll("[data-thing-filter]").forEach((button) => {
+      const selected = button.dataset.thingFilter === thingsFilter;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
+    thingsList.replaceChildren();
+    const visibleThings = hundredThings.map((text, index) => ({ text, index })).filter((item) => thingsFilter === "all" || (thingsFilter === "done" ? completedThings.has(item.index) : !completedThings.has(item.index)));
+    if (!visibleThings.length) {
+      const empty = document.createElement("li");
+      empty.className = "things-empty";
+      empty.textContent = thingsFilter === "done" ? "还没有完成的项目，慢慢来。" : "这一页已经全部完成啦。";
+      thingsList.append(empty);
+      return;
+    }
+    visibleThings.forEach((item) => {
+      const done = completedThings.has(item.index);
+      const row = document.createElement("li");
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `thing-item${done ? " is-done" : ""}`;
+      button.setAttribute("aria-pressed", String(done));
+      button.setAttribute("aria-label", `第 ${item.index + 1} 件：${item.text}，${done ? "已完成，点击取消" : "未完成，点击标记完成"}`);
+      const number = document.createElement("span");
+      number.className = "thing-number";
+      number.textContent = String(item.index + 1).padStart(2, "0");
+      const label = document.createElement("span");
+      label.className = "thing-label";
+      label.textContent = item.text;
+      const check = document.createElement("span");
+      check.className = "thing-check";
+      check.setAttribute("aria-hidden", "true");
+      check.textContent = "✓";
+      button.append(number, label, check);
+      button.addEventListener("click", () => toggleThing(item.index));
+      row.append(button);
+      thingsList.append(row);
+    });
+  }
+
+  function toggleThing(index) {
+    if (completedThings.has(index)) completedThings.delete(index);
+    else completedThings.add(index);
+    persistCompletedThings();
+    renderThings();
+  }
+
   function setAnniversaryMode(mode) {
     anniversaryMode = mode === "until" ? "until" : "since";
     const isSince = anniversaryMode === "since";
@@ -756,8 +1020,17 @@
     persistAnniversaries();
     anniversaryName.value = "";
     anniversaryDate.value = getToday();
+    anniversaryForm.hidden = true;
     renderAnniversaries();
     showToast("纪念日已经收好啦");
+  }
+
+  function toggleAnniversaryForm() {
+    anniversaryForm.hidden = !anniversaryForm.hidden;
+    if (!anniversaryForm.hidden) {
+      setAnniversaryMode(anniversaryMode);
+      requestAnimationFrame(() => anniversaryName.focus());
+    }
   }
 
   function anniversaryDayDistance(date) {
