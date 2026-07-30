@@ -718,7 +718,16 @@
 
   function updateMap() {
     mapLocation.textContent = state.location || "地点待定";
-    mapLink.href = state.location ? `https://uri.amap.com/search?keyword=${encodeURIComponent(state.location)}&view=map&src=%E8%94%A1%E5%AD%90%E7%8F%8A%E5%92%8C%E5%88%98%E5%B9%B3%E5%A3%B9%E7%9A%84%E7%A9%BA%E9%97%B4&callnative=1` : "https://ditu.amap.com/";
+    const keyword = normalizeMapKeyword(state.location);
+    mapLink.href = keyword ? `https://uri.amap.com/search?keyword=${encodeURIComponent(keyword)}&view=map&src=%E8%94%A1%E5%AD%90%E7%8F%8A%E5%92%8C%E5%88%98%E5%B9%B3%E5%A3%B9%E7%9A%84%E7%A9%BA%E9%97%B4&callnative=1` : "https://ditu.amap.com/";
+  }
+
+  function normalizeMapKeyword(location) {
+    return String(location || "")
+      .replace(/[，,。！？!?]/g, " ")
+      .replace(/(附近|周边|旁边|那边|一带|周围|附近的)/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
   function getCountdownText(record) {
