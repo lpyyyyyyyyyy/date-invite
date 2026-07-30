@@ -894,6 +894,14 @@
     });
   }
 
+  function rollDiceWithMatch() {
+    let values;
+    do {
+      values = Array.from({ length: 5 }, () => Math.floor(Math.random() * 6) + 1);
+    } while (new Set(values).size === 5);
+    return values;
+  }
+
   function rollDice() {
     if (diceRolling || diceLocked) return;
     diceRolling = true;
@@ -910,7 +918,7 @@
     setTimeout(() => {
       if (diceTimer) clearInterval(diceTimer);
       diceTimer = null;
-      diceCurrent = Array.from({ length: 5 }, () => Math.floor(Math.random() * 6) + 1);
+      diceCurrent = rollDiceWithMatch();
       diceRolling = false;
       renderDice(diceCurrent);
       diceReadyToReveal = true;
@@ -928,19 +936,10 @@
     diceTable.classList.remove("is-covered");
     diceTable.classList.add("is-open");
     diceCup.disabled = true;
-    const straight = new Set(diceCurrent).size === 5;
-    if (straight) {
-      diceLocked = false;
-      diceStatus.textContent = `顺子！${diceCurrent.join("、")}，五个点数都不重复，可以重新摇。`;
-      diceRoll.disabled = false;
-      diceRoll.textContent = "重新摇";
-      diceNext.disabled = true;
-    } else {
-      diceLocked = true;
-      diceStatus.textContent = `本局点数：${diceCurrent.join("、")}，已经锁住。`;
-      diceRoll.textContent = "本局已锁定";
-      diceNext.disabled = false;
-    }
+    diceLocked = true;
+    diceStatus.textContent = `本局点数：${diceCurrent.join("、")}，已经锁住。`;
+    diceRoll.textContent = "本局已锁定";
+    diceNext.disabled = false;
   }
 
   function resetDiceRound() {
