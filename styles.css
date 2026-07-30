@@ -204,7 +204,8 @@ h1 {
 }
 
 .home-screen {
-  justify-content: center;
+  justify-content: flex-start;
+  overflow-y: auto;
   padding-top: max(64px, calc(env(safe-area-inset-top) + 44px));
   padding-bottom: max(30px, env(safe-area-inset-bottom));
 }
@@ -262,6 +263,7 @@ h1 {
 .home-card > b { color: var(--coral-dark); font-size: 22px; }
 .home-card-icon { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 8px; color: #fff; background: var(--coral); font-size: 24px; }
 .mint-icon { color: #266c62; background: var(--mint); }
+.yellow-icon { color: #725100; background: var(--yellow); }
 
 .next-date-card {
   width: min(100%, 420px);
@@ -913,6 +915,25 @@ h1 {
 .mood-options button { min-height: 38px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: #fff; cursor: pointer; font-size: 13px; font-weight: 800; }
 .mood-options button.is-selected { color: #83243a; border-color: var(--coral); background: var(--pink-soft); }
 .memory-form .primary-button { width: 100%; margin-top: 26px; }
+
+.anniversary-screen { padding-left: 20px; padding-right: 20px; }
+.anniversary-form { width: min(100%, 410px); margin: 24px auto 0; text-align: left; }
+.anniversary-form > label, .anniversary-form legend { display: block; margin: 15px 0 7px; color: var(--ink); font-size: 13px; font-weight: 800; }
+.anniversary-form input { width: 100%; height: 48px; padding: 0 11px; border: 2px solid var(--line); border-radius: 8px; color: var(--ink); background: #fff; font-weight: 700; }
+.anniversary-form input:focus { border-color: var(--coral); outline: 0; box-shadow: 0 0 0 3px rgba(244, 95, 118, 0.13); }
+.anniversary-form fieldset { margin: 17px 0 0; padding: 0; border: 0; }
+.anniversary-mode div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.anniversary-mode button { min-height: 44px; padding: 7px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: #fff; cursor: pointer; font-size: 13px; font-weight: 800; }
+.anniversary-mode button.is-selected { color: #83243a; border-color: var(--coral); background: var(--pink-soft); }
+.anniversary-help { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.anniversary-form .primary-button { width: 100%; margin-top: 23px; }
+.anniversary-list { display: grid; gap: 10px; width: min(100%, 410px); margin: 25px auto 0; text-align: left; }
+.anniversary-empty { margin: 0; padding: 22px 12px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 13px; text-align: center; }
+.anniversary-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; padding: 14px; border: 1px solid #eed9de; border-radius: 8px; background: #fff8f8; box-shadow: 4px 4px 0 #f4e4e7; }
+.anniversary-item h2 { margin: 0; color: var(--ink); font-size: 16px; }
+.anniversary-item p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+.anniversary-item strong { display: block; grid-column: 1 / -1; color: var(--coral-dark); font-size: 15px; }
+.anniversary-delete { align-self: start; min-height: 32px; padding: 5px 8px; border: 1px solid #e9c7cf; border-radius: 7px; color: #b3263f; background: #fff; cursor: pointer; font-size: 12px; font-weight: 800; }
 
 .save-button {
   margin-top: 20px;

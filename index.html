@@ -46,6 +46,12 @@
             <span class="home-card-icon mint-icon" aria-hidden="true">✦</span><span><strong>我们的回忆</strong><small>照片、地点和每一次见面的心情</small></span><b aria-hidden="true">→</b>
           </button>
         </section>
+        <section class="home-group" aria-labelledby="anniversary-group-title">
+          <p id="anniversary-group-title">纪念日</p>
+          <button class="home-card anniversary-open" type="button">
+            <span class="home-card-icon yellow-icon" aria-hidden="true">♥</span><span><strong>我们的小日子</strong><small>看看已经相伴多久，或离特别一天还有多远</small></span><b aria-hidden="true">→</b>
+          </button>
+        </section>
       </div>
       <section class="next-date-card" aria-labelledby="next-date-title">
         <p id="next-date-title">下次约会行动</p>
@@ -298,6 +304,27 @@
         </div></fieldset>
         <button class="primary-button coral-button" type="submit">保存这份回忆</button>
       </form>
+    </section>
+
+    <section class="screen anniversary-screen" data-screen="9" aria-labelledby="step-9-title" hidden>
+      <button class="back-button" type="button" data-back="0" aria-label="返回空间首页"><span aria-hidden="true">←</span></button>
+      <p class="eyebrow">OUR SPECIAL DAYS</p>
+      <h1 id="step-9-title" tabindex="-1">纪念日</h1>
+      <p class="supporting-copy compact-copy">把值得记住的日子，都悄悄放在这里。</p>
+      <form class="anniversary-form" id="anniversary-form">
+        <label for="anniversary-name">这一天叫什么</label>
+        <input id="anniversary-name" type="text" maxlength="24" placeholder="例如：在一起纪念日">
+        <fieldset class="anniversary-mode"><legend>想怎么记录</legend><div>
+          <button type="button" data-anniversary-mode="since" aria-pressed="true">开始多久了</button>
+          <button type="button" data-anniversary-mode="until" aria-pressed="false">还有多久到</button>
+        </div></fieldset>
+        <label id="anniversary-date-label" for="anniversary-date">从哪一天开始</label>
+        <input id="anniversary-date" type="date" required>
+        <p class="anniversary-help" id="anniversary-help">选择今天或过去的日期，看看已经相伴多久。</p>
+        <p class="field-error" id="anniversary-error" role="alert" hidden></p>
+        <button class="primary-button coral-button" type="submit">收下这个纪念日</button>
+      </form>
+      <div class="anniversary-list" id="anniversary-list" aria-live="polite"></div>
     </section>
   </main>
 

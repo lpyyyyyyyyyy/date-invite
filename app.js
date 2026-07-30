@@ -3,6 +3,7 @@
 
   const STORAGE_KEY = "cute-date-invite-v1";
   const ARCHIVE_KEY = "cute-date-invite-archive-v1";
+  const ANNIVERSARY_KEY = "cute-date-invite-anniversaries-v1";
   const noLabels = ["不要", "再想想嘛", "点不到我", "真的不要吗"];
   const corners = ["top-left", "top-right", "bottom-right", "bottom-left"];
   const oppositeCorner = {
@@ -58,6 +59,13 @@
   const rouletteSpin = document.querySelector("#roulette-spin");
   const rouletteChoose = document.querySelector("#roulette-choose");
   const rouletteClose = document.querySelector("#roulette-close");
+  const anniversaryForm = document.querySelector("#anniversary-form");
+  const anniversaryName = document.querySelector("#anniversary-name");
+  const anniversaryDate = document.querySelector("#anniversary-date");
+  const anniversaryDateLabel = document.querySelector("#anniversary-date-label");
+  const anniversaryHelp = document.querySelector("#anniversary-help");
+  const anniversaryError = document.querySelector("#anniversary-error");
+  const anniversaryList = document.querySelector("#anniversary-list");
 
   let toastTimer = null;
   let menuTransitionTimer = null;
@@ -66,6 +74,7 @@
   let currentScreen = 0;
   let state = loadState();
   let archiveRecords = loadArchive();
+  let anniversaries = loadAnniversaries();
   let archiveReturnScreen = 1;
   let activeMemoryRecordId = "";
   let selectedMood = "";
@@ -74,6 +83,7 @@
   let rouletteIndex = -1;
   let rouletteRotation = 0;
   let rouletteSpinning = false;
+  let anniversaryMode = "since";
 
   function localDateString(date) {
     const year = date.getFullYear();
@@ -161,6 +171,28 @@
     }
   }
 
+  function loadAnniversaries() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(ANNIVERSARY_KEY) || "[]");
+      return Array.isArray(saved) ? saved.filter((item) => item && typeof item.id === "string" && /^\d{4}-\d{2}-\d{2}$/.test(item.date)).map((item) => ({
+        id: item.id,
+        name: typeof item.name === "string" ? item.name : "我们的纪念日",
+        date: item.date,
+        mode: item.mode === "until" ? "until" : "since"
+      })) : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function persistAnniversaries() {
+    try {
+      localStorage.setItem(ANNIVERSARY_KEY, JSON.stringify(anniversaries));
+    } catch (error) {
+      showToast("浏览器未允许保存纪念日");
+    }
+  }
+
   function initialize() {
     document.querySelector(".progress").hidden = true;
     dateInput.min = getToday();
@@ -177,6 +209,7 @@
     }
 
     document.querySelector(".home-plan").addEventListener("click", () => showScreen(1));
+    document.querySelector(".anniversary-open").addEventListener("click", () => showScreen(9));
     yesButton.addEventListener("click", () => {
       state.activeRecordId = "";
       persistState();
@@ -216,6 +249,8 @@
     rouletteSpin.addEventListener("click", spinRoulette);
     rouletteChoose.addEventListener("click", applyRouletteChoice);
     rouletteClose.addEventListener("click", () => rouletteDialog.close());
+    anniversaryForm.addEventListener("submit", addAnniversary);
+    document.querySelectorAll("[data-anniversary-mode]").forEach((button) => button.addEventListener("click", () => setAnniversaryMode(button.dataset.anniversaryMode)));
 
     window.addEventListener("resize", scheduleDodgeRecalculation, { passive: true });
     if ("ResizeObserver" in window) {
@@ -256,6 +291,10 @@
     if (screenNumber === 5) syncFoodSelection();
     if (screenNumber === 6) updateResult();
     if (screenNumber === 7) renderArchive();
+    if (screenNumber === 9) {
+      setAnniversaryMode(anniversaryMode);
+      renderAnniversaries();
+    }
 
     window.scrollTo({ top: 0, behavior: "auto" });
     const heading = document.querySelector(`[data-screen="${screenNumber}"] h1`);
@@ -674,6 +713,108 @@
       context.lineWidth = lineWidth;
       context.stroke();
     }
+  }
+
+  function setAnniversaryMode(mode) {
+    anniversaryMode = mode === "until" ? "until" : "since";
+    const isSince = anniversaryMode === "since";
+    document.querySelectorAll("[data-anniversary-mode]").forEach((button) => {
+      const selected = button.dataset.anniversaryMode === anniversaryMode;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
+    anniversaryDateLabel.textContent = isSince ? "从哪一天开始" : "哪一天快要到啦";
+    anniversaryHelp.textContent = isSince ? "选择今天或过去的日期，看看已经相伴多久。" : "选择今天或未来的日期，看看还有多久到。";
+    if (isSince) {
+      anniversaryDate.max = getToday();
+      anniversaryDate.removeAttribute("min");
+    } else {
+      anniversaryDate.min = getToday();
+      anniversaryDate.removeAttribute("max");
+    }
+    if (!anniversaryDate.value || (isSince && anniversaryDate.value > getToday()) || (!isSince && anniversaryDate.value < getToday())) anniversaryDate.value = getToday();
+    anniversaryError.hidden = true;
+  }
+
+  function addAnniversary(event) {
+    event.preventDefault();
+    const date = anniversaryDate.value;
+    const today = getToday();
+    const invalid = !date || (anniversaryMode === "since" && date > today) || (anniversaryMode === "until" && date < today);
+    if (invalid) {
+      anniversaryError.textContent = anniversaryMode === "since" ? "开始纪念日请选择今天或以前。" : "倒计时纪念日请选择今天或以后。";
+      anniversaryError.hidden = false;
+      anniversaryDate.focus();
+      return;
+    }
+    anniversaries.unshift({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: anniversaryName.value.trim() || "我们的纪念日",
+      date,
+      mode: anniversaryMode
+    });
+    persistAnniversaries();
+    anniversaryName.value = "";
+    anniversaryDate.value = getToday();
+    renderAnniversaries();
+    showToast("纪念日已经收好啦");
+  }
+
+  function anniversaryDayDistance(date) {
+    const [year, month, day] = date.split("-").map(Number);
+    const target = new Date(year, month - 1, day);
+    target.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.round((target.getTime() - today.getTime()) / 86400000);
+  }
+
+  function anniversaryStatus(item) {
+    const distance = anniversaryDayDistance(item.date);
+    if (item.mode === "since") {
+      if (distance === 0) return "今天就是第 1 天";
+      return `已经相伴 ${Math.max(0, -distance)} 天`;
+    }
+    if (distance === 0) return "就是今天";
+    return `还有 ${Math.max(0, distance)} 天到`;
+  }
+
+  function renderAnniversaries() {
+    anniversaryList.replaceChildren();
+    if (!anniversaries.length) {
+      const empty = document.createElement("p");
+      empty.className = "anniversary-empty";
+      empty.textContent = "第一份小纪念，等你们一起放进来。";
+      anniversaryList.append(empty);
+      return;
+    }
+    anniversaries.forEach((item) => {
+      const card = document.createElement("article");
+      card.className = "anniversary-item";
+      const copy = document.createElement("div");
+      const title = document.createElement("h2");
+      title.textContent = item.name;
+      const detail = document.createElement("p");
+      detail.textContent = `${item.mode === "since" ? "开始于" : "到来的日子"} ${formatDateForDisplay(item.date)}`;
+      copy.append(title, detail);
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "anniversary-delete";
+      remove.textContent = "删除";
+      remove.addEventListener("click", () => deleteAnniversary(item.id));
+      const status = document.createElement("strong");
+      status.textContent = anniversaryStatus(item);
+      card.append(copy, remove, status);
+      anniversaryList.append(card);
+    });
+  }
+
+  function deleteAnniversary(id) {
+    if (!window.confirm("确定删除这个纪念日吗？")) return;
+    anniversaries = anniversaries.filter((item) => item.id !== id);
+    persistAnniversaries();
+    renderAnniversaries();
+    showToast("纪念日已删除");
   }
 
   function openRoulette(kind) {
