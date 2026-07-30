@@ -978,18 +978,28 @@ h1 {
 .truth-spin { width: min(100%, 410px); margin-top: 20px; background: #a877c7; }
 
 .dice-screen { justify-content: center; }
-.dice-table { position: relative; display: grid; width: min(100%, 330px); min-height: 235px; margin: 30px auto 0; padding: 22px; place-items: center; overflow: hidden; border: 3px solid var(--ink); border-radius: 8px; background: #e6cba6; box-shadow: 9px 9px 0 #ead8e4; }
-.dice-values { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(3, 64px); justify-content: center; gap: 12px; width: 100%; transition: opacity 180ms ease; }
-.dice-cup { position: absolute; z-index: 2; inset: 17px; display: grid; padding: 0; place-items: center; border: 4px solid var(--ink); border-radius: 52% 52% 18px 18px; color: #fff; background: #a877c7; box-shadow: 6px 7px 0 rgba(73, 50, 58, 0.2); cursor: pointer; font-size: 16px; font-weight: 900; transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1), opacity 260ms ease; }
+.dice-table { position: relative; display: grid; width: min(100%, 330px); min-height: 245px; margin: 30px auto 0; padding: 22px; place-items: center; overflow: hidden; isolation: isolate; border: 3px solid var(--ink); border-radius: 8px; background: #d4a16a; box-shadow: 9px 9px 0 #ead8e4, inset 0 0 0 8px rgba(255, 239, 201, 0.35); perspective: 800px; }
+.dice-table::before { position: absolute; z-index: 0; inset: 15px; border: 2px solid rgba(92, 58, 38, 0.28); border-radius: 5px; content: ""; pointer-events: none; }
+.dice-values { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(3, 64px); justify-content: center; gap: 12px; width: 100%; transition: opacity 220ms ease, transform 280ms ease; }
+.dice-cup { position: absolute; z-index: 2; inset: 21px 29px 17px; display: grid; padding: 0 20px 26px; place-items: center; overflow: visible; border: 4px solid var(--ink); border-radius: 50% 50% 21% 21% / 28% 28% 15% 15%; color: #fff; background: #a877c7; box-shadow: inset 0 12px 0 rgba(255, 255, 255, 0.18), inset 0 -17px 0 rgba(74, 42, 88, 0.32), 7px 9px 0 rgba(73, 50, 58, 0.24); cursor: pointer; font-size: 16px; font-weight: 900; letter-spacing: 0; transform-origin: 58% 94%; transition: transform 620ms cubic-bezier(0.2, 0.9, 0.2, 1), opacity 260ms ease, box-shadow 220ms ease; }
+.dice-cup::before { position: absolute; right: -8px; bottom: 18px; left: -8px; height: 22px; border: 4px solid var(--ink); border-radius: 50%; background: #d7a5e9; box-shadow: inset 0 5px 0 rgba(255, 255, 255, 0.34); content: ""; }
+.dice-cup::after { position: absolute; bottom: 37px; left: 50%; width: 48%; height: 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.38); content: ""; transform: translateX(-50%); }
+.dice-cup > span { position: relative; z-index: 1; text-shadow: 0 2px 0 rgba(73, 50, 58, 0.28); }
+.dice-cup:not(:disabled):active { transform: translateY(3px) scale(0.98); }
 .dice-cup:disabled { cursor: default; }
-.dice-table.is-covered .dice-values { opacity: 0; }
-.dice-table.is-shaking .dice-cup { animation: cup-shake 130ms linear infinite; }
+.dice-table.is-covered .dice-values { opacity: 0; transform: scale(0.88); }
+.dice-table.is-shaking .dice-cup { animation: cup-shake 112ms linear infinite; }
 .dice-table.is-open { overflow: visible; }
-.dice-table.is-open .dice-cup { pointer-events: none; opacity: 0.96; transform: translateY(-170px) rotate(-9deg); }
-@keyframes cup-shake { 0%, 100% { transform: rotate(-4deg) translateX(-5px); } 50% { transform: rotate(4deg) translateX(5px); } }
+.dice-table.is-open .dice-cup { pointer-events: none; opacity: 0.98; box-shadow: inset 0 12px 0 rgba(255, 255, 255, 0.18), inset 0 -17px 0 rgba(74, 42, 88, 0.32), 9px 10px 0 rgba(73, 50, 58, 0.18); transform: translate(30px, -173px) rotate(13deg) rotateX(10deg); }
+.dice-table.is-open .dice-values { animation: dice-reveal 460ms cubic-bezier(0.18, 0.89, 0.32, 1.2) both; }
+@keyframes cup-shake { 0%, 100% { transform: translateX(-9px) rotate(-6deg); } 25% { transform: translateY(-5px) rotate(4deg); } 50% { transform: translateX(9px) rotate(7deg); } 75% { transform: translateY(2px) rotate(-3deg); } }
+@keyframes dice-reveal { from { opacity: 0.25; transform: scale(0.74) rotateX(30deg); } to { opacity: 1; transform: scale(1) rotateX(0); } }
 .dice-face { display: grid; width: 64px; height: 64px; place-items: center; border: 2px solid var(--ink); border-radius: 8px; color: var(--ink); background: #fffdfb; box-shadow: 3px 3px 0 rgba(63, 44, 53, 0.18); font-size: 46px; line-height: 1; }
+.dice-table.is-open .dice-face { animation: die-pop 390ms calc(var(--roll-index) * 45ms) cubic-bezier(0.2, 1.35, 0.4, 1) both; }
 .dice-face.is-rolling { animation: dice-shake 120ms linear infinite; }
+@keyframes die-pop { from { opacity: 0; transform: translateY(14px) rotate(-12deg) scale(0.68); } to { opacity: 1; transform: translateY(0) rotate(0) scale(1); } }
 @keyframes dice-shake { 0%, 100% { transform: rotate(-4deg) translateY(0); } 50% { transform: rotate(4deg) translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .dice-table.is-shaking .dice-cup, .dice-table.is-open .dice-values, .dice-table.is-open .dice-face, .dice-face.is-rolling { animation: none; } }
 .dice-status { min-height: 24px; margin: 20px auto 0; color: #7a5590; font-size: 15px; font-weight: 900; }
 .dice-roll { width: min(100%, 330px); margin-top: 15px; background: #a877c7; }
 .dice-next { width: min(100%, 330px); margin-top: 13px; }

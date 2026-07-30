@@ -885,9 +885,10 @@
   function renderDice(values, rolling = false) {
     const faces = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
     diceValues.replaceChildren();
-    values.forEach((value) => {
+    values.forEach((value, index) => {
       const face = document.createElement("span");
       face.className = `dice-face${rolling ? " is-rolling" : ""}`;
+      face.style.setProperty("--roll-index", String(index));
       face.textContent = faces[value - 1];
       face.setAttribute("aria-label", `${value} 点`);
       diceValues.append(face);
