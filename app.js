@@ -135,6 +135,8 @@
   let diceTimer = null;
   let diceCurrent = [1, 1, 1, 1, 1];
   let diceReadyToReveal = false;
+  let diceCupPointerId = null;
+  let diceCupStartY = 0;
 
   function localDateString(date) {
     const year = date.getFullYear();
@@ -327,7 +329,11 @@
     document.querySelectorAll("[data-thing-filter]").forEach((button) => button.addEventListener("click", () => setThingsFilter(button.dataset.thingFilter)));
     truthSpin.addEventListener("click", spinTruth);
     diceRoll.addEventListener("click", rollDice);
-    diceCup.addEventListener("click", revealDice);
+    diceCup.addEventListener("pointerdown", startDiceCupSwipe);
+    diceCup.addEventListener("pointermove", moveDiceCupSwipe);
+    diceCup.addEventListener("pointerup", finishDiceCupSwipe);
+    diceCup.addEventListener("pointercancel", cancelDiceCupSwipe);
+    diceCup.addEventListener("keydown", handleDiceCupKeydown);
     diceNext.addEventListener("click", resetDiceRound);
 
     window.addEventListener("resize", scheduleDodgeRecalculation, { passive: true });
@@ -925,9 +931,9 @@
       diceReadyToReveal = true;
       diceTable.classList.remove("is-shaking");
       diceCup.disabled = false;
-      diceCupLabel.textContent = "点击掀开骰盅";
-      diceCup.setAttribute("aria-label", "掀开骰盅查看骰子");
-      diceStatus.textContent = "骰子已经摇好，手动点骰盅掀开看看。";
+      diceCupLabel.textContent = "向上滑掀开骰盅";
+      diceCup.setAttribute("aria-label", "向上滑掀开骰盅查看骰子");
+      diceStatus.textContent = "骰子已经摇好，在骰盅上向上滑掀开看看。";
       diceRoll.textContent = "等待开盅";
     }, 900);
   }
@@ -937,19 +943,54 @@
     if (diceTable.classList.contains("is-open")) {
       diceTable.classList.remove("is-open");
       diceTable.classList.add("is-covered");
-      diceCupLabel.textContent = "再次掀开骰盅";
-      diceCup.setAttribute("aria-label", "再次掀开骰盅查看骰子");
+      diceCupLabel.textContent = "向上滑再次掀开";
+      diceCup.setAttribute("aria-label", "向上滑再次掀开骰盅查看骰子");
       diceStatus.textContent = "骰盅已经合上了，想看时可以再掀开。";
       return;
     }
     diceTable.classList.remove("is-covered");
     diceTable.classList.add("is-open");
-    diceCupLabel.textContent = "合上骰盅";
-    diceCup.setAttribute("aria-label", "合上骰盅");
+    diceCupLabel.textContent = "向下滑合上骰盅";
+    diceCup.setAttribute("aria-label", "向下滑合上骰盅");
     diceLocked = true;
     diceStatus.textContent = `本局点数：${diceCurrent.join("、")}，已经锁住。`;
     diceRoll.textContent = "本局已锁定";
     diceNext.disabled = false;
+  }
+
+  function startDiceCupSwipe(event) {
+    if (diceCup.disabled || diceRolling || !diceReadyToReveal) return;
+    diceCupPointerId = event.pointerId;
+    diceCupStartY = event.clientY;
+    diceCup.classList.add("is-dragging");
+    diceCup.setPointerCapture?.(event.pointerId);
+  }
+
+  function moveDiceCupSwipe(event) {
+    if (event.pointerId !== diceCupPointerId) return;
+    const delta = Math.max(-90, Math.min(90, event.clientY - diceCupStartY));
+    diceCup.style.setProperty("--cup-drag-y", `${delta}px`);
+  }
+
+  function finishDiceCupSwipe(event) {
+    if (event.pointerId !== diceCupPointerId) return;
+    const delta = event.clientY - diceCupStartY;
+    const isOpen = diceTable.classList.contains("is-open");
+    cancelDiceCupSwipe(event);
+    if ((!isOpen && delta < -38) || (isOpen && delta > 38)) revealDice();
+  }
+
+  function cancelDiceCupSwipe(event) {
+    if (event.pointerId !== diceCupPointerId) return;
+    diceCupPointerId = null;
+    diceCup.classList.remove("is-dragging");
+    diceCup.style.removeProperty("--cup-drag-y");
+  }
+
+  function handleDiceCupKeydown(event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    revealDice();
   }
 
   function resetDiceRound() {
@@ -961,8 +1002,8 @@
     diceTable.classList.remove("is-open", "is-shaking");
     diceTable.classList.add("is-covered");
     diceCup.disabled = true;
-    diceCupLabel.textContent = "摇骰子后掀开";
-    diceCup.setAttribute("aria-label", "掀开骰盅查看骰子");
+    diceCupLabel.textContent = "摇骰子后向上滑";
+    diceCup.setAttribute("aria-label", "向上滑掀开骰盅查看骰子");
     diceStatus.textContent = "新的一局准备好了，只能摇一次。";
     diceRoll.disabled = false;
     diceRoll.textContent = "摇骰子";
