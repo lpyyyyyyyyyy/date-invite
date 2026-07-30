@@ -20,7 +20,7 @@
 
   <main class="app-shell" id="app">
     <div class="progress" aria-label="邀请进度">
-      <span class="progress-dot is-current" data-progress="1"></span>
+      <span class="progress-dot" data-progress="1"></span>
       <span class="progress-dot" data-progress="2"></span>
       <span class="progress-dot" data-progress="3"></span>
       <span class="progress-dot" data-progress="4"></span>
@@ -28,7 +28,33 @@
       <span class="progress-dot" data-progress="6"></span>
     </div>
 
-    <section class="screen invitation-screen is-active" data-screen="1" aria-labelledby="step-1-title">
+    <section class="screen home-screen is-active" data-screen="0" aria-labelledby="home-title">
+      <div class="home-mark" aria-hidden="true">♥</div>
+      <p class="eyebrow">CAI ZISHAN &amp; LIU PINGYI</p>
+      <h1 id="home-title" tabindex="-1">蔡子珊和刘平壹<br>的空间</h1>
+      <p class="supporting-copy">把每一次见面，留成只有我们知道的故事。</p>
+      <div class="home-sections">
+        <section class="home-group" aria-labelledby="date-group-title">
+          <p id="date-group-title">约会</p>
+          <button class="home-card home-plan" type="button">
+            <span class="home-card-icon" aria-hidden="true">♥</span><span><strong>约会计划</strong><small>选时间、地点、想玩什么和想吃什么</small></span><b aria-hidden="true">→</b>
+          </button>
+        </section>
+        <section class="home-group" aria-labelledby="memory-group-title">
+          <p id="memory-group-title">回忆录</p>
+          <button class="home-card library-open" type="button">
+            <span class="home-card-icon mint-icon" aria-hidden="true">✦</span><span><strong>我们的回忆</strong><small>照片、地点和每一次见面的心情</small></span><b aria-hidden="true">→</b>
+          </button>
+        </section>
+      </div>
+      <section class="next-date-card" aria-labelledby="next-date-title">
+        <p id="next-date-title">下次约会行动</p>
+        <strong id="home-countdown" role="status" aria-live="polite">还没有下一次约会计划</strong>
+      </section>
+    </section>
+
+    <section class="screen invitation-screen" data-screen="1" aria-labelledby="step-1-title" hidden>
+      <button class="archive-button library-open" type="button" aria-label="打开约会档案馆">档案</button>
       <div class="brand-mark" aria-label="一封约会邀请">
         <span>TO YOU</span>
         <b>♥</b>
@@ -93,6 +119,12 @@
           <span aria-hidden="true">◷</span>
           <input id="time-input" name="time" type="time" required>
         </div>
+
+        <label class="field-label" for="location-input">约会地点</label>
+        <div class="input-wrap">
+          <span aria-hidden="true">⌖</span>
+          <input id="location-input" name="location" type="text" maxlength="60" placeholder="例如：静安寺附近">
+        </div>
         <p class="field-error" id="date-error" role="alert" hidden></p>
 
         <button class="primary-button coral-button form-submit" type="submit">
@@ -137,7 +169,14 @@
         <button class="food-option activity-option" type="button" data-activity="玩游戏" aria-pressed="false">
           <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🎮</span><span>玩游戏</span>
         </button>
+        <button class="food-option activity-option other-option" type="button" data-activity="other" aria-pressed="false">
+          <span class="food-emoji" aria-hidden="true">✦</span><span>其他</span>
+        </button>
       </div>
+      <form class="other-choice" id="activity-other-form" hidden>
+        <label for="activity-other-input">想玩什么</label>
+        <div><input id="activity-other-input" type="text" maxlength="24" placeholder="输入想一起做的事" required><button type="submit">确定</button></div>
+      </form>
     </section>
 
     <section class="screen menu-screen" data-screen="5" aria-labelledby="step-5-title" hidden>
@@ -176,7 +215,14 @@
         <button class="food-option" type="button" data-menu="烧烤" aria-pressed="false">
           <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🍢</span><span>烧烤</span>
         </button>
+        <button class="food-option other-option" type="button" data-menu="other" aria-pressed="false">
+          <span class="food-emoji" aria-hidden="true">✦</span><span>其他</span>
+        </button>
       </div>
+      <form class="other-choice" id="food-other-form" hidden>
+        <label for="food-other-input">想吃什么</label>
+        <div><input id="food-other-input" type="text" maxlength="24" placeholder="输入想吃的东西" required><button type="submit">确定</button></div>
+      </form>
     </section>
 
     <section class="screen result-screen" data-screen="6" aria-labelledby="step-6-title" hidden>
@@ -186,6 +232,7 @@
       <p class="eyebrow">IT'S A DATE</p>
       <h1 id="step-6-title" tabindex="-1">约会计划已生成</h1>
       <p class="supporting-copy compact-copy">这张小卡片，就是我们见面的暗号。</p>
+      <p class="countdown" id="countdown" role="status" aria-live="polite">正在计算见面倒计时…</p>
 
       <div class="poster-frame">
         <canvas id="date-card" width="1080" height="1440" aria-label="约会卡片预览，包含日期、时间和餐食摘要"></canvas>
@@ -196,11 +243,59 @@
         <div><dt>TIME</dt><dd id="summary-time">--</dd></div>
         <div><dt>PLAY</dt><dd id="summary-activity">--</dd></div>
         <div><dt>MENU</dt><dd id="summary-menu">--</dd></div>
+        <div class="place-summary"><dt>PLACE</dt><dd id="summary-location">待定</dd></div>
       </dl>
+
+      <div class="map-card" aria-label="约会地图">
+        <span class="map-pin" aria-hidden="true">⌖</span>
+        <div><strong>约会地图</strong><p id="map-location">地点待定</p></div>
+        <a id="map-link" href="https://ditu.amap.com/" target="_blank" rel="noopener noreferrer">查看地图 <span aria-hidden="true">↗</span></a>
+      </div>
 
       <button class="primary-button save-button" id="save-button" type="button">
         <span aria-hidden="true">⇩</span> 保存 / 分享约会卡
       </button>
+      <button class="secondary-button library-open" type="button">打开约会档案馆</button>
+    </section>
+
+    <section class="screen archive-screen" data-screen="7" aria-labelledby="step-7-title" hidden>
+      <button class="back-button library-back" type="button" aria-label="返回上一页"><span aria-hidden="true">←</span></button>
+      <p class="eyebrow">OUR MEMORY BOOK</p>
+      <h1 id="step-7-title" tabindex="-1">回忆录</h1>
+      <p class="supporting-copy compact-copy">地点、照片和每一次认真见面的心情。</p>
+      <button class="secondary-button archive-create-button" id="archive-create-button" type="button">＋ 补一份以前的约会</button>
+      <form class="archive-create-form" id="archive-create-form" hidden>
+        <label for="archive-date-input">约会日期</label>
+        <input id="archive-date-input" type="date" required>
+        <label for="archive-time-input">约会时间</label>
+        <input id="archive-time-input" type="time" value="17:00" required>
+        <label for="archive-location-input">地点</label>
+        <input id="archive-location-input" type="text" maxlength="60" placeholder="例如：静安寺附近">
+        <label for="archive-activity-input">玩的项目</label>
+        <input id="archive-activity-input" type="text" maxlength="24" placeholder="例如：看电影">
+        <label for="archive-menu-input">吃的东西</label>
+        <input id="archive-menu-input" type="text" maxlength="24" placeholder="例如：火锅">
+        <button class="primary-button coral-button" type="submit">继续添加照片和回忆</button>
+      </form>
+      <div class="archive-list" id="archive-list" aria-live="polite"></div>
+    </section>
+
+    <section class="screen memory-screen" data-screen="8" aria-labelledby="step-8-title" hidden>
+      <button class="back-button memory-back" type="button" aria-label="返回约会档案馆"><span aria-hidden="true">←</span></button>
+      <p class="eyebrow">KEEP THE MEMORY</p>
+      <h1 id="step-8-title" tabindex="-1">这一天怎么样？</h1>
+      <p class="memory-meta" id="memory-meta"></p>
+      <form id="memory-form" class="memory-form">
+        <label for="memory-photo">留几张照片</label>
+        <input id="memory-photo" type="file" accept="image/*" multiple>
+        <div class="memory-photos" id="memory-photos" aria-live="polite"></div>
+        <label for="memory-text">写下一点回忆</label>
+        <textarea id="memory-text" maxlength="300" placeholder="今天最喜欢的瞬间是…"></textarea>
+        <fieldset><legend>今天的心情</legend><div class="mood-options">
+          <button type="button" data-mood="心动">♥ 心动</button><button type="button" data-mood="开心">✦ 开心</button><button type="button" data-mood="放松">☁ 放松</button>
+        </div></fieldset>
+        <button class="primary-button coral-button" type="submit">保存这份回忆</button>
+      </form>
     </section>
   </main>
 

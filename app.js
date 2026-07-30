@@ -2,6 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "cute-date-invite-v1";
+  const ARCHIVE_KEY = "cute-date-invite-archive-v1";
   const noLabels = ["不要", "再想想嘛", "点不到我", "真的不要吗"];
   const corners = ["top-left", "top-right", "bottom-right", "bottom-left"];
   const oppositeCorner = {
@@ -20,18 +21,47 @@
   const dateForm = document.querySelector("#date-form");
   const dateInput = document.querySelector("#date-input");
   const timeInput = document.querySelector("#time-input");
+  const locationInput = document.querySelector("#location-input");
   const dateError = document.querySelector("#date-error");
-  const activityOptions = [...document.querySelectorAll(".activity-option")];
-  const foodOptions = [...document.querySelectorAll("#food-grid .food-option")];
+  const activityOptions = [...document.querySelectorAll("#activity-grid .activity-option:not(.other-option)")];
+  const foodOptions = [...document.querySelectorAll("#food-grid .food-option:not(.other-option)")];
+  const activityOtherButton = document.querySelector("#activity-grid [data-activity='other']");
+  const foodOtherButton = document.querySelector("#food-grid [data-menu='other']");
+  const activityOtherForm = document.querySelector("#activity-other-form");
+  const foodOtherForm = document.querySelector("#food-other-form");
+  const activityOtherInput = document.querySelector("#activity-other-input");
+  const foodOtherInput = document.querySelector("#food-other-input");
   const cardCanvas = document.querySelector("#date-card");
   const saveButton = document.querySelector("#save-button");
   const toast = document.querySelector("#toast");
+  const countdown = document.querySelector("#countdown");
+  const archiveList = document.querySelector("#archive-list");
+  const archiveCreateButton = document.querySelector("#archive-create-button");
+  const archiveCreateForm = document.querySelector("#archive-create-form");
+  const archiveDateInput = document.querySelector("#archive-date-input");
+  const archiveTimeInput = document.querySelector("#archive-time-input");
+  const archiveLocationInput = document.querySelector("#archive-location-input");
+  const archiveActivityInput = document.querySelector("#archive-activity-input");
+  const archiveMenuInput = document.querySelector("#archive-menu-input");
+  const memoryForm = document.querySelector("#memory-form");
+  const memoryText = document.querySelector("#memory-text");
+  const memoryPhoto = document.querySelector("#memory-photo");
+  const memoryPhotos = document.querySelector("#memory-photos");
+  const homeCountdown = document.querySelector("#home-countdown");
+  const memoryMeta = document.querySelector("#memory-meta");
+  const mapLocation = document.querySelector("#map-location");
+  const mapLink = document.querySelector("#map-link");
 
   let toastTimer = null;
   let menuTransitionTimer = null;
+  let countdownTimer = null;
   let resizeFrame = null;
-  let currentScreen = 1;
+  let currentScreen = 0;
   let state = loadState();
+  let archiveRecords = loadArchive();
+  let archiveReturnScreen = 1;
+  let activeMemoryRecordId = "";
+  let selectedMood = "";
 
   function localDateString(date) {
     const year = date.getFullYear();
@@ -54,8 +84,12 @@
     return {
       date: getTomorrow(),
       time: "17:00",
+      location: "",
       activity: "",
+      activityIsOther: false,
       menu: "",
+      menuIsOther: false,
+      activeRecordId: "",
       dodgeCount: 0,
       currentCorner: ""
     };
@@ -71,8 +105,12 @@
       return {
         date: safeDate,
         time: safeTime,
+        location: typeof saved.location === "string" ? saved.location : "",
         activity: typeof saved.activity === "string" ? saved.activity : "",
+        activityIsOther: Boolean(saved.activityIsOther),
         menu: typeof saved.menu === "string" ? saved.menu : "",
+        menuIsOther: Boolean(saved.menuIsOther),
+        activeRecordId: typeof saved.activeRecordId === "string" ? saved.activeRecordId : "",
         dodgeCount: Number.isInteger(saved.dodgeCount) && saved.dodgeCount >= 0 ? saved.dodgeCount : 0,
         currentCorner: corners.includes(saved.currentCorner) ? saved.currentCorner : ""
       };
@@ -89,23 +127,57 @@
     }
   }
 
+  function loadArchive() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || "[]");
+      return Array.isArray(saved) ? saved.filter((record) => record && typeof record.id === "string").map((record) => ({
+        ...record,
+        photos: Array.isArray(record.photos) ? record.photos.filter((photo) => typeof photo === "string").slice(0, 3) : [],
+        memory: typeof record.memory === "string" ? record.memory : "",
+        mood: typeof record.mood === "string" ? record.mood : ""
+      })) : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function persistArchive() {
+    try {
+      localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archiveRecords));
+    } catch (error) {
+      showToast("浏览器未允许保存档案，当前页面仍可继续使用");
+    }
+  }
+
   function initialize() {
+    document.querySelector(".progress").hidden = true;
     dateInput.min = getToday();
     dateInput.value = state.date;
     timeInput.value = state.time;
+    locationInput.value = state.location;
     syncActivitySelection();
     syncFoodSelection();
+    updateHomeCountdown();
 
     if (state.dodgeCount > 0) {
       noButton.textContent = noLabels[state.dodgeCount % noLabels.length];
       requestAnimationFrame(() => activateDodgeLayout(false));
     }
 
-    yesButton.addEventListener("click", () => showScreen(2));
+    document.querySelector(".home-plan").addEventListener("click", () => showScreen(1));
+    yesButton.addEventListener("click", () => {
+      state.activeRecordId = "";
+      persistState();
+      showScreen(2);
+    });
     noButton.addEventListener("click", handleNoClick);
     dateForm.addEventListener("submit", handleDateSubmit);
     dateInput.addEventListener("input", clearDateError);
     timeInput.addEventListener("input", clearDateError);
+    locationInput.addEventListener("input", () => {
+      state.location = locationInput.value.trim();
+      persistState();
+    });
     saveButton.addEventListener("click", saveOrShareCard);
 
     document.querySelectorAll("[data-next]").forEach((button) => {
@@ -116,6 +188,18 @@
     });
     activityOptions.forEach((button) => button.addEventListener("click", handleActivitySelect));
     foodOptions.forEach((button) => button.addEventListener("click", handleFoodSelect));
+    activityOtherButton.addEventListener("click", showActivityOtherInput);
+    foodOtherButton.addEventListener("click", showFoodOtherInput);
+    activityOtherForm.addEventListener("submit", submitActivityOther);
+    foodOtherForm.addEventListener("submit", submitFoodOther);
+    document.querySelectorAll(".library-open").forEach((button) => button.addEventListener("click", openArchive));
+    document.querySelector(".library-back").addEventListener("click", () => showScreen(archiveReturnScreen));
+    archiveCreateButton.addEventListener("click", showArchiveCreateForm);
+    archiveCreateForm.addEventListener("submit", createPastDate);
+    document.querySelector(".memory-back").addEventListener("click", () => showScreen(7));
+    memoryForm.addEventListener("submit", saveMemory);
+    memoryPhoto.addEventListener("change", addMemoryPhotos);
+    document.querySelectorAll("[data-mood]").forEach((button) => button.addEventListener("click", selectMood));
 
     window.addEventListener("resize", scheduleDodgeRecalculation, { passive: true });
     if ("ResizeObserver" in window) {
@@ -140,7 +224,9 @@
     progressDots.forEach((dot) => {
       dot.classList.toggle("is-current", Number(dot.dataset.progress) === screenNumber);
     });
+    document.querySelector(".progress").hidden = screenNumber === 0 || screenNumber > 6;
 
+    if (screenNumber === 0) updateHomeCountdown();
     if (screenNumber === 1 && state.dodgeCount > 0) {
       requestAnimationFrame(() => positionDodgeButtons(false));
     }
@@ -148,10 +234,12 @@
       dateInput.min = getToday();
       dateInput.value = state.date;
       timeInput.value = state.time;
+      locationInput.value = state.location;
     }
     if (screenNumber === 4) syncActivitySelection();
     if (screenNumber === 5) syncFoodSelection();
     if (screenNumber === 6) updateResult();
+    if (screenNumber === 7) renderArchive();
 
     window.scrollTo({ top: 0, behavior: "auto" });
     const heading = document.querySelector(`[data-screen="${screenNumber}"] h1`);
@@ -341,6 +429,8 @@
   function handleFoodSelect(event) {
     const button = event.currentTarget;
     state.menu = button.dataset.menu;
+    state.menuIsOther = false;
+    foodOtherForm.hidden = true;
     syncFoodSelection();
     persistState();
     movementStatus.textContent = `已选择${state.menu}。`;
@@ -355,6 +445,8 @@
   function handleActivitySelect(event) {
     const button = event.currentTarget;
     state.activity = button.dataset.activity;
+    state.activityIsOther = false;
+    activityOtherForm.hidden = true;
     syncActivitySelection();
     persistState();
     movementStatus.textContent = `已选择${state.activity}。`;
@@ -372,6 +464,9 @@
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
+    const selectedOther = Boolean(state.activity && state.activityIsOther);
+    activityOtherButton.classList.toggle("is-selected", selectedOther);
+    activityOtherButton.setAttribute("aria-pressed", String(selectedOther));
   }
 
   function syncFoodSelection() {
@@ -380,6 +475,9 @@
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
+    const selectedOther = Boolean(state.menu && state.menuIsOther);
+    foodOtherButton.classList.toggle("is-selected", selectedOther);
+    foodOtherButton.setAttribute("aria-pressed", String(selectedOther));
   }
 
   function formatDateForDisplay(dateString) {
@@ -391,11 +489,17 @@
   }
 
   function updateResult() {
+    ensurePlanRecord();
     document.querySelector("#summary-date").textContent = formatDateForDisplay(state.date);
     document.querySelector("#summary-time").textContent = state.time;
     document.querySelector("#summary-activity").textContent = state.activity || "待选择";
     document.querySelector("#summary-menu").textContent = state.menu || "待选择";
+    document.querySelector("#summary-location").textContent = state.location || "待定";
+    updateMap();
     renderDateCard(cardCanvas);
+    updateResultCountdown();
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = setInterval(updateResultCountdown, 30000);
   }
 
   function renderDateCard(canvas) {
@@ -426,12 +530,13 @@
 
     context.fillStyle = "#7f6971";
     context.font = '500 32px "Microsoft YaHei", "PingFang SC", sans-serif';
-    context.fillText("把期待装进口袋，准时来见你", width / 2, 762);
+    context.fillText("把期待装进口袋，准时来见你", width / 2, 710);
 
-    drawSummaryRow(context, "DATE", formatDateForDisplay(state.date), 835, "#ffe1e7");
-    drawSummaryRow(context, "TIME", state.time, 940, "#d8f0e8");
-    drawSummaryRow(context, "PLAY", state.activity || "待选择", 1045, "#dbeaf8");
-    drawSummaryRow(context, "MENU", state.menu || "待选择", 1150, "#ffedb0");
+    drawSummaryRow(context, "DATE", formatDateForDisplay(state.date), 790, "#ffe1e7");
+    drawSummaryRow(context, "TIME", state.time, 888, "#d8f0e8");
+    drawSummaryRow(context, "PLAY", state.activity || "待选择", 986, "#dbeaf8");
+    drawSummaryRow(context, "MENU", state.menu || "待选择", 1084, "#ffedb0");
+    drawSummaryRow(context, "PLACE", state.location || "待定", 1182, "#e9ddf5");
 
     context.fillStyle = "#d94861";
     context.font = '900 42px "Microsoft YaHei", "PingFang SC", sans-serif';
@@ -508,15 +613,23 @@
   }
 
   function drawSummaryRow(context, label, value, y, fillColor) {
-    drawRoundedRect(context, 154, y - 70, 772, 102, 20, fillColor, null, 0);
+    drawRoundedRect(context, 154, y - 58, 772, 82, 18, fillColor, null, 0);
     context.textAlign = "left";
     context.fillStyle = "#c43d57";
-    context.font = '900 28px "Microsoft YaHei", "PingFang SC", sans-serif';
+    context.font = '900 25px "Microsoft YaHei", "PingFang SC", sans-serif';
     context.fillText(label, 195, y - 8);
     context.textAlign = "right";
     context.fillStyle = "#49323a";
-    context.font = '800 34px "Microsoft YaHei", "PingFang SC", sans-serif';
-    context.fillText(value, 884, y - 8);
+    context.font = '800 28px "Microsoft YaHei", "PingFang SC", sans-serif';
+    context.fillText(clipText(context, value, 600), 884, y - 8);
+  }
+
+  function clipText(context, value, maxWidth) {
+    const text = String(value);
+    if (context.measureText(text).width <= maxWidth) return text;
+    let shortened = text;
+    while (shortened && context.measureText(`${shortened}…`).width > maxWidth) shortened = shortened.slice(0, -1);
+    return `${shortened}…`;
   }
 
   function drawRoundedRect(context, x, y, width, height, radius, fill, stroke, lineWidth) {
@@ -545,6 +658,215 @@
       context.lineWidth = lineWidth;
       context.stroke();
     }
+  }
+
+  function showActivityOtherInput() {
+    activityOtherForm.hidden = false;
+    activityOtherInput.value = state.activityIsOther ? state.activity : "";
+    activityOtherButton.classList.add("is-selected");
+    activityOtherButton.setAttribute("aria-pressed", "true");
+    requestAnimationFrame(() => activityOtherInput.focus());
+  }
+
+  function showFoodOtherInput() {
+    foodOtherForm.hidden = false;
+    foodOtherInput.value = state.menuIsOther ? state.menu : "";
+    foodOtherButton.classList.add("is-selected");
+    foodOtherButton.setAttribute("aria-pressed", "true");
+    requestAnimationFrame(() => foodOtherInput.focus());
+  }
+
+  function submitActivityOther(event) {
+    event.preventDefault();
+    const value = activityOtherInput.value.trim();
+    if (!value) return activityOtherInput.focus();
+    state.activity = value;
+    state.activityIsOther = true;
+    syncActivitySelection();
+    persistState();
+    menuTransitionTimer = setTimeout(() => showScreen(5), 240);
+  }
+
+  function submitFoodOther(event) {
+    event.preventDefault();
+    const value = foodOtherInput.value.trim();
+    if (!value) return foodOtherInput.focus();
+    state.menu = value;
+    state.menuIsOther = true;
+    syncFoodSelection();
+    persistState();
+    menuTransitionTimer = setTimeout(() => showScreen(6), 240);
+  }
+
+  function formatRecordTime(record) {
+    return new Date(`${record.date}T${record.time}:00`).getTime();
+  }
+
+  function ensurePlanRecord() {
+    if (!state.date || !state.time || !state.activity || !state.menu) return;
+    const detail = { date: state.date, time: state.time, location: state.location, activity: state.activity, menu: state.menu, updatedAt: Date.now() };
+    let record = archiveRecords.find((item) => item.id === state.activeRecordId);
+    if (record) Object.assign(record, detail);
+    else {
+      record = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, ...detail, createdAt: Date.now(), memory: "", mood: "", photos: [] };
+      archiveRecords.unshift(record);
+      state.activeRecordId = record.id;
+      persistState();
+    }
+    persistArchive();
+  }
+
+  function updateMap() {
+    mapLocation.textContent = state.location || "地点待定";
+    mapLink.href = state.location ? `https://uri.amap.com/search?keyword=${encodeURIComponent(state.location)}&view=map&src=%E8%94%A1%E5%AD%90%E7%8F%8A%E5%92%8C%E5%88%98%E5%B9%B3%E5%A3%B9%E7%9A%84%E7%A9%BA%E9%97%B4&callnative=1` : "https://ditu.amap.com/";
+  }
+
+  function getCountdownText(record) {
+    const difference = formatRecordTime(record) - Date.now();
+    if (!Number.isFinite(difference) || difference <= 0) return "今天也值得留下回忆";
+    const minutes = Math.floor(difference / 60000);
+    return `距离约会还有 ${Math.floor(minutes / 1440)} 天 ${Math.floor(minutes % 1440 / 60)} 小时 ${minutes % 60} 分钟`;
+  }
+
+  function updateResultCountdown() {
+    countdown.textContent = getCountdownText(state);
+  }
+
+  function updateHomeCountdown() {
+    const next = archiveRecords.filter((record) => formatRecordTime(record) > Date.now()).sort((a, b) => formatRecordTime(a) - formatRecordTime(b))[0];
+    homeCountdown.textContent = next ? `${getCountdownText(next)} · ${formatDateForDisplay(next.date)}` : "还没有下一次约会计划";
+  }
+
+  function openArchive() {
+    archiveReturnScreen = currentScreen;
+    showScreen(7);
+  }
+
+  function showArchiveCreateForm() {
+    archiveCreateForm.hidden = !archiveCreateForm.hidden;
+    if (!archiveCreateForm.hidden) {
+      archiveDateInput.value = getToday();
+      archiveTimeInput.value = "17:00";
+      archiveLocationInput.value = "";
+      archiveActivityInput.value = "";
+      archiveMenuInput.value = "";
+      requestAnimationFrame(() => archiveDateInput.focus());
+    }
+  }
+
+  function createPastDate(event) {
+    event.preventDefault();
+    if (!archiveDateInput.value || !/^([01]\d|2[0-3]):[0-5]\d$/.test(archiveTimeInput.value)) return;
+    const record = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      date: archiveDateInput.value,
+      time: archiveTimeInput.value,
+      location: archiveLocationInput.value.trim(),
+      activity: archiveActivityInput.value.trim() || "一起约会",
+      menu: archiveMenuInput.value.trim() || "吃点喜欢的",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      memory: "",
+      mood: "",
+      photos: []
+    };
+    archiveRecords.unshift(record);
+    persistArchive();
+    archiveCreateForm.hidden = true;
+    openMemory(record.id);
+  }
+
+  function renderArchive() {
+    archiveList.replaceChildren();
+    const records = [...archiveRecords].sort((a, b) => formatRecordTime(b) - formatRecordTime(a));
+    if (!records.length) {
+      const empty = document.createElement("p");
+      empty.className = "archive-empty";
+      empty.textContent = "第一份约会计划，会从这里开始收藏。";
+      archiveList.append(empty);
+      return;
+    }
+    records.forEach((record) => archiveList.append(createArchiveCard(record)));
+  }
+
+  function createArchiveCard(record) {
+    const item = document.createElement("article");
+    item.className = "archive-item";
+    const header = document.createElement("div");
+    header.className = "archive-item-header";
+    const title = document.createElement("h2");
+    title.textContent = formatDateForDisplay(record.date);
+    const time = document.createElement("p");
+    time.textContent = record.time;
+    header.append(title, time);
+    const place = document.createElement("p");
+    place.textContent = `⌖ ${record.location || "地点待定"}`;
+    const tags = document.createElement("div");
+    tags.className = "archive-tags";
+    [record.activity, record.menu, record.mood].filter(Boolean).forEach((value) => { const tag = document.createElement("span"); tag.textContent = value; tags.append(tag); });
+    item.append(header, place, tags);
+    if (record.photos?.length) {
+      const photos = document.createElement("div");
+      photos.className = "archive-photos";
+      record.photos.forEach((source) => { const image = document.createElement("img"); image.src = source; image.alt = `${formatDateForDisplay(record.date)} 的回忆照片`; photos.append(image); });
+      item.append(photos);
+    }
+    if (record.memory) { const memory = document.createElement("p"); memory.className = "archive-memory"; memory.textContent = record.memory; item.append(memory); }
+    const actions = document.createElement("div"); actions.className = "archive-actions";
+    const edit = document.createElement("button"); edit.type = "button"; edit.className = "memory-open"; edit.textContent = record.memory || record.photos?.length ? "编辑回忆" : "写回忆"; edit.addEventListener("click", () => openMemory(record.id));
+    const remove = document.createElement("button"); remove.type = "button"; remove.className = "delete-record"; remove.textContent = "删除"; remove.addEventListener("click", () => deleteRecord(record.id));
+    actions.append(edit, remove); item.append(actions);
+    return item;
+  }
+
+  function deleteRecord(id) {
+    if (!window.confirm("确定删除这次约会记录吗？照片和回忆也会一起删除。")) return;
+    archiveRecords = archiveRecords.filter((record) => record.id !== id);
+    if (state.activeRecordId === id) { state.activeRecordId = ""; persistState(); }
+    persistArchive(); renderArchive(); updateHomeCountdown(); showToast("这条约会记录已删除");
+  }
+
+  function openMemory(id) {
+    const record = archiveRecords.find((item) => item.id === id);
+    if (!record) return;
+    activeMemoryRecordId = id;
+    selectedMood = record.mood || "";
+    memoryText.value = record.memory || "";
+    memoryPhoto.value = "";
+    memoryMeta.textContent = `${formatDateForDisplay(record.date)} · ${record.time}${record.location ? ` · ${record.location}` : ""}`;
+    syncMoodButtons();
+    renderMemoryPhotos(record);
+    showScreen(8);
+  }
+
+  function selectMood(event) { selectedMood = event.currentTarget.dataset.mood; syncMoodButtons(); }
+  function syncMoodButtons() { document.querySelectorAll("[data-mood]").forEach((button) => { const selected = button.dataset.mood === selectedMood; button.classList.toggle("is-selected", selected); button.setAttribute("aria-pressed", String(selected)); }); }
+  function currentMemoryRecord() { return archiveRecords.find((record) => record.id === activeMemoryRecordId); }
+  function saveMemory(event) { event.preventDefault(); const record = currentMemoryRecord(); if (!record) return showToast("没有找到这份约会记录"); record.memory = memoryText.value.trim(); record.mood = selectedMood; record.updatedAt = Date.now(); persistArchive(); showToast("回忆已经收好啦"); showScreen(7); }
+
+  async function addMemoryPhotos() {
+    const record = currentMemoryRecord();
+    const files = [...memoryPhoto.files].filter((file) => file.type.startsWith("image/"));
+    const capacity = record ? Math.max(0, 3 - (record.photos?.length || 0)) : 0;
+    if (!record || !files.length) return;
+    if (!capacity) { showToast("每次约会最多保存 3 张照片"); memoryPhoto.value = ""; return; }
+    try { record.photos.push(...await Promise.all(files.slice(0, capacity).map(compressPhoto))); record.updatedAt = Date.now(); persistArchive(); renderMemoryPhotos(record); if (files.length > capacity) showToast(`只保存了前 ${capacity} 张照片`); }
+    catch { showToast("照片读取失败，请换一张再试"); }
+    memoryPhoto.value = "";
+  }
+
+  function compressPhoto(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("读取失败"));
+      reader.onload = () => { const image = new Image(); image.onerror = () => reject(new Error("图片无效")); image.onload = () => { const scale = Math.min(1, 1000 / Math.max(image.naturalWidth, image.naturalHeight)); const canvas = document.createElement("canvas"); canvas.width = Math.max(1, Math.round(image.naturalWidth * scale)); canvas.height = Math.max(1, Math.round(image.naturalHeight * scale)); const context = canvas.getContext("2d"); if (!context) return reject(new Error("不支持绘图")); context.drawImage(image, 0, 0, canvas.width, canvas.height); resolve(canvas.toDataURL("image/jpeg", 0.78)); }; image.src = reader.result; };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function renderMemoryPhotos(record) {
+    memoryPhotos.replaceChildren();
+    record.photos.forEach((source, index) => { const wrap = document.createElement("div"); wrap.className = "memory-photo"; const image = document.createElement("img"); image.src = source; image.alt = `回忆照片 ${index + 1}`; const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "×"; remove.setAttribute("aria-label", `删除回忆照片 ${index + 1}`); remove.addEventListener("click", () => { record.photos.splice(index, 1); persistArchive(); renderMemoryPhotos(record); }); wrap.append(image, remove); memoryPhotos.append(wrap); });
   }
 
   function canvasToBlob(canvas) {
