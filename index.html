@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ff8fa3">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>想和你约个会</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient" aria-hidden="true">
+    <span class="ambient-heart heart-one">♥</span>
+    <span class="ambient-heart heart-two">♥</span>
+    <span class="ambient-heart heart-three">♥</span>
+    <span class="ambient-spark spark-one">✦</span>
+    <span class="ambient-spark spark-two">✦</span>
+  </div>
+
+  <main class="app-shell" id="app">
+    <div class="progress" aria-label="邀请进度">
+      <span class="progress-dot is-current" data-progress="1"></span>
+      <span class="progress-dot" data-progress="2"></span>
+      <span class="progress-dot" data-progress="3"></span>
+      <span class="progress-dot" data-progress="4"></span>
+      <span class="progress-dot" data-progress="5"></span>
+    </div>
+
+    <section class="screen invitation-screen is-active" data-screen="1" aria-labelledby="step-1-title">
+      <div class="brand-mark" aria-label="一封约会邀请">
+        <span>TO YOU</span>
+        <b>♥</b>
+      </div>
+      <div class="invite-art" aria-hidden="true">
+        <span class="tiny-note note-left">✦</span>
+        <div class="envelope">
+          <span class="envelope-heart">♥</span>
+        </div>
+        <span class="tiny-note note-right">♥</span>
+      </div>
+      <p class="eyebrow">A LITTLE DATE</p>
+      <h1 id="step-1-title" tabindex="-1">周末可以和我<br>约个会吗？</h1>
+      <p class="supporting-copy">想把好吃的、好看的，还有开心的一天都留给你。</p>
+
+      <div class="action-zone" id="invitation-actions" aria-label="请选择是否接受邀请">
+        <button class="choice-button yes-button" id="yes-button" type="button">
+          <span aria-hidden="true">♥</span> 愿意
+        </button>
+        <button class="choice-button no-button" id="no-button" type="button">不要</button>
+      </div>
+    </section>
+
+    <section class="screen confirmation-screen" data-screen="2" aria-labelledby="step-2-title" hidden>
+      <button class="back-button" type="button" data-back="1" aria-label="返回邀请页">
+        <span aria-hidden="true">←</span>
+      </button>
+      <div class="celebration" aria-hidden="true">
+        <span class="confetti confetti-a">♥</span>
+        <span class="confetti confetti-b">✦</span>
+        <span class="blush-emoji">🥰</span>
+        <span class="confetti confetti-c">♥</span>
+      </div>
+      <p class="eyebrow">YOU SAID YES!</p>
+      <h1 id="step-2-title" tabindex="-1">好耶，是一场<br>被期待的约会</h1>
+      <p class="supporting-copy">偷偷开心一下。接下来，把属于我们的时间定下来吧。</p>
+      <button class="primary-button coral-button" type="button" data-next="3">
+        继续选时间 <span aria-hidden="true">→</span>
+      </button>
+    </section>
+
+    <section class="screen form-screen" data-screen="3" aria-labelledby="step-3-title" hidden>
+      <button class="back-button" type="button" data-back="2" aria-label="返回确认页">
+        <span aria-hidden="true">←</span>
+      </button>
+      <div class="section-icon calendar-icon" aria-hidden="true">
+        <span>♥</span>
+      </div>
+      <p class="eyebrow">PICK A MOMENT</p>
+      <h1 id="step-3-title" tabindex="-1">哪一天见面呢？</h1>
+      <p class="supporting-copy compact-copy">选一个你舒服的时间，我会准时出现。</p>
+
+      <form id="date-form" novalidate>
+        <label class="field-label" for="date-input">日期</label>
+        <div class="input-wrap">
+          <span aria-hidden="true">▣</span>
+          <input id="date-input" name="date" type="date" required>
+        </div>
+
+        <label class="field-label" for="time-input">时间</label>
+        <div class="input-wrap">
+          <span aria-hidden="true">◷</span>
+          <input id="time-input" name="time" type="time" required>
+        </div>
+        <p class="field-error" id="date-error" role="alert" hidden></p>
+
+        <button class="primary-button coral-button form-submit" type="submit">
+          下一步，选吃的 <span aria-hidden="true">→</span>
+        </button>
+      </form>
+    </section>
+
+    <section class="screen menu-screen" data-screen="4" aria-labelledby="step-4-title" hidden>
+      <button class="back-button" type="button" data-back="3" aria-label="返回日期选择">
+        <span aria-hidden="true">←</span>
+      </button>
+      <p class="eyebrow">CHOOSE A MENU</p>
+      <h1 id="step-4-title" tabindex="-1">这次想吃什么？</h1>
+      <p class="supporting-copy compact-copy">只管选你喜欢的，剩下的交给我。</p>
+
+      <div class="food-grid" id="food-grid" aria-label="餐食选项">
+        <button class="food-option" type="button" data-menu="火锅" aria-pressed="false">
+          <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🍲</span><span>火锅</span>
+        </button>
+        <button class="food-option" type="button" data-menu="烤肉" aria-pressed="false">
+          <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🥩</span><span>烤肉</span>
+        </button>
+        <button class="food-option" type="button" data-menu="日料" aria-pressed="false">
+          <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🍣</span><span>日料</span>
+        </button>
+        <button class="food-option" type="button" data-menu="西餐" aria-pressed="false">
+          <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🍝</span><span>西餐</span>
+        </button>
+        <button class="food-option" type="button" data-menu="甜品" aria-pressed="false">
+          <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🍰</span><span>甜品</span>
+        </button>
+        <button class="food-option" type="button" data-menu="奶茶" aria-pressed="false">
+          <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🧋</span><span>奶茶</span>
+        </button>
+        <button class="food-option" type="button" data-menu="韩餐" aria-pressed="false">
+          <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🍚</span><span>韩餐</span>
+        </button>
+        <button class="food-option" type="button" data-menu="小龙虾" aria-pressed="false">
+          <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🦞</span><span>小龙虾</span>
+        </button>
+        <button class="food-option" type="button" data-menu="烧烤" aria-pressed="false">
+          <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🍢</span><span>烧烤</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="screen result-screen" data-screen="5" aria-labelledby="step-5-title" hidden>
+      <button class="back-button" type="button" data-back="4" aria-label="返回餐食选择">
+        <span aria-hidden="true">←</span>
+      </button>
+      <p class="eyebrow">IT'S A DATE</p>
+      <h1 id="step-5-title" tabindex="-1">约会计划已生成</h1>
+      <p class="supporting-copy compact-copy">这张小卡片，就是我们见面的暗号。</p>
+
+      <div class="poster-frame">
+        <canvas id="date-card" width="1080" height="1440" aria-label="约会卡片预览，包含日期、时间和餐食摘要"></canvas>
+      </div>
+
+      <dl class="date-summary" aria-label="约会详情">
+        <div><dt>DATE</dt><dd id="summary-date">--</dd></div>
+        <div><dt>TIME</dt><dd id="summary-time">--</dd></div>
+        <div><dt>MENU</dt><dd id="summary-menu">--</dd></div>
+      </dl>
+
+      <button class="primary-button save-button" id="save-button" type="button">
+        <span aria-hidden="true">⇩</span> 保存 / 分享约会卡
+      </button>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <div class="sr-only" id="movement-status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
