@@ -1013,6 +1013,7 @@ h1 {
   background: var(--yellow);
   box-shadow: 0 7px 0 #e2ac2c;
 }
+.calendar-button { width: min(100%, 330px); margin-top: 13px; }
 
 .toast {
   position: fixed;

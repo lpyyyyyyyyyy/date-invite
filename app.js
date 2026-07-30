@@ -59,6 +59,7 @@
   const foodOtherInput = document.querySelector("#food-other-input");
   const cardCanvas = document.querySelector("#date-card");
   const saveButton = document.querySelector("#save-button");
+  const calendarButton = document.querySelector("#calendar-button");
   const toast = document.querySelector("#toast");
   const countdown = document.querySelector("#countdown");
   const archiveList = document.querySelector("#archive-list");
@@ -298,6 +299,7 @@
       persistState();
     });
     saveButton.addEventListener("click", saveOrShareCard);
+    calendarButton.addEventListener("click", addPlanToCalendar);
 
     document.querySelectorAll("[data-next]").forEach((button) => {
       button.addEventListener("click", () => showScreen(Number(button.dataset.next)));
@@ -1559,6 +1561,75 @@
     anchor.click();
     anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function formatCalendarDate(date, time) {
+    return `${String(date || "").replaceAll("-", "")}T${String(time || "17:00").replace(":", "")}00`;
+  }
+
+  function escapeCalendarText(value) {
+    return String(value || "")
+      .replaceAll("\\", "\\\\")
+      .replaceAll(";", "\\;")
+      .replaceAll(",", "\\,")
+      .replace(/\r?\n/g, "\\n");
+  }
+
+  function addHoursToPlan(hours) {
+    const start = new Date(`${state.date}T${state.time || "17:00"}:00`);
+    start.setHours(start.getHours() + hours);
+    const year = start.getFullYear();
+    const month = String(start.getMonth() + 1).padStart(2, "0");
+    const day = String(start.getDate()).padStart(2, "0");
+    const hour = String(start.getHours()).padStart(2, "0");
+    const minute = String(start.getMinutes()).padStart(2, "0");
+    return `${year}${month}${day}T${hour}${minute}00`;
+  }
+
+  async function addPlanToCalendar() {
+    if (!state.date || !state.time) {
+      showToast("请先选择约会日期和时间");
+      return;
+    }
+
+    const title = "Leo And Emily 的约会";
+    const description = `PLAY: ${state.activity || "待选择"}\nMENU: ${state.menu || "待选择"}\n一起把这次见面留成回忆。`;
+    const eventId = `leo-emily-${state.date}-${state.time.replace(":", "")}@date-invite`;
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Leo And Emily//Date Invite//CN",
+      "CALSCALE:GREGORIAN",
+      "BEGIN:VEVENT",
+      `UID:${eventId}`,
+      `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")}`,
+      `DTSTART:${formatCalendarDate(state.date, state.time)}`,
+      `DTEND:${addHoursToPlan(3)}`,
+      `SUMMARY:${escapeCalendarText(title)}`,
+      `LOCATION:${escapeCalendarText(state.location || "地点待定")}`,
+      `DESCRIPTION:${escapeCalendarText(description)}`,
+      "END:VEVENT",
+      "END:VCALENDAR",
+      ""
+    ].join("\r\n");
+    const filename = `Leo-And-Emily-${state.date}.ics`;
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    const file = typeof File === "function" ? new File([blob], filename, { type: "text/calendar" }) : null;
+
+    try {
+      if (file && navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title });
+        showToast("选择日历即可添加这次约会");
+        return;
+      }
+      downloadBlob(blob, filename);
+      showToast("日历文件已下载，打开后选择添加到日历");
+    } catch (error) {
+      if (error?.name !== "AbortError") {
+        downloadBlob(blob, filename);
+        showToast("日历文件已下载，打开后选择添加到日历");
+      }
+    }
   }
 
   function showToast(message) {
