@@ -685,6 +685,7 @@
     rouletteResult.textContent = "点击开始转动吧";
     rouletteChoose.disabled = true;
     rouletteSpin.disabled = false;
+    rouletteSpin.textContent = "开始转动";
     drawRouletteWheel();
     if (typeof rouletteDialog.showModal === "function") rouletteDialog.showModal();
     else rouletteDialog.setAttribute("open", "");
@@ -751,6 +752,8 @@
     setTimeout(() => {
       rouletteSpinning = false;
       rouletteResult.textContent = `今天就选：${rouletteOptions[rouletteIndex]}！`;
+      rouletteSpin.disabled = false;
+      rouletteSpin.textContent = "再转一次";
       rouletteChoose.disabled = false;
       rouletteChoose.focus();
     }, 2860);
