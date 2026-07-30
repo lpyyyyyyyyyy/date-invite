@@ -21,7 +21,8 @@
   const dateInput = document.querySelector("#date-input");
   const timeInput = document.querySelector("#time-input");
   const dateError = document.querySelector("#date-error");
-  const foodOptions = [...document.querySelectorAll(".food-option")];
+  const activityOptions = [...document.querySelectorAll(".activity-option")];
+  const foodOptions = [...document.querySelectorAll("#food-grid .food-option")];
   const cardCanvas = document.querySelector("#date-card");
   const saveButton = document.querySelector("#save-button");
   const toast = document.querySelector("#toast");
@@ -53,6 +54,7 @@
     return {
       date: getTomorrow(),
       time: "17:00",
+      activity: "",
       menu: "",
       dodgeCount: 0,
       currentCorner: ""
@@ -69,6 +71,7 @@
       return {
         date: safeDate,
         time: safeTime,
+        activity: typeof saved.activity === "string" ? saved.activity : "",
         menu: typeof saved.menu === "string" ? saved.menu : "",
         dodgeCount: Number.isInteger(saved.dodgeCount) && saved.dodgeCount >= 0 ? saved.dodgeCount : 0,
         currentCorner: corners.includes(saved.currentCorner) ? saved.currentCorner : ""
@@ -90,6 +93,7 @@
     dateInput.min = getToday();
     dateInput.value = state.date;
     timeInput.value = state.time;
+    syncActivitySelection();
     syncFoodSelection();
 
     if (state.dodgeCount > 0) {
@@ -110,6 +114,7 @@
     document.querySelectorAll("[data-back]").forEach((button) => {
       button.addEventListener("click", () => showScreen(Number(button.dataset.back)));
     });
+    activityOptions.forEach((button) => button.addEventListener("click", handleActivitySelect));
     foodOptions.forEach((button) => button.addEventListener("click", handleFoodSelect));
 
     window.addEventListener("resize", scheduleDodgeRecalculation, { passive: true });
@@ -144,8 +149,9 @@
       dateInput.value = state.date;
       timeInput.value = state.time;
     }
-    if (screenNumber === 4) syncFoodSelection();
-    if (screenNumber === 5) updateResult();
+    if (screenNumber === 4) syncActivitySelection();
+    if (screenNumber === 5) syncFoodSelection();
+    if (screenNumber === 6) updateResult();
 
     window.scrollTo({ top: 0, behavior: "auto" });
     const heading = document.querySelector(`[data-screen="${screenNumber}"] h1`);
@@ -342,8 +348,30 @@
     if (menuTransitionTimer) clearTimeout(menuTransitionTimer);
     menuTransitionTimer = setTimeout(() => {
       menuTransitionTimer = null;
+      showScreen(6);
+    }, 240);
+  }
+
+  function handleActivitySelect(event) {
+    const button = event.currentTarget;
+    state.activity = button.dataset.activity;
+    syncActivitySelection();
+    persistState();
+    movementStatus.textContent = `已选择${state.activity}。`;
+
+    if (menuTransitionTimer) clearTimeout(menuTransitionTimer);
+    menuTransitionTimer = setTimeout(() => {
+      menuTransitionTimer = null;
       showScreen(5);
     }, 240);
+  }
+
+  function syncActivitySelection() {
+    activityOptions.forEach((button) => {
+      const selected = button.dataset.activity === state.activity;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
   }
 
   function syncFoodSelection() {
@@ -365,6 +393,7 @@
   function updateResult() {
     document.querySelector("#summary-date").textContent = formatDateForDisplay(state.date);
     document.querySelector("#summary-time").textContent = state.time;
+    document.querySelector("#summary-activity").textContent = state.activity || "待选择";
     document.querySelector("#summary-menu").textContent = state.menu || "待选择";
     renderDateCard(cardCanvas);
   }
@@ -399,9 +428,10 @@
     context.font = '500 32px "Microsoft YaHei", "PingFang SC", sans-serif';
     context.fillText("把期待装进口袋，准时来见你", width / 2, 762);
 
-    drawSummaryRow(context, "DATE", formatDateForDisplay(state.date), 850, "#ffe1e7");
-    drawSummaryRow(context, "TIME", state.time, 978, "#d8f0e8");
-    drawSummaryRow(context, "MENU", state.menu || "待选择", 1106, "#ffedb0");
+    drawSummaryRow(context, "DATE", formatDateForDisplay(state.date), 835, "#ffe1e7");
+    drawSummaryRow(context, "TIME", state.time, 940, "#d8f0e8");
+    drawSummaryRow(context, "PLAY", state.activity || "待选择", 1045, "#dbeaf8");
+    drawSummaryRow(context, "MENU", state.menu || "待选择", 1150, "#ffedb0");
 
     context.fillStyle = "#d94861";
     context.font = '900 42px "Microsoft YaHei", "PingFang SC", sans-serif';

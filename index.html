@@ -25,6 +25,7 @@
       <span class="progress-dot" data-progress="3"></span>
       <span class="progress-dot" data-progress="4"></span>
       <span class="progress-dot" data-progress="5"></span>
+      <span class="progress-dot" data-progress="6"></span>
     </div>
 
     <section class="screen invitation-screen is-active" data-screen="1" aria-labelledby="step-1-title">
@@ -40,7 +41,7 @@
         <span class="tiny-note note-right">♥</span>
       </div>
       <p class="eyebrow">A LITTLE DATE</p>
-      <h1 id="step-1-title" tabindex="-1">周末可以和我<br>约个会吗？</h1>
+      <h1 id="step-1-title" tabindex="-1">亲爱的蔡子珊<br>可以和我约个会吗？</h1>
       <p class="supporting-copy">想把好吃的、好看的，还有开心的一天都留给你。</p>
 
       <div class="action-zone" id="invitation-actions" aria-label="请选择是否接受邀请">
@@ -78,7 +79,7 @@
       </div>
       <p class="eyebrow">PICK A MOMENT</p>
       <h1 id="step-3-title" tabindex="-1">哪一天见面呢？</h1>
-      <p class="supporting-copy compact-copy">选一个你舒服的时间，我会准时出现。</p>
+      <p class="supporting-copy compact-copy">温馨提示：别太早，都起不来。</p>
 
       <form id="date-form" novalidate>
         <label class="field-label" for="date-input">日期</label>
@@ -95,7 +96,7 @@
         <p class="field-error" id="date-error" role="alert" hidden></p>
 
         <button class="primary-button coral-button form-submit" type="submit">
-          下一步，选吃的 <span aria-hidden="true">→</span>
+          下一步，想玩什么 <span aria-hidden="true">→</span>
         </button>
       </form>
     </section>
@@ -104,8 +105,47 @@
       <button class="back-button" type="button" data-back="3" aria-label="返回日期选择">
         <span aria-hidden="true">←</span>
       </button>
+      <p class="eyebrow">PICK AN ACTIVITY</p>
+      <h1 id="step-4-title" tabindex="-1">这次想玩什么？</h1>
+      <p class="supporting-copy compact-copy">一起做点喜欢的事，时间就会变得特别快。</p>
+
+      <div class="food-grid activity-grid" id="activity-grid" aria-label="活动选项">
+        <button class="food-option activity-option" type="button" data-activity="KTV" aria-pressed="false">
+          <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🎤</span><span>KTV</span>
+        </button>
+        <button class="food-option activity-option" type="button" data-activity="喝酒" aria-pressed="false">
+          <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🍷</span><span>喝酒</span>
+        </button>
+        <button class="food-option activity-option" type="button" data-activity="看电影" aria-pressed="false">
+          <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🎬</span><span>看电影</span>
+        </button>
+        <button class="food-option activity-option" type="button" data-activity="看话剧" aria-pressed="false">
+          <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🎭</span><span>看话剧</span>
+        </button>
+        <button class="food-option activity-option" type="button" data-activity="逛街" aria-pressed="false">
+          <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🛍️</span><span>逛街</span>
+        </button>
+        <button class="food-option activity-option" type="button" data-activity="散步" aria-pressed="false">
+          <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🚶</span><span>散步</span>
+        </button>
+        <button class="food-option activity-option" type="button" data-activity="游乐园" aria-pressed="false">
+          <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🎡</span><span>游乐园</span>
+        </button>
+        <button class="food-option activity-option" type="button" data-activity="按摩" aria-pressed="false">
+          <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">💆</span><span>按摩</span>
+        </button>
+        <button class="food-option activity-option" type="button" data-activity="玩游戏" aria-pressed="false">
+          <span class="food-check" aria-hidden="true">✓</span><span class="food-emoji" aria-hidden="true">🎮</span><span>玩游戏</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="screen menu-screen" data-screen="5" aria-labelledby="step-5-title" hidden>
+      <button class="back-button" type="button" data-back="4" aria-label="返回活动选择">
+        <span aria-hidden="true">←</span>
+      </button>
       <p class="eyebrow">CHOOSE A MENU</p>
-      <h1 id="step-4-title" tabindex="-1">这次想吃什么？</h1>
+      <h1 id="step-5-title" tabindex="-1">这次想吃什么？</h1>
       <p class="supporting-copy compact-copy">只管选你喜欢的，剩下的交给我。</p>
 
       <div class="food-grid" id="food-grid" aria-label="餐食选项">
@@ -139,12 +179,12 @@
       </div>
     </section>
 
-    <section class="screen result-screen" data-screen="5" aria-labelledby="step-5-title" hidden>
-      <button class="back-button" type="button" data-back="4" aria-label="返回餐食选择">
+    <section class="screen result-screen" data-screen="6" aria-labelledby="step-6-title" hidden>
+      <button class="back-button" type="button" data-back="5" aria-label="返回餐食选择">
         <span aria-hidden="true">←</span>
       </button>
       <p class="eyebrow">IT'S A DATE</p>
-      <h1 id="step-5-title" tabindex="-1">约会计划已生成</h1>
+      <h1 id="step-6-title" tabindex="-1">约会计划已生成</h1>
       <p class="supporting-copy compact-copy">这张小卡片，就是我们见面的暗号。</p>
 
       <div class="poster-frame">
@@ -154,6 +194,7 @@
       <dl class="date-summary" aria-label="约会详情">
         <div><dt>DATE</dt><dd id="summary-date">--</dd></div>
         <div><dt>TIME</dt><dd id="summary-time">--</dd></div>
+        <div><dt>PLAY</dt><dd id="summary-activity">--</dd></div>
         <div><dt>MENU</dt><dd id="summary-menu">--</dd></div>
       </dl>
 
