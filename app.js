@@ -387,7 +387,7 @@
     const [year, month, day] = dateString.split("-").map(Number);
     const date = new Date(year, month - 1, day);
     const weekday = new Intl.DateTimeFormat("zh-CN", { weekday: "short" }).format(date);
-    return `${month}月${day}日 ${weekday}`;
+    return `${year}年${month}月${day}日 ${weekday}`;
   }
 
   function updateResult() {
