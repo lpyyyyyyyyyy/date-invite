@@ -177,6 +177,7 @@
         <label for="activity-other-input">想玩什么</label>
         <div><input id="activity-other-input" type="text" maxlength="24" placeholder="输入想一起做的事" required><button type="submit">确定</button></div>
       </form>
+      <button class="roulette-open" type="button" data-roulette="activity">不知道玩什么？让转盘决定</button>
     </section>
 
     <section class="screen menu-screen" data-screen="5" aria-labelledby="step-5-title" hidden>
@@ -223,6 +224,7 @@
         <label for="food-other-input">想吃什么</label>
         <div><input id="food-other-input" type="text" maxlength="24" placeholder="输入想吃的东西" required><button type="submit">确定</button></div>
       </form>
+      <button class="roulette-open" type="button" data-roulette="menu">不知道吃什么？让转盘决定</button>
     </section>
 
     <section class="screen result-screen" data-screen="6" aria-labelledby="step-6-title" hidden>
@@ -298,6 +300,16 @@
       </form>
     </section>
   </main>
+
+  <dialog class="roulette-dialog" id="roulette-dialog" aria-labelledby="roulette-title">
+    <button class="roulette-close" id="roulette-close" type="button" aria-label="关闭转盘">×</button>
+    <p class="eyebrow">DATE ROULETTE</p>
+    <h2 id="roulette-title">让转盘决定</h2>
+    <div class="roulette-wheel-wrap" aria-hidden="true"><canvas id="roulette-wheel" width="600" height="600"></canvas><span class="roulette-pointer">▼</span></div>
+    <p class="roulette-result" id="roulette-result" role="status" aria-live="polite">点击开始转动吧</p>
+    <button class="primary-button coral-button roulette-spin" id="roulette-spin" type="button">开始转动</button>
+    <button class="secondary-button roulette-choose" id="roulette-choose" type="button" disabled>就选这个</button>
+  </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   <div class="sr-only" id="movement-status" aria-live="polite"></div>

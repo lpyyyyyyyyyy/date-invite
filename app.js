@@ -51,6 +51,13 @@
   const memoryMeta = document.querySelector("#memory-meta");
   const mapLocation = document.querySelector("#map-location");
   const mapLink = document.querySelector("#map-link");
+  const rouletteDialog = document.querySelector("#roulette-dialog");
+  const rouletteWheel = document.querySelector("#roulette-wheel");
+  const rouletteTitle = document.querySelector("#roulette-title");
+  const rouletteResult = document.querySelector("#roulette-result");
+  const rouletteSpin = document.querySelector("#roulette-spin");
+  const rouletteChoose = document.querySelector("#roulette-choose");
+  const rouletteClose = document.querySelector("#roulette-close");
 
   let toastTimer = null;
   let menuTransitionTimer = null;
@@ -62,6 +69,11 @@
   let archiveReturnScreen = 1;
   let activeMemoryRecordId = "";
   let selectedMood = "";
+  let rouletteKind = "";
+  let rouletteOptions = [];
+  let rouletteIndex = -1;
+  let rouletteRotation = 0;
+  let rouletteSpinning = false;
 
   function localDateString(date) {
     const year = date.getFullYear();
@@ -200,6 +212,10 @@
     memoryForm.addEventListener("submit", saveMemory);
     memoryPhoto.addEventListener("change", addMemoryPhotos);
     document.querySelectorAll("[data-mood]").forEach((button) => button.addEventListener("click", selectMood));
+    document.querySelectorAll("[data-roulette]").forEach((button) => button.addEventListener("click", () => openRoulette(button.dataset.roulette)));
+    rouletteSpin.addEventListener("click", spinRoulette);
+    rouletteChoose.addEventListener("click", applyRouletteChoice);
+    rouletteClose.addEventListener("click", () => rouletteDialog.close());
 
     window.addEventListener("resize", scheduleDodgeRecalculation, { passive: true });
     if ("ResizeObserver" in window) {
@@ -657,6 +673,109 @@
       context.strokeStyle = stroke;
       context.lineWidth = lineWidth;
       context.stroke();
+    }
+  }
+
+  function openRoulette(kind) {
+    rouletteKind = kind;
+    rouletteOptions = (kind === "activity" ? activityOptions : foodOptions).map((button) => kind === "activity" ? button.dataset.activity : button.dataset.menu);
+    rouletteIndex = -1;
+    rouletteSpinning = false;
+    rouletteTitle.textContent = kind === "activity" ? "让转盘决定玩什么" : "让转盘决定吃什么";
+    rouletteResult.textContent = "点击开始转动吧";
+    rouletteChoose.disabled = true;
+    rouletteSpin.disabled = false;
+    drawRouletteWheel();
+    if (typeof rouletteDialog.showModal === "function") rouletteDialog.showModal();
+    else rouletteDialog.setAttribute("open", "");
+    requestAnimationFrame(() => rouletteSpin.focus());
+  }
+
+  function drawRouletteWheel() {
+    const context = rouletteWheel.getContext("2d");
+    if (!context || !rouletteOptions.length) return;
+    const size = rouletteWheel.width;
+    const center = size / 2;
+    const radius = center - 10;
+    const slice = Math.PI * 2 / rouletteOptions.length;
+    const colors = ["#ffe1e7", "#d8f0e8", "#dbeaf8", "#ffedb0", "#eadcf6", "#d9f1e8", "#ffe6c9", "#dce6ff", "#f7d8df"];
+    context.clearRect(0, 0, size, size);
+    rouletteOptions.forEach((option, index) => {
+      const start = -Math.PI / 2 + index * slice;
+      const middle = start + slice / 2;
+      context.beginPath();
+      context.moveTo(center, center);
+      context.arc(center, center, radius, start, start + slice);
+      context.closePath();
+      context.fillStyle = colors[index % colors.length];
+      context.fill();
+      context.strokeStyle = "#49323a";
+      context.lineWidth = 3;
+      context.stroke();
+      context.save();
+      context.translate(center + Math.cos(middle) * radius * 0.62, center + Math.sin(middle) * radius * 0.62);
+      context.rotate(middle + Math.PI / 2);
+      context.fillStyle = "#49323a";
+      context.font = '800 28px "Microsoft YaHei", sans-serif';
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(option, 0, 0);
+      context.restore();
+    });
+    context.beginPath();
+    context.arc(center, center, 37, 0, Math.PI * 2);
+    context.fillStyle = "#f45f76";
+    context.fill();
+    context.strokeStyle = "#49323a";
+    context.lineWidth = 4;
+    context.stroke();
+    context.fillStyle = "#fff";
+    context.font = '900 29px "Microsoft YaHei", sans-serif';
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText("♥", center, center + 2);
+  }
+
+  function spinRoulette() {
+    if (rouletteSpinning || !rouletteOptions.length) return;
+    rouletteSpinning = true;
+    rouletteIndex = Math.floor(Math.random() * rouletteOptions.length);
+    rouletteSpin.disabled = true;
+    rouletteChoose.disabled = true;
+    rouletteResult.textContent = "转呀转，看看会选到什么…";
+    const sliceDegrees = 360 / rouletteOptions.length;
+    const targetDegrees = -((rouletteIndex + 0.5) * sliceDegrees);
+    const currentDegrees = ((rouletteRotation % 360) + 360) % 360;
+    rouletteRotation += 5 * 360 + ((targetDegrees - currentDegrees + 360) % 360);
+    rouletteWheel.style.transform = `rotate(${rouletteRotation}deg)`;
+    setTimeout(() => {
+      rouletteSpinning = false;
+      rouletteResult.textContent = `今天就选：${rouletteOptions[rouletteIndex]}！`;
+      rouletteChoose.disabled = false;
+      rouletteChoose.focus();
+    }, 2860);
+  }
+
+  function applyRouletteChoice() {
+    if (rouletteIndex < 0 || rouletteSpinning) return;
+    const choice = rouletteOptions[rouletteIndex];
+    rouletteDialog.close();
+    if (rouletteKind === "activity") {
+      state.activity = choice;
+      state.activityIsOther = false;
+      activityOtherForm.hidden = true;
+      syncActivitySelection();
+      persistState();
+      showToast(`转盘选中了${choice}`);
+      setTimeout(() => showScreen(5), 180);
+    } else {
+      state.menu = choice;
+      state.menuIsOther = false;
+      foodOtherForm.hidden = true;
+      syncFoodSelection();
+      persistState();
+      showToast(`转盘选中了${choice}`);
+      setTimeout(() => showScreen(6), 180);
     }
   }
 
