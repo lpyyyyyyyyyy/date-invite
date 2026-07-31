@@ -455,13 +455,13 @@
       <button class="back-button" type="button" data-back="0" aria-label="返回空间首页"><span aria-hidden="true">←</span></button>
       <p class="eyebrow">PET PLAYROOM</p>
       <h1 id="step-17-title" tabindex="-1">宠物互动（测试）</h1>
-      <p class="supporting-copy compact-copy">轻触 Hello Kitty，她会招手、轻轻跳一下，还会给你一个小小回应。</p>
+      <p class="supporting-copy compact-copy">轻触 Hello Kitty，她会抬起手臂向你招手，双腿也会轻轻配合动作。</p>
     </section>
   </main>
 
   <aside class="cat-corner" id="cat-float" aria-labelledby="cat-title" hidden>
-    <button class="cat-mascot" id="cat-mascot" type="button" aria-label="和猫猫说话" title="和猫猫说话">
-      <img class="hello-kitty-image" src="hello-kitty.webp" alt="穿粉色裙子的 Hello Kitty" draggable="false">
+    <button class="cat-mascot" id="cat-mascot" type="button" aria-label="和 Hello Kitty 互动" title="轻触 Hello Kitty 招手">
+      <span class="cat-3d-stage" id="cat-3d-stage" aria-hidden="true"></span>
     </button>
     <div class="cat-chat">
       <p id="cat-title">LEO & EMILY 的 Hello Kitty</p>
@@ -493,7 +493,8 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   <div class="sr-only" id="movement-status" aria-live="polite"></div>
-  <script src="app.js?v=20260731-hello-kitty-2d"></script>
+  <script src="three.min.js"></script>
+  <script src="app.js?v=20260731-hello-kitty-detail"></script>
   <script src="pwa.js?v=20260730-pwa-update"></script>
 </body>
 </html>

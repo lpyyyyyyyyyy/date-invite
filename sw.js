@@ -1,15 +1,16 @@
-const CACHE_NAME = "leo-emily-runtime-v6";
+const CACHE_NAME = "leo-emily-runtime-v8";
 const OFFLINE_ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./app.js?v=20260731-hello-kitty-detail",
   "./pwa.js",
   "./manifest.webmanifest",
   "./apple-touch-icon.png",
   "./icon-192.png",
   "./icon-512.png",
-  "./hello-kitty.webp",
+  "./three.min.js",
 ];
 
 self.addEventListener("install", (event) => {

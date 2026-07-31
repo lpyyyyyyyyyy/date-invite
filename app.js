@@ -130,6 +130,7 @@
   const futureLetterList = document.querySelector("#future-letter-list");
 
   let toastTimer = null;
+  let kittyGreetingTimer = null;
   let menuTransitionTimer = null;
   let countdownTimer = null;
   let resizeFrame = null;
@@ -1624,130 +1625,211 @@
   }
 
   function initializeCatModel() {
-    if (!catMascot) return;
-    catMascot.classList.add("is-2d-ready");
-    return;
-
     if (!cat3DStage || !window.THREE) return;
+    catMascot.classList.remove("is-2d-ready");
 
-    {
+    try {
       const Three = window.THREE;
       const scene = new Three.Scene();
-      const camera = new Three.PerspectiveCamera(30, 1, 0.1, 100);
-      camera.position.set(0, 0.2, 8.2);
-      camera.lookAt(0, 0.15, 0);
+      const camera = new Three.PerspectiveCamera(35, 1, 0.1, 100);
+      camera.position.set(0, -0.03, 8.25);
+      camera.lookAt(0, -0.03, 0);
       const renderer = new Three.WebGLRenderer({ alpha: true, antialias: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.setClearColor(0x000000, 0);
       renderer.outputEncoding = Three.sRGBEncoding;
       renderer.toneMapping = Three.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.05;
+      renderer.toneMappingExposure = 0.92;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = Three.PCFSoftShadowMap;
       cat3DStage.appendChild(renderer.domElement);
 
-      const white = new Three.MeshStandardMaterial({ color: 0xfffcfa, roughness: 0.72 });
-      const pink = new Three.MeshStandardMaterial({ color: 0xf16991, roughness: 0.62 });
-      const yellow = new Three.MeshStandardMaterial({ color: 0xf7c94f, roughness: 0.48 });
-      const black = new Three.MeshStandardMaterial({ color: 0x302b37, roughness: 0.5 });
+      const white = new Three.MeshPhysicalMaterial({ color: 0xfffcfd, roughness: 0.34, clearcoat: 0.3, clearcoatRoughness: 0.22 });
+      const pink = new Three.MeshPhysicalMaterial({ color: 0xf85f98, roughness: 0.32, clearcoat: 0.28, clearcoatRoughness: 0.22 });
+      const pinkLight = new Three.MeshPhysicalMaterial({ color: 0xff8fba, roughness: 0.34, clearcoat: 0.25, clearcoatRoughness: 0.26 });
+      const pinkShade = new Three.MeshPhysicalMaterial({ color: 0xdf3f78, roughness: 0.4, clearcoat: 0.16 });
+      const yellow = new Three.MeshPhysicalMaterial({ color: 0xffc946, roughness: 0.28, clearcoat: 0.34, clearcoatRoughness: 0.2 });
+      const yellowShade = new Three.MeshPhysicalMaterial({ color: 0xd77b27, roughness: 0.4, clearcoat: 0.15 });
+      const black = new Three.MeshPhysicalMaterial({ color: 0x4c2130, roughness: 0.31, clearcoat: 0.27, clearcoatRoughness: 0.2 });
       const root = new Three.Group();
-      root.rotation.y = -0.28;
       scene.add(root);
 
       const addSphere = (parent, position, scale, material) => {
-        const mesh = new Three.Mesh(new Three.SphereGeometry(1, 32, 24), material);
+        const mesh = new Three.Mesh(new Three.SphereGeometry(1, 40, 28), material);
         mesh.position.set(...position);
         mesh.scale.set(...scale);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
         parent.add(mesh);
         return mesh;
       };
-      const addCylinder = (parent, position, radius, height, material, rotation = [0, 0, 0]) => {
-        const mesh = new Three.Mesh(new Three.CylinderGeometry(radius, radius * 1.08, height, 18), material);
+      const addCapsule = (parent, position, radius, length, material) => {
+        const capsule = new Three.Group();
+        capsule.position.set(...position);
+        const middle = new Three.Mesh(new Three.CylinderGeometry(radius, radius, length, 28), material);
+        middle.castShadow = true;
+        middle.receiveShadow = true;
+        capsule.add(middle);
+        addSphere(capsule, [0, length / 2, 0], [radius, radius, radius], material);
+        addSphere(capsule, [0, -length / 2, 0], [radius, radius, radius], material);
+        parent.add(capsule);
+        return capsule;
+      };
+
+      const addTube = (parent, points, radius, material) => {
+        const curve = new Three.CatmullRomCurve3(points);
+        const mesh = new Three.Mesh(new Three.TubeGeometry(curve, 24, radius, 8, false), material);
+        mesh.castShadow = true;
+        parent.add(mesh);
+        return mesh;
+      };
+      const addSoftShape = (parent, shape, depth, material, position, rotation = [0, 0, 0]) => {
+        const geometry = new Three.ExtrudeGeometry(shape, {
+          depth,
+          bevelEnabled: true,
+          bevelSegments: 4,
+          bevelSize: 0.052,
+          bevelThickness: 0.052,
+          curveSegments: 18,
+        });
+        geometry.center();
+        const mesh = new Three.Mesh(geometry, material);
         mesh.position.set(...position);
         mesh.rotation.set(...rotation);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
         parent.add(mesh);
         return mesh;
       };
 
-      addSphere(root, [0, -0.66, 0], [0.92, 0.88, 0.62], white);
-      addSphere(root, [0, 0.55, 0.08], [1.18, 1.02, 0.72], white);
-      const earGeometry = new Three.ConeGeometry(0.48, 0.95, 3);
-      [[-0.72, 1.4, 0.02, -0.18], [0.72, 1.4, 0.02, 0.18]].forEach(([x, y, z, tilt]) => {
-        const ear = new Three.Mesh(earGeometry, white);
-        ear.position.set(x, y, z);
-        ear.rotation.set(0, Math.PI / 4, tilt);
-        root.add(ear);
-        const inner = new Three.Mesh(new Three.ConeGeometry(0.23, 0.55, 3), pink);
-        inner.position.set(x, y - 0.02, z + 0.16);
-        inner.rotation.copy(ear.rotation);
-        root.add(inner);
-      });
-      [[-0.42, 0.65, 0.69], [0.42, 0.65, 0.69]].forEach(([x, y, z]) => addSphere(root, [x, y, z], [0.08, 0.16, 0.05], black));
-      addSphere(root, [0, 0.34, 0.76], [0.18, 0.1, 0.06], yellow);
-      [-1, 1].forEach((side) => [-0.08, 0.08, 0.23].forEach((offset) => {
-        const whisker = new Three.Line(new Three.BufferGeometry().setFromPoints([
-          new Three.Vector3(side * 0.16, 0.32 + offset, 0.7), new Three.Vector3(side * 1.03, 0.32 + offset * 1.35, 0.58)
-        ]), new Three.LineBasicMaterial({ color: 0x625a63 }));
-        root.add(whisker);
-      }));
-      const bow = new Three.Group();
-      bow.position.set(-0.72, 1.02, 0.64);
-      addSphere(bow, [-0.25, 0, 0], [0.36, 0.25, 0.1], pink);
-      addSphere(bow, [0.25, 0, 0], [0.36, 0.25, 0.1], pink);
-      addSphere(bow, [0, 0, 0.08], [0.12, 0.12, 0.07], yellow);
-      root.add(bow);
-      [-0.48, 0.48].forEach((x) => addCylinder(root, [x, -1.43, 0.04], 0.2, 0.58, white));
+      // Rounded triangular ears sit behind the head, so their bases disappear cleanly into the silhouette.
+      const earShape = new Three.Shape();
+      earShape.moveTo(-0.46, -0.31);
+      earShape.quadraticCurveTo(-0.56, 0.06, -0.09, 0.64);
+      earShape.quadraticCurveTo(0.03, 0.77, 0.45, 0.31);
+      earShape.quadraticCurveTo(0.56, 0.07, 0.42, -0.31);
+      earShape.quadraticCurveTo(0.02, -0.42, -0.46, -0.31);
+      addSoftShape(root, earShape, 0.22, white, [-0.83, 1.5, -0.08], [0, 0, 0.24]);
+      addSoftShape(root, earShape, 0.22, white, [0.83, 1.5, -0.08], [0, 0, -0.24]);
+
+      const headCenterY = 0.53;
+      const headRadiusX = 1.36;
+      const headRadiusY = 0.92;
+      const headRadiusZ = 0.84;
+      const head = addSphere(root, [0, headCenterY, 0], [headRadiusX, headRadiusY, headRadiusZ], white);
+      head.name = "Hello Kitty rounded head";
+      const faceSurfaceZ = (x, y, offset = 0.025) => {
+        const radial = 1 - (x / headRadiusX) ** 2 - ((y - headCenterY) / headRadiusY) ** 2;
+        return headRadiusZ * Math.sqrt(Math.max(0.08, radial)) + offset;
+      };
+
+      // A bevelled, shallow A-line dress is closer to a soft vinyl toy than a tapered cylinder.
+      const dressShape = new Three.Shape();
+      dressShape.moveTo(-0.87, -0.59);
+      dressShape.quadraticCurveTo(-0.91, -0.57, -0.89, -0.46);
+      dressShape.lineTo(-0.61, 0.39);
+      dressShape.quadraticCurveTo(-0.55, 0.53, -0.4, 0.57);
+      dressShape.lineTo(0.4, 0.57);
+      dressShape.quadraticCurveTo(0.55, 0.53, 0.61, 0.39);
+      dressShape.lineTo(0.89, -0.46);
+      dressShape.quadraticCurveTo(0.91, -0.57, 0.87, -0.59);
+      dressShape.quadraticCurveTo(0, -0.69, -0.87, -0.59);
+      addSoftShape(root, dressShape, 0.42, pink, [0, -0.84, 0.02]);
+      addTube(root, [
+        new Three.Vector3(-0.78, -1.42, 0.28),
+        new Three.Vector3(0, -1.49, 0.31),
+        new Three.Vector3(0.78, -1.42, 0.28),
+      ], 0.026, pinkLight);
+      addSphere(root, [-0.69, -0.43, 0.02], [0.3, 0.24, 0.26], pinkLight).rotation.z = -0.56;
+      addSphere(root, [0.69, -0.43, 0.02], [0.3, 0.24, 0.26], pinkLight).rotation.z = 0.56;
+      addTube(root, [
+        new Three.Vector3(-0.24, -0.24, 0.31),
+        new Three.Vector3(0, -0.39, 0.42),
+        new Three.Vector3(0.24, -0.24, 0.31),
+      ], 0.052, white);
+
+      const leftLeg = new Three.Group();
+      leftLeg.position.set(-0.37, -1.38, 0.02);
+      addSphere(leftLeg, [0, -0.29, 0.07], [0.32, 0.38, 0.33], white);
+      root.add(leftLeg);
+      const rightLeg = new Three.Group();
+      rightLeg.position.set(0.37, -1.38, 0.02);
+      addSphere(rightLeg, [0, -0.29, 0.07], [0.32, 0.38, 0.33], white);
+      root.add(rightLeg);
+
       const waveArm = new Three.Group();
-      waveArm.position.set(-0.91, -0.22, 0.02);
-      waveArm.rotation.z = -0.8;
-      addCylinder(waveArm, [0, -0.38, 0], 0.18, 0.72, white);
-      addSphere(waveArm, [0, -0.79, 0.02], [0.23, 0.23, 0.18], white);
+      waveArm.position.set(-0.72, -0.44, 0.24);
+      waveArm.rotation.z = -0.45;
+      addCapsule(waveArm, [0, -0.35, 0], 0.17, 0.43, white);
+      const wavingHand = new Three.Group();
+      wavingHand.position.set(0, -0.68, 0.035);
+      addSphere(wavingHand, [0, 0, 0], [0.22, 0.23, 0.17], white);
+      addSphere(wavingHand, [-0.1, 0.12, 0.02], [0.055, 0.07, 0.05], white);
+      addSphere(wavingHand, [0, 0.15, 0.02], [0.055, 0.07, 0.05], white);
+      addSphere(wavingHand, [0.1, 0.12, 0.02], [0.055, 0.07, 0.05], white);
+      waveArm.add(wavingHand);
       root.add(waveArm);
       const restingArm = new Three.Group();
-      restingArm.position.set(0.9, -0.34, 0.02);
-      restingArm.rotation.z = 0.58;
-      addCylinder(restingArm, [0, -0.35, 0], 0.18, 0.64, white);
-      addSphere(restingArm, [0, -0.73, 0.02], [0.23, 0.23, 0.18], white);
+      restingArm.position.set(0.72, -0.44, 0.1);
+      restingArm.rotation.z = 0.45;
+      addCapsule(restingArm, [0, -0.34, 0], 0.17, 0.41, white);
+      const restingHand = new Three.Group();
+      restingHand.position.set(0, -0.66, 0.03);
+      addSphere(restingHand, [0, 0, 0], [0.22, 0.23, 0.17], white);
+      restingArm.add(restingHand);
       root.add(restingArm);
 
-      scene.add(new Three.HemisphereLight(0xffe9ee, 0x554452, 1.9));
+      [[-0.46, 0.65], [0.46, 0.65]].forEach(([x, y]) => {
+        addSphere(root, [x, y, faceSurfaceZ(x, y, 0.04)], [0.095, 0.19, 0.067], black);
+      });
+      const noseZ = faceSurfaceZ(0, 0.4, 0.034);
+      addSphere(root, [0, 0.4, noseZ - 0.006], [0.19, 0.11, 0.06], yellowShade);
+      addSphere(root, [0, 0.41, noseZ + 0.023], [0.165, 0.09, 0.045], yellow);
+      const whiskerSpecs = [
+        [0.76, 0.79, 1.24, 0.82],
+        [0.8, 0.55, 1.31, 0.54],
+        [0.74, 0.31, 1.2, 0.17],
+      ];
+      [-1, 1].forEach((side) => whiskerSpecs.forEach(([startX, startY, endX, endY]) => {
+        const startZ = faceSurfaceZ(side * startX, startY, 0.045);
+        addTube(root, [
+          new Three.Vector3(side * startX, startY, startZ),
+          new Three.Vector3(side * ((startX + endX) / 2), (startY + endY) / 2 + 0.016, 0.68),
+          new Three.Vector3(side * endX, endY, 0.54),
+        ], 0.026, black);
+      }));
+
+      const bow = new Three.Group();
+      bow.position.set(-0.68, 1.2, faceSurfaceZ(-0.68, 1.2, 0.07));
+      const tallBowLoop = addSphere(bow, [-0.18, 0.08, 0], [0.25, 0.38, 0.13], pink);
+      tallBowLoop.rotation.z = -0.27;
+      const wideBowLoop = addSphere(bow, [0.26, -0.025, 0], [0.37, 0.25, 0.135], pink);
+      wideBowLoop.rotation.z = 0.21;
+      addSphere(bow, [-0.18, 0.08, 0.105], [0.11, 0.18, 0.025], pinkShade).rotation.z = -0.26;
+      addSphere(bow, [0.26, -0.025, 0.11], [0.18, 0.09, 0.025], pinkShade).rotation.z = 0.2;
+      addSphere(bow, [0.01, 0.035, 0.18], [0.145, 0.145, 0.1], pinkLight);
+      root.add(bow);
+
+      const floorShadow = new Three.Mesh(new Three.CircleGeometry(1.13, 64), new Three.MeshBasicMaterial({ color: 0xeb93b2, transparent: true, opacity: 0.21, depthWrite: false }));
+      floorShadow.rotation.x = -Math.PI / 2;
+      floorShadow.scale.set(1.35, 0.42, 1);
+      floorShadow.position.set(0, -2.08, 0.05);
+      floorShadow.renderOrder = -1;
+      scene.add(floorShadow);
+      scene.add(new Three.HemisphereLight(0xfff0f5, 0x7b5362, 1.45));
       const key = new Three.DirectionalLight(0xffffff, 1.45);
-      key.position.set(-3, 5, 5);
+      key.position.set(-3.8, 5.6, 5);
+      key.castShadow = true;
+      key.shadow.mapSize.set(1024, 1024);
+      key.shadow.camera.left = -4;
+      key.shadow.camera.right = 4;
+      key.shadow.camera.top = 4;
+      key.shadow.camera.bottom = -4;
       scene.add(key);
-      const fill = new Three.PointLight(0xff91af, 0.5, 10);
-      fill.position.set(3, 2, 4);
+      const fill = new Three.PointLight(0xffa0bf, 0.42, 10);
+      fill.position.set(3, 2.4, 4.5);
       scene.add(fill);
 
-      let targetRotation = root.rotation.y;
-      let dragging = false;
-      let moved = false;
-      let lastX = 0;
-      let lastY = 0;
-      catMascot.addEventListener("pointerdown", (event) => {
-        dragging = true;
-        moved = false;
-        catMascot.__petWaveUntil = Date.now() + 1800;
-        catBubble.textContent = "你好呀，我在向你招手！";
-        lastX = event.clientX;
-        lastY = event.clientY;
-        catMascot.setPointerCapture?.(event.pointerId);
-      });
-      catMascot.addEventListener("pointermove", (event) => {
-        if (!dragging) return;
-        const deltaX = event.clientX - lastX;
-        const deltaY = event.clientY - lastY;
-        if (Math.abs(deltaX) + Math.abs(deltaY) > 3) moved = true;
-        targetRotation += deltaX * 0.014;
-        root.rotation.x = Math.max(-0.16, Math.min(0.16, root.rotation.x + deltaY * 0.004));
-        lastX = event.clientX;
-        lastY = event.clientY;
-      });
-      const releasePet = (event) => {
-        if (!dragging) return;
-        dragging = false;
-        catMascot.dataset.dragged = moved ? "true" : "";
-        catMascot.releasePointerCapture?.(event.pointerId);
-      };
-      catMascot.addEventListener("pointerup", releasePet);
-      catMascot.addEventListener("pointercancel", releasePet);
       const resize = () => {
         const width = Math.max(1, cat3DStage.clientWidth);
         const height = Math.max(1, cat3DStage.clientHeight);
@@ -1755,23 +1837,36 @@
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
       };
-      new ResizeObserver(resize).observe(cat3DStage);
+      if ("ResizeObserver" in window) new ResizeObserver(resize).observe(cat3DStage);
+      else window.addEventListener("resize", resize, { passive: true });
       resize();
+      renderer.domElement.addEventListener("webglcontextlost", (event) => {
+        event.preventDefault();
+        catMascot.classList.remove("is-3d-ready");
+        catBubble.textContent = "这台设备暂时无法显示 3D 互动，但其他功能都可以正常使用。";
+      });
       catMascot.classList.add("is-3d-ready");
       const clock = new Three.Clock();
+      const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
       const animate = () => {
         const time = clock.getElapsedTime();
-        const isGreeting = Date.now() < (catMascot.__petWaveUntil || 0);
-        const waveSpeed = isGreeting ? 12 : 2.2;
-        const waveAmount = isGreeting ? 0.78 : 0.2;
-        root.position.y = Math.sin(time * 1.7) * 0.055;
-        root.rotation.y += (targetRotation - root.rotation.y) * 0.1;
-        waveArm.rotation.z = -0.8 + Math.sin(time * waveSpeed) * waveAmount;
-        bow.rotation.z = Math.sin(time * 2.4) * 0.06;
-        renderer.render(scene, camera);
+        const isGreeting = catMascot.classList.contains("is-chatting");
+        waveArm.rotation.z = isGreeting
+          ? -2.16 + (reducedMotion ? 0 : Math.sin(time * 12.5) * 0.17)
+          : -0.45;
+        wavingHand.rotation.z = isGreeting && !reducedMotion ? Math.sin(time * 12.5) * 0.22 : 0;
+        restingArm.rotation.z = 0.45 + (isGreeting && !reducedMotion ? Math.sin(time * 6.5) * 0.05 : 0);
+        leftLeg.rotation.x = isGreeting && !reducedMotion ? Math.sin(time * 6.5) * 0.06 : 0;
+        rightLeg.rotation.x = isGreeting && !reducedMotion ? -Math.sin(time * 6.5) * 0.06 : 0;
+        if (!catFloat.hidden && !document.hidden) renderer.render(scene, camera);
         window.requestAnimationFrame(animate);
       };
       animate();
+    } catch (error) {
+      console.warn("Hello Kitty 3D model could not initialize.", error);
+      cat3DStage.replaceChildren();
+      catMascot.classList.remove("is-3d-ready");
+      catBubble.textContent = "这台设备暂时无法显示 3D 互动，但其他功能都可以正常使用。";
     }
     return;
 
@@ -2053,10 +2148,13 @@
   }
 
   function chatWithCat() {
-    catMascot.classList.remove("is-chatting");
-    void catMascot.offsetWidth;
+    if (kittyGreetingTimer) clearTimeout(kittyGreetingTimer);
     catMascot.classList.add("is-chatting");
-    catBubble.textContent = "Hello Kitty 向你挥挥手，今天也要开心呀！";
+    catBubble.textContent = "Hello Kitty 举起小手向你招手，今天也要开心呀！";
+    kittyGreetingTimer = setTimeout(() => {
+      catMascot.classList.remove("is-chatting");
+      kittyGreetingTimer = null;
+    }, 1450);
   }
 
   function openArchive() {

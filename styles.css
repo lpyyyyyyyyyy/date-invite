@@ -284,6 +284,8 @@ h1 {
 .cat-corner[hidden] { display: none !important; }
 .cat-mascot { position: relative; width: 136px; height: 138px; padding: 0; border: 0; background: transparent; cursor: pointer; touch-action: manipulation; pointer-events: auto; transform-origin: 50% 85%; transition: transform 220ms ease; }
 .cat-mascot:active { cursor: pointer; }
+.cat-mascot:focus { outline: none; }
+.cat-mascot:focus-visible { border-radius: 28px; outline: 3px solid #ed7da6; outline-offset: 4px; }
 .hello-kitty-image { position: relative; z-index: 6; display: block; width: 100%; height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; }
 .cat-mascot.is-2d-ready::before, .cat-mascot.is-2d-ready .cat-ear, .cat-mascot.is-2d-ready .cat-face, .cat-mascot.is-2d-ready .cat-paw, .cat-mascot.is-2d-ready .cat-tail, .cat-mascot.is-2d-ready .cat-3d-stage { display: none; }
 .cat-mascot.is-2d-ready::after { position: absolute; z-index: 7; top: 16%; right: -9%; opacity: 0; color: #f36f9d; content: "♥"; font-size: 34px; pointer-events: none; }
@@ -293,6 +295,7 @@ h1 {
 .cat-mascot.is-3d-ready .cat-3d-stage { display: block; }
 .cat-3d-stage canvas { display: block; width: 100%; height: 100%; }
 .cat-mascot.is-3d-ready::before, .cat-mascot.is-3d-ready .cat-ear, .cat-mascot.is-3d-ready .cat-face, .cat-mascot.is-3d-ready .cat-paw, .cat-mascot.is-3d-ready .cat-tail { display: none; }
+.cat-mascot.is-3d-ready.is-chatting { animation: none; }
 .cat-mascot::before { position: absolute; z-index: 1; right: 14px; bottom: 5px; left: 14px; height: 73px; border: 3px solid #573f3d; border-radius: 48% 48% 42% 42%; background: #e5ad7e; box-shadow: inset 0 10px 0 rgba(255, 240, 224, 0.42), 3px 4px 0 rgba(87, 63, 61, 0.12); content: ""; }
 .cat-ear { position: absolute; z-index: 0; top: 4px; width: 37px; height: 42px; border: 3px solid #573f3d; border-radius: 9px 22px 8px 22px; background: #e5ad7e; }
 .cat-ear-left { left: 19px; transform: rotate(-25deg); }
