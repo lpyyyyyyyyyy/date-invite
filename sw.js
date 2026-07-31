@@ -10,6 +10,7 @@ const OFFLINE_ASSETS = [
   "./icon-192.png",
   "./icon-512.png",
   "./three.min.js",
+  "./fflate.min.js",
   "./FBXLoader.js",
   "./siamese-cat.fbx"
 ];
