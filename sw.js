@@ -1,4 +1,4 @@
-const CACHE_NAME = "leo-emily-runtime-v1";
+const CACHE_NAME = "leo-emily-runtime-v2";
 const OFFLINE_ASSETS = [
   "./",
   "./index.html",
@@ -8,7 +8,10 @@ const OFFLINE_ASSETS = [
   "./manifest.webmanifest",
   "./apple-touch-icon.png",
   "./icon-192.png",
-  "./icon-512.png"
+  "./icon-512.png",
+  "./three.min.js",
+  "./FBXLoader.js",
+  "./siamese-cat.fbx"
 ];
 
 self.addEventListener("install", (event) => {

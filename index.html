@@ -79,19 +79,6 @@
         <p id="next-date-title">下次约会行动</p>
         <strong id="home-countdown" role="status" aria-live="polite">还没有下一次约会计划</strong>
       </section>
-      <section class="cat-corner" aria-labelledby="cat-title">
-        <button class="cat-mascot" id="cat-mascot" type="button" aria-label="和猫猫说话" title="和猫猫说话">
-          <span class="cat-ear cat-ear-left" aria-hidden="true"></span><span class="cat-ear cat-ear-right" aria-hidden="true"></span>
-          <span class="cat-face" aria-hidden="true"><i></i><i></i><b></b></span>
-          <span class="cat-paw cat-paw-left" aria-hidden="true"></span><span class="cat-paw cat-paw-right" aria-hidden="true"></span>
-          <span class="cat-tail" aria-hidden="true"></span>
-        </button>
-        <div class="cat-chat">
-          <p id="cat-title">Leo & Emily 的猫猫</p>
-          <strong id="cat-growth-label">正在等你来陪它长大</strong>
-          <p class="cat-bubble" id="cat-bubble" role="status" aria-live="polite">点点我吧，我有话想说。</p>
-        </div>
-      </section>
     </section>
 
     <section class="screen invitation-screen" data-screen="1" aria-labelledby="step-1-title" hidden>
@@ -459,6 +446,21 @@
     </section>
   </main>
 
+  <aside class="cat-corner" id="cat-float" aria-labelledby="cat-title">
+    <button class="cat-mascot" id="cat-mascot" type="button" aria-label="和猫猫说话" title="和猫猫说话">
+      <span class="cat-3d-stage" id="cat-3d-stage" aria-hidden="true"></span>
+      <span class="cat-ear cat-ear-left" aria-hidden="true"></span><span class="cat-ear cat-ear-right" aria-hidden="true"></span>
+      <span class="cat-face" aria-hidden="true"><i></i><i></i><b></b></span>
+      <span class="cat-paw cat-paw-left" aria-hidden="true"></span><span class="cat-paw cat-paw-right" aria-hidden="true"></span>
+      <span class="cat-tail" aria-hidden="true"></span>
+    </button>
+    <div class="cat-chat">
+      <p id="cat-title">Leo & Emily 的猫猫</p>
+      <strong id="cat-growth-label">正在等你来陪它长大</strong>
+      <p class="cat-bubble" id="cat-bubble" role="status" aria-live="polite">点点我吧，我有话想说。</p>
+    </div>
+  </aside>
+
   <dialog class="roulette-dialog" id="roulette-dialog" aria-labelledby="roulette-title">
     <button class="roulette-close" id="roulette-close" type="button" aria-label="关闭转盘">×</button>
     <p class="eyebrow">DATE ROULETTE</p>
@@ -469,9 +471,22 @@
     <button class="secondary-button roulette-choose" id="roulette-choose" type="button" disabled>就选这个</button>
   </dialog>
 
+  <dialog class="cat-name-dialog" id="cat-name-dialog" aria-labelledby="cat-name-title">
+    <form method="dialog" id="cat-name-form">
+      <p class="eyebrow">A LITTLE NAME</p>
+      <h2 id="cat-name-title">给猫猫取个名字</h2>
+      <p class="cat-name-copy">它会一直记得这个名字，陪你们慢慢长大。</p>
+      <label for="cat-name-input">猫猫的名字</label>
+      <input id="cat-name-input" type="text" maxlength="12" required autocomplete="off" placeholder="例如：团子">
+      <button class="primary-button coral-button" type="submit">就叫这个</button>
+    </form>
+  </dialog>
+
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   <div class="sr-only" id="movement-status" aria-live="polite"></div>
-  <script src="app.js?v=20260730-cat-companion"></script>
+  <script src="three.min.js"></script>
+  <script src="FBXLoader.js"></script>
+  <script src="app.js?v=20260731-fbx-cat"></script>
   <script src="pwa.js?v=20260730-pwa-update"></script>
 </body>
 </html>

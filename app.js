@@ -79,8 +79,12 @@
   const memoryPhotos = document.querySelector("#memory-photos");
   const homeCountdown = document.querySelector("#home-countdown");
   const catMascot = document.querySelector("#cat-mascot");
+  const cat3DStage = document.querySelector("#cat-3d-stage");
   const catGrowthLabel = document.querySelector("#cat-growth-label");
   const catBubble = document.querySelector("#cat-bubble");
+  const catNameDialog = document.querySelector("#cat-name-dialog");
+  const catNameForm = document.querySelector("#cat-name-form");
+  const catNameInput = document.querySelector("#cat-name-input");
   const memoryMeta = document.querySelector("#memory-meta");
   const mapLocation = document.querySelector("#map-location");
   const mapLink = document.querySelector("#map-link");
@@ -136,6 +140,7 @@
   let coupleNotes = loadCoupleNotes();
   let futureLetters = loadFutureLetters();
   let catState = loadCatState();
+  let catModelRoot = null;
   let archiveReturnScreen = 1;
   let activeMemoryRecordId = "";
   let selectedMood = "";
@@ -319,14 +324,15 @@
   function loadCatState() {
     try {
       const saved = JSON.parse(localStorage.getItem(CAT_KEY) || "null");
-      if (!saved || typeof saved !== "object") return { days: 0, streak: 0, lastVisitDate: "" };
+      if (!saved || typeof saved !== "object") return { days: 0, streak: 0, lastVisitDate: "", name: "" };
       return {
         days: Number.isInteger(saved.days) && saved.days >= 0 ? saved.days : 0,
         streak: Number.isInteger(saved.streak) && saved.streak >= 0 ? saved.streak : 0,
-        lastVisitDate: /^\d{4}-\d{2}-\d{2}$/.test(saved.lastVisitDate || "") ? saved.lastVisitDate : ""
+        lastVisitDate: /^\d{4}-\d{2}-\d{2}$/.test(saved.lastVisitDate || "") ? saved.lastVisitDate : "",
+        name: typeof saved.name === "string" ? saved.name.trim().slice(0, 12) : ""
       };
     } catch (error) {
-      return { days: 0, streak: 0, lastVisitDate: "" };
+      return { days: 0, streak: 0, lastVisitDate: "", name: "" };
     }
   }
 
@@ -360,6 +366,7 @@
     updateHomeCountdown();
     recordCatVisit();
     updateCatMascot();
+    initializeCatModel();
     window.setInterval(updateHomeCountdown, 60000);
 
     document.querySelector(".home-plan").addEventListener("click", () => showScreen(1));
@@ -369,7 +376,15 @@
     document.querySelector(".keepsakes-open").addEventListener("click", () => showScreen(14));
     document.querySelector(".couple-book-open").addEventListener("click", () => showScreen(15));
     document.querySelector(".future-letter-open").addEventListener("click", () => showScreen(16));
-    catMascot.addEventListener("click", chatWithCat);
+    catMascot.addEventListener("click", (event) => {
+      if (catMascot.dataset.dragged === "true") {
+        catMascot.dataset.dragged = "";
+        event.preventDefault();
+        return;
+      }
+      openCatConversation();
+    });
+    catNameForm.addEventListener("submit", saveCatName);
     document.querySelector(".truth-open").addEventListener("click", () => showScreen(12));
     document.querySelector(".dice-open").addEventListener("click", () => showScreen(13));
     yesButton.addEventListener("click", () => {
@@ -1587,21 +1602,299 @@
     return { name: "小猫", className: "is-kitten" };
   }
 
+  function getCatName() {
+    return catState.name || "猫猫";
+  }
+
+  function openCatConversation() {
+    if (catState.name) {
+      chatWithCat();
+      return;
+    }
+    catNameInput.value = "";
+    catNameDialog.showModal();
+    window.requestAnimationFrame(() => catNameInput.focus());
+  }
+
+  function saveCatName(event) {
+    event.preventDefault();
+    const name = catNameInput.value.trim().slice(0, 12);
+    if (!name) {
+      catNameInput.focus();
+      return;
+    }
+    catState.name = name;
+    persistCatState();
+    catNameDialog.close();
+    updateCatMascot();
+    chatWithCat();
+  }
+
+  function initializeCatModel() {
+    if (!cat3DStage || !window.THREE) return;
+
+    const Three = window.THREE;
+    if (!Three.FBXLoader) return;
+    const fbxScene = new Three.Scene();
+    const fbxCamera = new Three.PerspectiveCamera(32, 1, 0.1, 100);
+    fbxCamera.position.set(0, 1.35, 6.3);
+    const fbxRenderer = new Three.WebGLRenderer({ alpha: true, antialias: true });
+    fbxRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    fbxRenderer.setClearColor(0x000000, 0);
+    fbxRenderer.outputEncoding = Three.sRGBEncoding;
+    fbxRenderer.toneMapping = Three.ACESFilmicToneMapping;
+    fbxRenderer.toneMappingExposure = 1;
+    cat3DStage.appendChild(fbxRenderer.domElement);
+
+    const fbxRoot = new Three.Group();
+    fbxRoot.rotation.y = -0.35;
+    fbxScene.add(fbxRoot);
+    fbxScene.add(new Three.HemisphereLight(0xfff1e6, 0x694f58, 1.65));
+    const fbxKeyLight = new Three.DirectionalLight(0xffffff, 1.25);
+    fbxKeyLight.position.set(-3, 5, 5);
+    fbxScene.add(fbxKeyLight);
+    const fbxFillLight = new Three.PointLight(0xffadc0, 0.5, 10);
+    fbxFillLight.position.set(3, 2, 4);
+    fbxScene.add(fbxFillLight);
+
+    let fbxRotation = fbxRoot.rotation.y;
+    let fbxDragging = false;
+    let fbxMoved = false;
+    let fbxLastX = 0;
+    let fbxLastY = 0;
+    catMascot.addEventListener("pointerdown", (event) => {
+      fbxDragging = true;
+      fbxMoved = false;
+      fbxLastX = event.clientX;
+      fbxLastY = event.clientY;
+      catMascot.setPointerCapture?.(event.pointerId);
+    });
+    catMascot.addEventListener("pointermove", (event) => {
+      if (!fbxDragging) return;
+      const deltaX = event.clientX - fbxLastX;
+      const deltaY = event.clientY - fbxLastY;
+      if (Math.abs(deltaX) + Math.abs(deltaY) > 3) fbxMoved = true;
+      fbxRotation += deltaX * 0.015;
+      fbxRoot.rotation.x = Math.max(-0.18, Math.min(0.18, fbxRoot.rotation.x + deltaY * 0.004));
+      fbxLastX = event.clientX;
+      fbxLastY = event.clientY;
+    });
+    const releaseFbxCat = (event) => {
+      if (!fbxDragging) return;
+      fbxDragging = false;
+      catMascot.dataset.dragged = fbxMoved ? "true" : "";
+      catMascot.releasePointerCapture?.(event.pointerId);
+    };
+    catMascot.addEventListener("pointerup", releaseFbxCat);
+    catMascot.addEventListener("pointercancel", releaseFbxCat);
+
+    const resizeFbxCat = () => {
+      const width = Math.max(1, cat3DStage.clientWidth);
+      const height = Math.max(1, cat3DStage.clientHeight);
+      fbxRenderer.setSize(width, height, false);
+      fbxCamera.aspect = width / height;
+      fbxCamera.updateProjectionMatrix();
+    };
+    if (window.ResizeObserver) new ResizeObserver(resizeFbxCat).observe(cat3DStage);
+    else window.addEventListener("resize", resizeFbxCat);
+    resizeFbxCat();
+
+    new Three.FBXLoader().load("siamese-cat.fbx", (model) => {
+      model.traverse((node) => {
+        if (!node.isMesh) return;
+        node.castShadow = true;
+        node.receiveShadow = true;
+        if (!node.material) node.material = new Three.MeshStandardMaterial({ color: 0xf0d8bd, roughness: 0.8 });
+      });
+      const bounds = new Three.Box3().setFromObject(model);
+      const center = bounds.getCenter(new Three.Vector3());
+      const size = bounds.getSize(new Three.Vector3());
+      const largestSide = Math.max(size.x, size.y, size.z) || 1;
+      model.position.sub(center);
+      model.scale.setScalar(2.85 / largestSide);
+      const fittedBounds = new Three.Box3().setFromObject(model);
+      model.position.y -= fittedBounds.min.y;
+      fbxRoot.add(model);
+      catModelRoot = fbxRoot;
+      catMascot.classList.add("is-3d-ready");
+    }, undefined, () => {
+      catBubble.textContent = "猫猫暂时躲起来了，点点我再试一次。";
+    });
+
+    const fbxClock = new Three.Clock();
+    const animateFbxCat = () => {
+      const time = fbxClock.getElapsedTime();
+      fbxRoot.position.y = Math.sin(time * 1.45) * 0.055;
+      fbxRoot.rotation.y += (fbxRotation - fbxRoot.rotation.y) * 0.09;
+      fbxRenderer.render(fbxScene, fbxCamera);
+      window.requestAnimationFrame(animateFbxCat);
+    };
+    animateFbxCat();
+    return;
+
+    const THREE = window.THREE;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+    camera.position.set(0, 1.25, 9.6);
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setClearColor(0x000000, 0);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.88;
+    cat3DStage.appendChild(renderer.domElement);
+
+    const warmFur = new THREE.MeshStandardMaterial({ color: 0xeed6bb, roughness: 0.88, metalness: 0 });
+    const lightFur = new THREE.MeshStandardMaterial({ color: 0xffecd5, roughness: 0.92, metalness: 0 });
+    const darkFur = new THREE.MeshStandardMaterial({ color: 0x533a42, roughness: 0.83, metalness: 0 });
+    const maskFur = new THREE.MeshStandardMaterial({ color: 0x856d70, roughness: 0.86, metalness: 0 });
+    const eyeWhite = new THREE.MeshStandardMaterial({ color: 0xfffbf4, roughness: 0.42, metalness: 0 });
+    const eyeFur = new THREE.MeshStandardMaterial({ color: 0x23bdeb, roughness: 0.12, metalness: 0.16 });
+    const pupilFur = new THREE.MeshStandardMaterial({ color: 0x252229, roughness: 0.2, metalness: 0.02 });
+    const noseFur = new THREE.MeshStandardMaterial({ color: 0x8b6265, roughness: 0.65, metalness: 0 });
+    const root = new THREE.Group();
+    const body = new THREE.Group();
+    const head = new THREE.Group();
+    const tail = new THREE.Group();
+    root.add(body, head, tail);
+    root.rotation.y = -0.38;
+    scene.add(root);
+    catModelRoot = root;
+
+    const sphere = (parent, position, scale, material, segments = 24) => {
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, segments, Math.max(12, Math.round(segments * 0.7))), material);
+      mesh.position.set(position[0], position[1], position[2]);
+      mesh.scale.set(scale[0], scale[1], scale[2]);
+      parent.add(mesh);
+      return mesh;
+    };
+
+    sphere(body, [0, -0.45, 0], [1, 0.98, 0.78], warmFur, 32);
+    sphere(head, [0, 1.34, 0.05], [1.3, 1.16, 1], warmFur, 32);
+    sphere(head, [0, 1.18, 1.01], [0.82, 0.62, 0.08], maskFur, 26);
+    sphere(head, [0, 0.65, 1.09], [0.69, 0.38, 0.12], lightFur, 24);
+    sphere(body, [0, -0.22, 0.75], [0.52, 0.66, 0.1], lightFur, 22);
+    sphere(body, [-0.5, -1.18, 0.72], [0.36, 0.23, 0.25], darkFur, 20);
+    sphere(body, [0.5, -1.18, 0.72], [0.36, 0.23, 0.25], darkFur, 20);
+
+    const earGeometry = new THREE.ConeGeometry(0.48, 0.95, 4);
+    [[-0.72, 2.28, 0.02, -0.34], [0.72, 2.28, 0.02, 0.34]].forEach(([x, y, z, rotate]) => {
+      const ear = new THREE.Mesh(earGeometry, darkFur);
+      ear.position.set(x, y, z);
+      ear.rotation.z = rotate;
+      ear.rotation.y = Math.PI / 4;
+      head.add(ear);
+      const inner = new THREE.Mesh(new THREE.ConeGeometry(0.29, 0.59, 4), noseFur);
+      inner.position.set(x, y - 0.02, z + 0.2);
+      inner.rotation.copy(ear.rotation);
+      inner.scale.set(0.88, 0.83, 0.88);
+      head.add(inner);
+    });
+
+    [[-0.41, 1.34, 1.08], [0.41, 1.34, 1.08]].forEach(([x, y, z]) => {
+      sphere(head, [x, y, z], [0.3, 0.38, 0.07], eyeWhite, 22);
+      sphere(head, [x, y - 0.025, z + 0.07], [0.18, 0.26, 0.04], eyeFur, 20);
+      sphere(head, [x, y - 0.015, z + 0.11], [0.096, 0.16, 0.024], pupilFur, 18);
+      sphere(head, [x + (x < 0 ? -0.055 : 0.055), y + 0.09, z + 0.135], [0.045, 0.058, 0.014], eyeWhite, 12);
+    });
+    sphere(head, [0, 0.93, 1.22], [0.12, 0.08, 0.055], noseFur, 16);
+    const whiskerMaterial = new THREE.LineBasicMaterial({ color: 0xf5e8df, transparent: true, opacity: 0.92 });
+    [-1, 1].forEach((side) => {
+      [-0.06, 0.04, 0.14].forEach((offset) => {
+        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(side * 0.1, 0.92 + offset, 1.2), new THREE.Vector3(side * 0.66, 0.92 + offset * 1.4, 1.25), new THREE.Vector3(side * 0.98, 0.88 + offset * 1.7, 1.06)
+        ]), whiskerMaterial);
+        head.add(line);
+      });
+    });
+
+    const tailCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0.83, -0.57, -0.2), new THREE.Vector3(1.4, -0.05, -0.36), new THREE.Vector3(1.37, 0.63, -0.22), new THREE.Vector3(0.98, 0.78, -0.12)
+    ]);
+    const tailMesh = new THREE.Mesh(new THREE.TubeGeometry(tailCurve, 28, 0.16, 12, false), darkFur);
+    tail.add(tailMesh);
+
+
+    scene.add(new THREE.HemisphereLight(0xffefd9, 0x6f4660, 1.35));
+    const keyLight = new THREE.DirectionalLight(0xfff5e9, 1.05);
+    keyLight.position.set(-3, 5, 5);
+    scene.add(keyLight);
+    const fillLight = new THREE.PointLight(0xffa7b3, 0.55, 12);
+    fillLight.position.set(3, 1, 4);
+    scene.add(fillLight);
+
+    let baseRotation = root.rotation.y;
+    let dragging = false;
+    let moved = false;
+    let lastX = 0;
+    let lastY = 0;
+    catMascot.addEventListener("pointerdown", (event) => {
+      dragging = true;
+      moved = false;
+      lastX = event.clientX;
+      lastY = event.clientY;
+      catMascot.setPointerCapture?.(event.pointerId);
+    });
+    catMascot.addEventListener("pointermove", (event) => {
+      if (!dragging) return;
+      const deltaX = event.clientX - lastX;
+      const deltaY = event.clientY - lastY;
+      if (Math.abs(deltaX) + Math.abs(deltaY) > 3) moved = true;
+      baseRotation += deltaX * 0.015;
+      head.rotation.x = Math.max(-0.22, Math.min(0.22, head.rotation.x + deltaY * 0.004));
+      lastX = event.clientX;
+      lastY = event.clientY;
+    });
+    const releaseCat = (event) => {
+      if (!dragging) return;
+      dragging = false;
+      catMascot.dataset.dragged = moved ? "true" : "";
+      catMascot.releasePointerCapture?.(event.pointerId);
+    };
+    catMascot.addEventListener("pointerup", releaseCat);
+    catMascot.addEventListener("pointercancel", releaseCat);
+
+    const resize = () => {
+      const width = Math.max(1, cat3DStage.clientWidth);
+      const height = Math.max(1, cat3DStage.clientHeight);
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    };
+    new ResizeObserver(resize).observe(cat3DStage);
+    resize();
+    catMascot.classList.add("is-3d-ready");
+
+    const clock = new THREE.Clock();
+    const animate = () => {
+      const time = clock.getElapsedTime();
+      root.position.y = Math.sin(time * 1.55) * 0.08;
+      root.rotation.y += (baseRotation - root.rotation.y) * 0.08;
+      tail.rotation.y = Math.sin(time * 2.1) * 0.19;
+      head.rotation.z = Math.sin(time * 1.4) * 0.035;
+      renderer.render(scene, camera);
+      window.requestAnimationFrame(animate);
+    };
+    animate();
+  }
+
   function getCatMessage() {
+    const name = getCatName();
     const next = archiveRecords.filter((record) => formatRecordTime(record) > Date.now()).sort((a, b) => formatRecordTime(a) - formatRecordTime(b))[0];
     const unlockedLetter = futureLetters.find((letter) => letter.unlockDate <= getToday());
-    if (next) return `我算过啦，${getCountdownText(next)}。要去${next.activity || "约会"}，还要吃${next.menu || "好吃的"}！`;
-    if (unlockedLetter) return `有一封“${unlockedLetter.title}”已经可以打开啦。`;
-    if (coupleNotes.length) return `我偷偷记得你们的${coupleNotes[0].title}，要不要再加一条？`;
+    if (next) return `${name}算过啦，${getCountdownText(next)}。要去${next.activity || "约会"}，还要吃${next.menu || "好吃的"}！`;
+    if (unlockedLetter) return `${name}发现一封“${unlockedLetter.title}”已经可以打开啦。`;
+    if (coupleNotes.length) return `${name}偷偷记得你们的${coupleNotes[0].title}，要不要再加一条？`;
     if (futureLetters.length) return "未来的信已经收好，我会陪你们一起等。";
-    return ["今天也要好好想对方呀。", "我最喜欢你们一起打开这个角落。", "再来陪我一天，我会慢慢长大。", "下一次见面，记得带我一起期待。 "][Math.floor(Math.random() * 4)];
+    return [`${name}觉得今天也要好好想对方呀。`, `${name}最喜欢你们一起打开这个角落。`, "再来陪我一天，我会慢慢长大。", "下一次见面，记得带我一起期待。 "][Math.floor(Math.random() * 4)];
   }
 
   function updateCatMascot() {
-    const stage = getCatStage();
     catMascot.classList.remove("is-kitten", "is-young", "is-grown");
-    catMascot.classList.add(stage.className);
-    catGrowthLabel.textContent = `陪伴第 ${catState.days} 天 · ${stage.name}${catState.streak > 1 ? ` · 连续 ${catState.streak} 天` : ""}`;
+    const name = getCatName();
+    catMascot.setAttribute("aria-label", `和${name}说话`);
+    catMascot.title = `和${name}说话`;
+    catGrowthLabel.textContent = catState.name ? `${name} · 已陪伴 ${catState.days} 天${catState.streak > 1 ? ` · 连续 ${catState.streak} 天` : ""}` : "正在等你给它取名字";
     catBubble.textContent = getCatMessage();
   }
 
