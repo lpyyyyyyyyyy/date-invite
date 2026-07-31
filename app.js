@@ -7,6 +7,7 @@
   const THINGS_KEY = "cute-date-invite-100-things-v1";
   const COUPLE_NOTES_KEY = "cute-date-invite-couple-notes-v1";
   const FUTURE_LETTERS_KEY = "cute-date-invite-future-letters-v1";
+  const CAT_KEY = "cute-date-invite-cat-v1";
   const noLabels = ["不要", "再想想嘛", "点不到我", "真的不要吗"];
   const hundredThings = [
     "一起骑自行车", "穿对方挑选的衣服", "一起去露营", "一起看烟花", "一起坐热气球", "一起跑步健身", "一起唱歌", "亲手写信给对方", "一起过圣诞节", "一起打游戏",
@@ -77,6 +78,9 @@
   const memoryPhoto = document.querySelector("#memory-photo");
   const memoryPhotos = document.querySelector("#memory-photos");
   const homeCountdown = document.querySelector("#home-countdown");
+  const catMascot = document.querySelector("#cat-mascot");
+  const catGrowthLabel = document.querySelector("#cat-growth-label");
+  const catBubble = document.querySelector("#cat-bubble");
   const memoryMeta = document.querySelector("#memory-meta");
   const mapLocation = document.querySelector("#map-location");
   const mapLink = document.querySelector("#map-link");
@@ -131,6 +135,7 @@
   let completedThings = loadCompletedThings();
   let coupleNotes = loadCoupleNotes();
   let futureLetters = loadFutureLetters();
+  let catState = loadCatState();
   let archiveReturnScreen = 1;
   let activeMemoryRecordId = "";
   let selectedMood = "";
@@ -311,6 +316,39 @@
     }
   }
 
+  function loadCatState() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(CAT_KEY) || "null");
+      if (!saved || typeof saved !== "object") return { days: 0, streak: 0, lastVisitDate: "" };
+      return {
+        days: Number.isInteger(saved.days) && saved.days >= 0 ? saved.days : 0,
+        streak: Number.isInteger(saved.streak) && saved.streak >= 0 ? saved.streak : 0,
+        lastVisitDate: /^\d{4}-\d{2}-\d{2}$/.test(saved.lastVisitDate || "") ? saved.lastVisitDate : ""
+      };
+    } catch (error) {
+      return { days: 0, streak: 0, lastVisitDate: "" };
+    }
+  }
+
+  function persistCatState() {
+    try {
+      localStorage.setItem(CAT_KEY, JSON.stringify(catState));
+    } catch (error) {
+      // The mascot remains usable even if browser storage is unavailable.
+    }
+  }
+
+  function recordCatVisit() {
+    const today = getToday();
+    if (catState.lastVisitDate === today) return;
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    catState.streak = catState.lastVisitDate === localDateString(yesterday) ? catState.streak + 1 : 1;
+    catState.days += 1;
+    catState.lastVisitDate = today;
+    persistCatState();
+  }
+
   function initialize() {
     document.querySelector(".progress").hidden = true;
     dateInput.min = getToday();
@@ -320,6 +358,8 @@
     syncActivitySelection();
     syncFoodSelection();
     updateHomeCountdown();
+    recordCatVisit();
+    updateCatMascot();
     window.setInterval(updateHomeCountdown, 60000);
 
     document.querySelector(".home-plan").addEventListener("click", () => showScreen(1));
@@ -329,6 +369,7 @@
     document.querySelector(".keepsakes-open").addEventListener("click", () => showScreen(14));
     document.querySelector(".couple-book-open").addEventListener("click", () => showScreen(15));
     document.querySelector(".future-letter-open").addEventListener("click", () => showScreen(16));
+    catMascot.addEventListener("click", chatWithCat);
     document.querySelector(".truth-open").addEventListener("click", () => showScreen(12));
     document.querySelector(".dice-open").addEventListener("click", () => showScreen(13));
     yesButton.addEventListener("click", () => {
@@ -411,7 +452,10 @@
     });
     document.querySelector(".progress").hidden = screenNumber === 0 || screenNumber > 6;
 
-    if (screenNumber === 0) updateHomeCountdown();
+    if (screenNumber === 0) {
+      updateHomeCountdown();
+      updateCatMascot();
+    }
     if (screenNumber === 1) resetInvitationButtons();
     if (screenNumber === 3) {
       dateInput.min = getToday();
@@ -1535,6 +1579,37 @@
   function updateHomeCountdown() {
     const next = archiveRecords.filter((record) => formatRecordTime(record) > Date.now()).sort((a, b) => formatRecordTime(a) - formatRecordTime(b))[0];
     homeCountdown.textContent = next ? `${getCountdownText(next)} · ${formatDateForDisplay(next.date)}` : "还没有下一次约会计划";
+  }
+
+  function getCatStage() {
+    if (catState.days >= 30) return { name: "大猫", className: "is-grown" };
+    if (catState.days >= 7) return { name: "小少年猫", className: "is-young" };
+    return { name: "小猫", className: "is-kitten" };
+  }
+
+  function getCatMessage() {
+    const next = archiveRecords.filter((record) => formatRecordTime(record) > Date.now()).sort((a, b) => formatRecordTime(a) - formatRecordTime(b))[0];
+    const unlockedLetter = futureLetters.find((letter) => letter.unlockDate <= getToday());
+    if (next) return `我算过啦，${getCountdownText(next)}。要去${next.activity || "约会"}，还要吃${next.menu || "好吃的"}！`;
+    if (unlockedLetter) return `有一封“${unlockedLetter.title}”已经可以打开啦。`;
+    if (coupleNotes.length) return `我偷偷记得你们的${coupleNotes[0].title}，要不要再加一条？`;
+    if (futureLetters.length) return "未来的信已经收好，我会陪你们一起等。";
+    return ["今天也要好好想对方呀。", "我最喜欢你们一起打开这个角落。", "再来陪我一天，我会慢慢长大。", "下一次见面，记得带我一起期待。 "][Math.floor(Math.random() * 4)];
+  }
+
+  function updateCatMascot() {
+    const stage = getCatStage();
+    catMascot.classList.remove("is-kitten", "is-young", "is-grown");
+    catMascot.classList.add(stage.className);
+    catGrowthLabel.textContent = `陪伴第 ${catState.days} 天 · ${stage.name}${catState.streak > 1 ? ` · 连续 ${catState.streak} 天` : ""}`;
+    catBubble.textContent = getCatMessage();
+  }
+
+  function chatWithCat() {
+    catMascot.classList.remove("is-chatting");
+    void catMascot.offsetWidth;
+    catMascot.classList.add("is-chatting");
+    catBubble.textContent = getCatMessage();
   }
 
   function openArchive() {
