@@ -274,11 +274,6 @@
     syncFoodSelection();
     updateHomeCountdown();
 
-    if (state.dodgeCount > 0) {
-      noButton.textContent = noLabels[state.dodgeCount % noLabels.length];
-      requestAnimationFrame(() => activateDodgeLayout(false));
-    }
-
     document.querySelector(".home-plan").addEventListener("click", () => showScreen(1));
     document.querySelector(".anniversary-open").addEventListener("click", () => showScreen(9));
     document.querySelector(".things-open").addEventListener("click", () => showScreen(10));
@@ -364,9 +359,7 @@
     document.querySelector(".progress").hidden = screenNumber === 0 || screenNumber > 6;
 
     if (screenNumber === 0) updateHomeCountdown();
-    if (screenNumber === 1 && state.dodgeCount > 0) {
-      requestAnimationFrame(() => positionDodgeButtons(false));
-    }
+    if (screenNumber === 1) resetInvitationButtons();
     if (screenNumber === 3) {
       dateInput.min = getToday();
       dateInput.value = state.date;
@@ -401,6 +394,20 @@
       announceNoMovement();
       persistState();
     }
+  }
+
+  function resetInvitationButtons() {
+    state.dodgeCount = 0;
+    state.currentCorner = "";
+    actionZone.classList.remove("is-active", "is-priming");
+    [yesButton, noButton].forEach((button) => {
+      button.style.removeProperty("left");
+      button.style.removeProperty("top");
+      button.style.removeProperty("transform");
+    });
+    noButton.textContent = noLabels[0];
+    movementStatus.textContent = "";
+    persistState();
   }
 
   function activateDodgeLayout(animate) {
