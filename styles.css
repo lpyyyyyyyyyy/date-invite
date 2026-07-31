@@ -279,8 +279,13 @@ h1 {
 
 .next-date-card p { margin: 0 0 5px; color: #287a6d; font-size: 12px; font-weight: 900; }
 .next-date-card strong { display: block; color: #326f65; font-size: 13px; line-height: 1.55; }
-.cat-corner { display: grid; grid-template-columns: 118px minmax(0, 1fr); align-items: center; gap: 8px; width: min(100%, 420px); margin: 14px auto 0; padding: 11px 14px; border: 1px solid #ecd7bf; border-radius: 8px; background: #fff9ef; text-align: left; }
-.cat-mascot { position: relative; width: 112px; height: 96px; padding: 0; border: 0; background: transparent; cursor: pointer; transform-origin: 50% 85%; transition: transform 220ms ease; }
+.cat-corner { position: fixed; z-index: 60; right: max(12px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: 136px minmax(0, 178px); align-items: end; gap: 2px; width: min(calc(100vw - 24px), 320px); pointer-events: none; text-align: left; }
+.cat-mascot { position: relative; width: 136px; height: 138px; padding: 0; border: 0; background: transparent; cursor: grab; touch-action: none; pointer-events: auto; transform-origin: 50% 85%; transition: transform 220ms ease; }
+.cat-mascot:active { cursor: grabbing; }
+.cat-3d-stage { position: absolute; z-index: 5; inset: 0; display: none; overflow: hidden; border-radius: 50%; filter: drop-shadow(0 9px 8px rgba(95, 57, 46, 0.23)); }
+.cat-mascot.is-3d-ready .cat-3d-stage { display: block; }
+.cat-3d-stage canvas { display: block; width: 100%; height: 100%; }
+.cat-mascot.is-3d-ready::before, .cat-mascot.is-3d-ready .cat-ear, .cat-mascot.is-3d-ready .cat-face, .cat-mascot.is-3d-ready .cat-paw, .cat-mascot.is-3d-ready .cat-tail { display: none; }
 .cat-mascot::before { position: absolute; z-index: 1; right: 14px; bottom: 5px; left: 14px; height: 73px; border: 3px solid #573f3d; border-radius: 48% 48% 42% 42%; background: #e5ad7e; box-shadow: inset 0 10px 0 rgba(255, 240, 224, 0.42), 3px 4px 0 rgba(87, 63, 61, 0.12); content: ""; }
 .cat-ear { position: absolute; z-index: 0; top: 4px; width: 37px; height: 42px; border: 3px solid #573f3d; border-radius: 9px 22px 8px 22px; background: #e5ad7e; }
 .cat-ear-left { left: 19px; transform: rotate(-25deg); }
@@ -293,18 +298,23 @@ h1 {
 .cat-paw-left { left: 20px; transform: rotate(7deg); }
 .cat-paw-right { right: 20px; transform: rotate(-7deg); }
 .cat-tail { position: absolute; z-index: 0; right: 3px; bottom: 15px; width: 38px; height: 48px; border: 9px solid #e5ad7e; border-bottom: 0; border-left: 0; border-radius: 0 40px 0 0; transform: rotate(12deg); }
-.cat-mascot.is-young { transform: scale(1.08); }
-.cat-mascot.is-grown { transform: scale(1.16); }
-.cat-mascot.is-grown::before, .cat-mascot.is-grown .cat-ear { background: #cf8d62; }
-.cat-mascot.is-grown .cat-tail { border-color: #cf8d62; }
 .cat-mascot.is-chatting { animation: cat-hop 600ms ease; }
+.cat-chat { min-width: 0; margin-bottom: 18px; pointer-events: none; }
 .cat-chat p { margin: 0; }
 .cat-chat > p:first-child { color: #a46550; font-size: 11px; font-weight: 900; }
 .cat-chat strong { display: block; margin-top: 3px; color: #573f3d; font-size: 12px; }
-.cat-bubble { position: relative; margin-top: 7px !important; padding: 8px 9px; border: 1px solid #ebd3bd; border-radius: 8px; color: #765c55; background: #fff; font-size: 12px; font-weight: 700; line-height: 1.5; }
+.cat-bubble { position: relative; margin-top: 7px !important; padding: 8px 9px; border: 1px solid #ebd3bd; border-radius: 8px; color: #765c55; background: #fff; box-shadow: 3px 3px 0 rgba(222, 156, 147, 0.16); font-size: 12px; font-weight: 700; line-height: 1.5; }
 .cat-bubble::before { position: absolute; top: 12px; left: -6px; width: 10px; height: 10px; border-bottom: 1px solid #ebd3bd; border-left: 1px solid #ebd3bd; background: #fff; content: ""; transform: rotate(45deg); }
 @keyframes cat-blink { 0%, 46%, 54%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.1); } }
 @keyframes cat-hop { 0%, 100% { transform: translateY(0); } 35% { transform: translateY(-9px) rotate(-4deg); } 65% { transform: translateY(-3px) rotate(4deg); } }
+
+@media (max-width: 460px) {
+  .cat-corner { right: 5px; bottom: max(7px, env(safe-area-inset-bottom)); grid-template-columns: 106px minmax(0, 154px); width: min(calc(100vw - 10px), 265px); }
+  .cat-mascot { width: 106px; height: 110px; }
+  .cat-chat { margin-bottom: 12px; }
+  .cat-bubble { padding: 7px 8px; font-size: 11px; }
+  .cat-chat strong { font-size: 11px; }
+}
 
 .invite-art {
   position: relative;
@@ -748,6 +758,25 @@ h1 {
 .roulette-spin { width: 100%; margin-top: 15px; }
 .roulette-choose { width: 100%; margin-top: 12px; }
 .roulette-choose:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.cat-name-dialog {
+  width: min(calc(100% - 32px), 390px);
+  padding: 28px 22px 24px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: 10px 10px 0 var(--pink-soft);
+  text-align: center;
+}
+
+.cat-name-dialog::backdrop { background: rgba(63, 44, 53, 0.42); }
+.cat-name-dialog h2 { margin: 0; font-size: 25px; }
+.cat-name-copy { margin: 10px 0 18px; color: #765c55; font-size: 14px; font-weight: 700; line-height: 1.6; }
+.cat-name-dialog label { display: block; margin-bottom: 7px; text-align: left; color: #573f3d; font-size: 13px; font-weight: 900; }
+.cat-name-dialog input { width: 100%; min-height: 48px; margin-bottom: 14px; padding: 10px 12px; border: 2px solid #e8b3ad; border-radius: 8px; color: var(--ink); background: #fff; font: inherit; }
+.cat-name-dialog input:focus { outline: 3px solid rgba(222, 111, 120, 0.28); outline-offset: 2px; }
+.cat-name-dialog .primary-button { width: 100%; }
 
 .result-screen {
   padding-left: 20px;

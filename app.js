@@ -1596,12 +1596,6 @@
     homeCountdown.textContent = next ? `${getCountdownText(next)} · ${formatDateForDisplay(next.date)}` : "还没有下一次约会计划";
   }
 
-  function getCatStage() {
-    if (catState.days >= 30) return { name: "大猫", className: "is-grown" };
-    if (catState.days >= 7) return { name: "小少年猫", className: "is-young" };
-    return { name: "小猫", className: "is-kitten" };
-  }
-
   function getCatName() {
     return catState.name || "猫猫";
   }
@@ -1899,11 +1893,10 @@
     if (unlockedLetter) return `${name}发现一封“${unlockedLetter.title}”已经可以打开啦。`;
     if (coupleNotes.length) return `${name}偷偷记得你们的${coupleNotes[0].title}，要不要再加一条？`;
     if (futureLetters.length) return "未来的信已经收好，我会陪你们一起等。";
-    return [`${name}觉得今天也要好好想对方呀。`, `${name}最喜欢你们一起打开这个角落。`, "再来陪我一天，我会慢慢长大。", "下一次见面，记得带我一起期待。 "][Math.floor(Math.random() * 4)];
+    return [`${name}觉得今天也要好好想对方呀。`, `${name}最喜欢你们一起打开这个角落。`, "再来陪我一天，我会一直陪着你们。", "下一次见面，记得带我一起期待。 "][Math.floor(Math.random() * 4)];
   }
 
   function updateCatMascot() {
-    catMascot.classList.remove("is-kitten", "is-young", "is-grown");
     const name = getCatName();
     catMascot.setAttribute("aria-label", `和${name}说话`);
     catMascot.title = `和${name}说话`;
