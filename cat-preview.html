@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffd7d2">
+  <title>暹罗猫预览</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { width: 100%; min-height: 100%; margin: 0; overflow: hidden; background: #ffd7d2; font-family: "Microsoft YaHei", sans-serif; }
+    #cat-preview { position: fixed; inset: 0; touch-action: none; cursor: grab; }
+    #cat-preview:active { cursor: grabbing; }
+    canvas { display: block; width: 100%; height: 100%; }
+    .label { position: fixed; top: max(24px, env(safe-area-inset-top)); left: 0; right: 0; color: #4d302b; text-align: center; pointer-events: none; }
+    .label p { margin: 0; font-size: 12px; font-weight: 900; letter-spacing: 0; }
+    .label h1 { margin: 6px 0 0; font-size: 28px; letter-spacing: 0; }
+  </style>
+</head>
+<body>
+  <div class="label" aria-hidden="true"><p>LEO & EMILY</p><h1>暹罗小猫</h1></div>
+  <main id="cat-preview" aria-label="可旋转查看的暹罗猫毛绒玩偶模型"></main>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" crossorigin="anonymous"></script>
+  <script>
+    (() => {
+      const THREE = window.THREE;
+      const stage = document.querySelector("#cat-preview");
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+      camera.position.set(0, 1.25, 7.2);
+      const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      stage.appendChild(renderer.domElement);
+
+      const cream = new THREE.MeshToonMaterial({ color: 0xf7e4cb });
+      const pale = new THREE.MeshToonMaterial({ color: 0xfff5e7 });
+      const point = new THREE.MeshToonMaterial({ color: 0x645054 });
+      const white = new THREE.MeshToonMaterial({ color: 0xfffbf3 });
+      const blue = new THREE.MeshStandardMaterial({ color: 0x38bee8, roughness: 0.18, metalness: 0.1 });
+      const pupil = new THREE.MeshStandardMaterial({ color: 0x2d2930, roughness: 0.32, metalness: 0 });
+      const rose = new THREE.MeshToonMaterial({ color: 0x8f686a });
+      const root = new THREE.Group();
+      const body = new THREE.Group();
+      const head = new THREE.Group();
+      const tail = new THREE.Group();
+      root.add(body, head, tail);
+      root.rotation.y = -0.42;
+      scene.add(root);
+
+      function fluffy(parent, position, scale, material, detail = 26) {
+        const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, detail, Math.max(12, Math.round(detail * 0.7))), material);
+        mesh.position.set(...position);
+        mesh.scale.set(...scale);
+        parent.add(mesh);
+        return mesh;
+      }
+
+      fluffy(body, [0, -0.34, 0], [1.02, 1.08, 0.8], cream, 32);
+      fluffy(head, [0, 1.2, 0.04], [1.3, 1.16, 1], cream, 32);
+      fluffy(head, [0, 1.08, 0.75], [0.9, 0.7, 0.14], point, 26);
+      fluffy(head, [0, 0.54, 0.89], [0.76, 0.42, 0.18], pale, 24);
+      fluffy(body, [0, -0.18, 0.78], [0.58, 0.75, 0.12], pale, 22);
+      fluffy(body, [-0.57, -1.04, 0.5], [0.42, 0.27, 0.35], point, 20);
+      fluffy(body, [0.57, -1.04, 0.5], [0.42, 0.27, 0.35], point, 20);
+
+      const earShape = new THREE.ConeGeometry(0.5, 0.98, 4);
+      [[-0.66, 1.98, 0.02, -0.34], [0.66, 1.98, 0.02, 0.34]].forEach(([x, y, z, rotate]) => {
+        const ear = new THREE.Mesh(earShape, point);
+        ear.position.set(x, y, z); ear.rotation.set(0, Math.PI / 4, rotate); head.add(ear);
+        const inner = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.6, 4), rose);
+        inner.position.set(x, y - 0.02, z + 0.2); inner.rotation.copy(ear.rotation); inner.scale.set(0.88, 0.82, 0.88); head.add(inner);
+      });
+      [[-0.41, 1.22, 0.96], [0.41, 1.22, 0.96]].forEach(([x, y, z]) => {
+        fluffy(head, [x, y, z], [0.34, 0.42, 0.095], white, 22);
+        fluffy(head, [x, y - 0.025, z + 0.09], [0.21, 0.29, 0.055], blue, 20);
+        fluffy(head, [x, y - 0.015, z + 0.135], [0.108, 0.18, 0.03], pupil, 18);
+        fluffy(head, [x + (x < 0 ? -0.065 : 0.065), y + 0.1, z + 0.165], [0.055, 0.07, 0.018], white, 12);
+      });
+      fluffy(head, [0, 0.9, 0.96], [0.14, 0.1, 0.07], rose, 16);
+      const tailCurve = new THREE.CatmullRomCurve3([new THREE.Vector3(0.88, -0.58, -0.2), new THREE.Vector3(1.45, -0.05, -0.36), new THREE.Vector3(1.42, 0.66, -0.22), new THREE.Vector3(1, 0.82, -0.12)]);
+      tail.add(new THREE.Mesh(new THREE.TubeGeometry(tailCurve, 28, 0.17, 12, false), point));
+
+      const tuft = new THREE.SphereGeometry(1, 12, 8);
+      for (let i = 0; i < 86; i += 1) {
+        const isHead = i % 3 !== 0;
+        const radius = isHead ? 0.92 : 1.08;
+        const theta = i * 12.64;
+        const phi = Math.acos(1 - (2 * ((i * 37) % 83)) / 83);
+        const mesh = new THREE.Mesh(tuft, i % 5 === 0 ? pale : i % 11 === 0 ? point : cream);
+        mesh.position.set(Math.sin(phi) * Math.cos(theta) * radius, (isHead ? 1.13 : -0.28) + Math.cos(phi) * radius * 0.82, Math.sin(phi) * Math.sin(theta) * radius * 0.69);
+        const size = 0.105 + (i % 4) * 0.022;
+        mesh.scale.set(size, size * 0.82, size);
+        (isHead ? head : body).add(mesh);
+      }
+      scene.add(new THREE.HemisphereLight(0xffefd9, 0x6f4660, 2.3));
+      const key = new THREE.DirectionalLight(0xfff5e9, 2.1); key.position.set(-3, 5, 5); scene.add(key);
+      const fill = new THREE.PointLight(0xffa7b3, 1.5, 12); fill.position.set(3, 1, 4); scene.add(fill);
+
+      let targetRotation = root.rotation.y, dragging = false, lastX = 0, lastY = 0;
+      stage.addEventListener("pointerdown", (event) => { dragging = true; lastX = event.clientX; lastY = event.clientY; stage.setPointerCapture(event.pointerId); });
+      stage.addEventListener("pointermove", (event) => { if (!dragging) return; targetRotation += (event.clientX - lastX) * 0.015; head.rotation.x = Math.max(-0.22, Math.min(0.22, head.rotation.x + (event.clientY - lastY) * 0.004)); lastX = event.clientX; lastY = event.clientY; });
+      stage.addEventListener("pointerup", () => { dragging = false; });
+      stage.addEventListener("pointercancel", () => { dragging = false; });
+      function resize() { const width = stage.clientWidth, height = stage.clientHeight; renderer.setSize(width, height, false); camera.aspect = width / height; camera.updateProjectionMatrix(); }
+      new ResizeObserver(resize).observe(stage); resize();
+      const clock = new THREE.Clock();
+      (function animate() { const time = clock.getElapsedTime(); root.position.y = Math.sin(time * 1.5) * 0.1; root.rotation.y += (targetRotation - root.rotation.y) * 0.08; tail.rotation.y = Math.sin(time * 2.1) * 0.2; head.rotation.z = Math.sin(time * 1.4) * 0.035; renderer.render(scene, camera); requestAnimationFrame(animate); })();
+    })();
+  </script>
+</body>
+</html>
