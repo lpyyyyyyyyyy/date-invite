@@ -1649,6 +1649,7 @@
     const fbxRoot = new Three.Group();
     fbxRoot.rotation.y = -0.35;
     fbxScene.add(fbxRoot);
+    let fbxModelSize = null;
     fbxScene.add(new Three.HemisphereLight(0xfff1e6, 0x694f58, 1.65));
     const fbxKeyLight = new Three.DirectionalLight(0xffffff, 1.25);
     fbxKeyLight.position.set(-3, 5, 5);
@@ -1693,6 +1694,13 @@
       const height = Math.max(1, cat3DStage.clientHeight);
       fbxRenderer.setSize(width, height, false);
       fbxCamera.aspect = width / height;
+      if (fbxModelSize) {
+        const halfFov = Three.MathUtils.degToRad(fbxCamera.fov / 2);
+        const verticalDistance = fbxModelSize.y / (2 * Math.tan(halfFov));
+        const horizontalDistance = fbxModelSize.x / (2 * Math.tan(halfFov) * fbxCamera.aspect);
+        fbxCamera.position.set(0, fbxModelSize.y * 0.48, Math.max(verticalDistance, horizontalDistance) * 1.65);
+        fbxCamera.lookAt(0, fbxModelSize.y * 0.48, 0);
+      }
       fbxCamera.updateProjectionMatrix();
     };
     if (window.ResizeObserver) new ResizeObserver(resizeFbxCat).observe(cat3DStage);
@@ -1713,10 +1721,15 @@
       model.position.sub(center);
       model.scale.setScalar(2.85 / largestSide);
       const fittedBounds = new Three.Box3().setFromObject(model);
+      const fittedCenter = fittedBounds.getCenter(new Three.Vector3());
+      model.position.x -= fittedCenter.x;
+      model.position.z -= fittedCenter.z;
       model.position.y -= fittedBounds.min.y;
+      fbxModelSize = fittedBounds.getSize(new Three.Vector3());
       fbxRoot.add(model);
       catModelRoot = fbxRoot;
       catMascot.classList.add("is-3d-ready");
+      resizeFbxCat();
     }, undefined, () => {
       catBubble.textContent = "猫猫暂时躲起来了，点点我再试一次。";
     });

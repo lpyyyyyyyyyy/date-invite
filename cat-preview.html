@@ -43,6 +43,7 @@
       const root = new THREE.Group();
       root.rotation.y = -0.35;
       scene.add(root);
+      let modelSize = null;
       scene.add(new THREE.HemisphereLight(0xfff1e6, 0x694f58, 1.65));
       const key = new THREE.DirectionalLight(0xffffff, 1.25);
       key.position.set(-3, 5, 5);
@@ -64,8 +65,13 @@
         model.position.sub(center);
         model.scale.setScalar(2.85 / (Math.max(size.x, size.y, size.z) || 1));
         const fittedBounds = new THREE.Box3().setFromObject(model);
+        const fittedCenter = fittedBounds.getCenter(new THREE.Vector3());
+        model.position.x -= fittedCenter.x;
+        model.position.z -= fittedCenter.z;
         model.position.y -= fittedBounds.min.y;
+        modelSize = fittedBounds.getSize(new THREE.Vector3());
         root.add(model);
+        resize();
       }, undefined, () => { error.style.display = "block"; });
 
       let targetRotation = root.rotation.y;
@@ -87,7 +93,13 @@
         const height = stage.clientHeight;
         renderer.setSize(width, height, false);
         camera.aspect = width / height;
-        camera.position.z = width / height < 0.7 ? 9.6 : 6.3;
+        if (modelSize) {
+          const halfFov = THREE.MathUtils.degToRad(camera.fov / 2);
+          const verticalDistance = modelSize.y / (2 * Math.tan(halfFov));
+          const horizontalDistance = modelSize.x / (2 * Math.tan(halfFov) * camera.aspect);
+          camera.position.set(0, modelSize.y * 0.48, Math.max(verticalDistance, horizontalDistance) * 1.65);
+          camera.lookAt(0, modelSize.y * 0.48, 0);
+        }
         camera.updateProjectionMatrix();
       }
       new ResizeObserver(resize).observe(stage);

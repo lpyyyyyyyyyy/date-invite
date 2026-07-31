@@ -1,4 +1,4 @@
-const CACHE_NAME = "leo-emily-runtime-v2";
+const CACHE_NAME = "leo-emily-runtime-v3";
 const OFFLINE_ASSETS = [
   "./",
   "./index.html",
