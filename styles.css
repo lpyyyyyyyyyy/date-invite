@@ -266,6 +266,7 @@ h1 {
 .yellow-icon { color: #725100; background: var(--yellow); }
 .blue-icon { color: #275b80; background: var(--blue); font-size: 15px; font-weight: 900; }
 .purple-icon { color: #5b4077; background: #eadcf6; font-size: 25px; font-weight: 900; }
+.pink-icon { color: #9a3154; background: #ffd3df; }
 
 .next-date-card {
   width: min(100%, 420px);
@@ -280,8 +281,14 @@ h1 {
 .next-date-card p { margin: 0 0 5px; color: #287a6d; font-size: 12px; font-weight: 900; }
 .next-date-card strong { display: block; color: #326f65; font-size: 13px; line-height: 1.55; }
 .cat-corner { position: fixed; z-index: 60; right: max(12px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: 136px minmax(0, 178px); align-items: end; gap: 2px; width: min(calc(100vw - 24px), 320px); pointer-events: none; text-align: left; }
-.cat-mascot { position: relative; width: 136px; height: 138px; padding: 0; border: 0; background: transparent; cursor: grab; touch-action: none; pointer-events: auto; transform-origin: 50% 85%; transition: transform 220ms ease; }
-.cat-mascot:active { cursor: grabbing; }
+.cat-corner[hidden] { display: none !important; }
+.cat-mascot { position: relative; width: 136px; height: 138px; padding: 0; border: 0; background: transparent; cursor: pointer; touch-action: manipulation; pointer-events: auto; transform-origin: 50% 85%; transition: transform 220ms ease; }
+.cat-mascot:active { cursor: pointer; }
+.hello-kitty-image { position: relative; z-index: 6; display: block; width: 100%; height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; }
+.cat-mascot.is-2d-ready::before, .cat-mascot.is-2d-ready .cat-ear, .cat-mascot.is-2d-ready .cat-face, .cat-mascot.is-2d-ready .cat-paw, .cat-mascot.is-2d-ready .cat-tail, .cat-mascot.is-2d-ready .cat-3d-stage { display: none; }
+.cat-mascot.is-2d-ready::after { position: absolute; z-index: 7; top: 16%; right: -9%; opacity: 0; color: #f36f9d; content: "♥"; font-size: 34px; pointer-events: none; }
+.cat-mascot.is-2d-ready.is-chatting .hello-kitty-image { animation: kitty-greeting 1180ms ease-in-out; }
+.cat-mascot.is-2d-ready.is-chatting::after { animation: kitty-heart 1180ms ease-out; }
 .cat-3d-stage { position: absolute; z-index: 5; inset: 0; display: none; overflow: visible; filter: drop-shadow(0 9px 8px rgba(95, 57, 46, 0.23)); }
 .cat-mascot.is-3d-ready .cat-3d-stage { display: block; }
 .cat-3d-stage canvas { display: block; width: 100%; height: 100%; }
@@ -305,8 +312,17 @@ h1 {
 .cat-chat strong { display: block; margin-top: 3px; color: #573f3d; font-size: 12px; }
 .cat-bubble { position: relative; margin-top: 7px !important; padding: 8px 9px; border: 1px solid #ebd3bd; border-radius: 8px; color: #765c55; background: #fff; box-shadow: 3px 3px 0 rgba(222, 156, 147, 0.16); font-size: 12px; font-weight: 700; line-height: 1.5; }
 .cat-bubble::before { position: absolute; top: 12px; left: -6px; width: 10px; height: 10px; border-bottom: 1px solid #ebd3bd; border-left: 1px solid #ebd3bd; background: #fff; content: ""; transform: rotate(45deg); }
+.pet-screen { min-height: 100dvh; background: #fff4f6; }
+.is-pet-screen .cat-corner { top: 63%; right: 50%; bottom: auto; display: flex; width: min(calc(100vw - 28px), 350px); flex-direction: column; align-items: center; gap: 0; transform: translate(50%, -50%); text-align: center; }
+.is-pet-screen .cat-mascot { width: 270px; height: 360px; transform-origin: 50% 82%; }
+.is-pet-screen .cat-chat { order: -1; width: min(100%, 290px); margin: 0 0 4px; }
+.is-pet-screen .cat-chat > p:first-child { color: #c14f75; }
+.is-pet-screen .cat-chat strong { color: #92516c; }
+.is-pet-screen .cat-bubble::before { top: auto; bottom: -6px; left: 50%; border-top: 1px solid #ebd3bd; border-right: 1px solid #ebd3bd; border-bottom: 0; border-left: 0; transform: translateX(-50%) rotate(45deg); }
 @keyframes cat-blink { 0%, 46%, 54%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.1); } }
 @keyframes cat-hop { 0%, 100% { transform: translateY(0); } 35% { transform: translateY(-9px) rotate(-4deg); } 65% { transform: translateY(-3px) rotate(4deg); } }
+@keyframes kitty-greeting { 0%, 100% { transform: translateY(0) rotate(0deg); } 20% { transform: translateY(-10px) rotate(-2deg); } 42% { transform: translateY(-3px) rotate(2deg); } 64% { transform: translateY(-8px) rotate(-1deg); } 82% { transform: translateY(-2px) rotate(1deg); } }
+@keyframes kitty-heart { 0% { opacity: 0; transform: translate(-5px, 16px) scale(0.5); } 26% { opacity: 1; } 100% { opacity: 0; transform: translate(24px, -42px) scale(1.15); } }
 
 @media (max-width: 460px) {
   .cat-corner { right: 5px; bottom: max(7px, env(safe-area-inset-bottom)); grid-template-columns: 106px minmax(0, 154px); width: min(calc(100vw - 10px), 265px); }
@@ -314,6 +330,8 @@ h1 {
   .cat-chat { margin-bottom: 12px; }
   .cat-bubble { padding: 7px 8px; font-size: 11px; }
   .cat-chat strong { font-size: 11px; }
+  .is-pet-screen .cat-corner { top: 65%; width: min(calc(100vw - 20px), 330px); }
+  .is-pet-screen .cat-mascot { width: 246px; height: 330px; }
 }
 
 .invite-art {

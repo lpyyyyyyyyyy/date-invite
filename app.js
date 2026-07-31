@@ -78,6 +78,7 @@
   const memoryPhoto = document.querySelector("#memory-photo");
   const memoryPhotos = document.querySelector("#memory-photos");
   const homeCountdown = document.querySelector("#home-countdown");
+  const catFloat = document.querySelector("#cat-float");
   const catMascot = document.querySelector("#cat-mascot");
   const cat3DStage = document.querySelector("#cat-3d-stage");
   const catGrowthLabel = document.querySelector("#cat-growth-label");
@@ -376,6 +377,7 @@
     document.querySelector(".keepsakes-open").addEventListener("click", () => showScreen(14));
     document.querySelector(".couple-book-open").addEventListener("click", () => showScreen(15));
     document.querySelector(".future-letter-open").addEventListener("click", () => showScreen(16));
+    document.querySelector(".pet-open").addEventListener("click", () => showScreen(17));
     catMascot.addEventListener("click", (event) => {
       if (catMascot.dataset.dragged === "true") {
         catMascot.dataset.dragged = "";
@@ -466,6 +468,8 @@
       dot.classList.toggle("is-current", Number(dot.dataset.progress) === screenNumber);
     });
     document.querySelector(".progress").hidden = screenNumber === 0 || screenNumber > 6;
+    document.body.classList.toggle("is-pet-screen", screenNumber === 17);
+    catFloat.hidden = screenNumber !== 17;
 
     if (screenNumber === 0) {
       updateHomeCountdown();
@@ -495,6 +499,7 @@
       if (!futureLetterDate.value) futureLetterDate.value = getTomorrow();
       renderFutureLetters();
     }
+    if (screenNumber === 17) updateCatMascot();
 
     window.scrollTo({ top: 0, behavior: "auto" });
     const heading = document.querySelector(`[data-screen="${screenNumber}"] h1`);
@@ -1597,17 +1602,11 @@
   }
 
   function getCatName() {
-    return catState.name || "猫猫";
+    return "Hello Kitty";
   }
 
   function openCatConversation() {
-    if (catState.name) {
-      chatWithCat();
-      return;
-    }
-    catNameInput.value = "";
-    catNameDialog.showModal();
-    window.requestAnimationFrame(() => catNameInput.focus());
+    chatWithCat();
   }
 
   function saveCatName(event) {
@@ -1625,7 +1624,156 @@
   }
 
   function initializeCatModel() {
+    if (!catMascot) return;
+    catMascot.classList.add("is-2d-ready");
+    return;
+
     if (!cat3DStage || !window.THREE) return;
+
+    {
+      const Three = window.THREE;
+      const scene = new Three.Scene();
+      const camera = new Three.PerspectiveCamera(30, 1, 0.1, 100);
+      camera.position.set(0, 0.2, 8.2);
+      camera.lookAt(0, 0.15, 0);
+      const renderer = new Three.WebGLRenderer({ alpha: true, antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setClearColor(0x000000, 0);
+      renderer.outputEncoding = Three.sRGBEncoding;
+      renderer.toneMapping = Three.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.05;
+      cat3DStage.appendChild(renderer.domElement);
+
+      const white = new Three.MeshStandardMaterial({ color: 0xfffcfa, roughness: 0.72 });
+      const pink = new Three.MeshStandardMaterial({ color: 0xf16991, roughness: 0.62 });
+      const yellow = new Three.MeshStandardMaterial({ color: 0xf7c94f, roughness: 0.48 });
+      const black = new Three.MeshStandardMaterial({ color: 0x302b37, roughness: 0.5 });
+      const root = new Three.Group();
+      root.rotation.y = -0.28;
+      scene.add(root);
+
+      const addSphere = (parent, position, scale, material) => {
+        const mesh = new Three.Mesh(new Three.SphereGeometry(1, 32, 24), material);
+        mesh.position.set(...position);
+        mesh.scale.set(...scale);
+        parent.add(mesh);
+        return mesh;
+      };
+      const addCylinder = (parent, position, radius, height, material, rotation = [0, 0, 0]) => {
+        const mesh = new Three.Mesh(new Three.CylinderGeometry(radius, radius * 1.08, height, 18), material);
+        mesh.position.set(...position);
+        mesh.rotation.set(...rotation);
+        parent.add(mesh);
+        return mesh;
+      };
+
+      addSphere(root, [0, -0.66, 0], [0.92, 0.88, 0.62], white);
+      addSphere(root, [0, 0.55, 0.08], [1.18, 1.02, 0.72], white);
+      const earGeometry = new Three.ConeGeometry(0.48, 0.95, 3);
+      [[-0.72, 1.4, 0.02, -0.18], [0.72, 1.4, 0.02, 0.18]].forEach(([x, y, z, tilt]) => {
+        const ear = new Three.Mesh(earGeometry, white);
+        ear.position.set(x, y, z);
+        ear.rotation.set(0, Math.PI / 4, tilt);
+        root.add(ear);
+        const inner = new Three.Mesh(new Three.ConeGeometry(0.23, 0.55, 3), pink);
+        inner.position.set(x, y - 0.02, z + 0.16);
+        inner.rotation.copy(ear.rotation);
+        root.add(inner);
+      });
+      [[-0.42, 0.65, 0.69], [0.42, 0.65, 0.69]].forEach(([x, y, z]) => addSphere(root, [x, y, z], [0.08, 0.16, 0.05], black));
+      addSphere(root, [0, 0.34, 0.76], [0.18, 0.1, 0.06], yellow);
+      [-1, 1].forEach((side) => [-0.08, 0.08, 0.23].forEach((offset) => {
+        const whisker = new Three.Line(new Three.BufferGeometry().setFromPoints([
+          new Three.Vector3(side * 0.16, 0.32 + offset, 0.7), new Three.Vector3(side * 1.03, 0.32 + offset * 1.35, 0.58)
+        ]), new Three.LineBasicMaterial({ color: 0x625a63 }));
+        root.add(whisker);
+      }));
+      const bow = new Three.Group();
+      bow.position.set(-0.72, 1.02, 0.64);
+      addSphere(bow, [-0.25, 0, 0], [0.36, 0.25, 0.1], pink);
+      addSphere(bow, [0.25, 0, 0], [0.36, 0.25, 0.1], pink);
+      addSphere(bow, [0, 0, 0.08], [0.12, 0.12, 0.07], yellow);
+      root.add(bow);
+      [-0.48, 0.48].forEach((x) => addCylinder(root, [x, -1.43, 0.04], 0.2, 0.58, white));
+      const waveArm = new Three.Group();
+      waveArm.position.set(-0.91, -0.22, 0.02);
+      waveArm.rotation.z = -0.8;
+      addCylinder(waveArm, [0, -0.38, 0], 0.18, 0.72, white);
+      addSphere(waveArm, [0, -0.79, 0.02], [0.23, 0.23, 0.18], white);
+      root.add(waveArm);
+      const restingArm = new Three.Group();
+      restingArm.position.set(0.9, -0.34, 0.02);
+      restingArm.rotation.z = 0.58;
+      addCylinder(restingArm, [0, -0.35, 0], 0.18, 0.64, white);
+      addSphere(restingArm, [0, -0.73, 0.02], [0.23, 0.23, 0.18], white);
+      root.add(restingArm);
+
+      scene.add(new Three.HemisphereLight(0xffe9ee, 0x554452, 1.9));
+      const key = new Three.DirectionalLight(0xffffff, 1.45);
+      key.position.set(-3, 5, 5);
+      scene.add(key);
+      const fill = new Three.PointLight(0xff91af, 0.5, 10);
+      fill.position.set(3, 2, 4);
+      scene.add(fill);
+
+      let targetRotation = root.rotation.y;
+      let dragging = false;
+      let moved = false;
+      let lastX = 0;
+      let lastY = 0;
+      catMascot.addEventListener("pointerdown", (event) => {
+        dragging = true;
+        moved = false;
+        catMascot.__petWaveUntil = Date.now() + 1800;
+        catBubble.textContent = "你好呀，我在向你招手！";
+        lastX = event.clientX;
+        lastY = event.clientY;
+        catMascot.setPointerCapture?.(event.pointerId);
+      });
+      catMascot.addEventListener("pointermove", (event) => {
+        if (!dragging) return;
+        const deltaX = event.clientX - lastX;
+        const deltaY = event.clientY - lastY;
+        if (Math.abs(deltaX) + Math.abs(deltaY) > 3) moved = true;
+        targetRotation += deltaX * 0.014;
+        root.rotation.x = Math.max(-0.16, Math.min(0.16, root.rotation.x + deltaY * 0.004));
+        lastX = event.clientX;
+        lastY = event.clientY;
+      });
+      const releasePet = (event) => {
+        if (!dragging) return;
+        dragging = false;
+        catMascot.dataset.dragged = moved ? "true" : "";
+        catMascot.releasePointerCapture?.(event.pointerId);
+      };
+      catMascot.addEventListener("pointerup", releasePet);
+      catMascot.addEventListener("pointercancel", releasePet);
+      const resize = () => {
+        const width = Math.max(1, cat3DStage.clientWidth);
+        const height = Math.max(1, cat3DStage.clientHeight);
+        renderer.setSize(width, height, false);
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+      };
+      new ResizeObserver(resize).observe(cat3DStage);
+      resize();
+      catMascot.classList.add("is-3d-ready");
+      const clock = new Three.Clock();
+      const animate = () => {
+        const time = clock.getElapsedTime();
+        const isGreeting = Date.now() < (catMascot.__petWaveUntil || 0);
+        const waveSpeed = isGreeting ? 12 : 2.2;
+        const waveAmount = isGreeting ? 0.78 : 0.2;
+        root.position.y = Math.sin(time * 1.7) * 0.055;
+        root.rotation.y += (targetRotation - root.rotation.y) * 0.1;
+        waveArm.rotation.z = -0.8 + Math.sin(time * waveSpeed) * waveAmount;
+        bow.rotation.z = Math.sin(time * 2.4) * 0.06;
+        renderer.render(scene, camera);
+        window.requestAnimationFrame(animate);
+      };
+      animate();
+    }
+    return;
 
     const Three = window.THREE;
     if (!Three.FBXLoader) return;
@@ -1898,9 +2046,9 @@
 
   function updateCatMascot() {
     const name = getCatName();
-    catMascot.setAttribute("aria-label", `和${name}说话`);
-    catMascot.title = `和${name}说话`;
-    catGrowthLabel.textContent = catState.name ? `${name} · 已陪伴 ${catState.days} 天${catState.streak > 1 ? ` · 连续 ${catState.streak} 天` : ""}` : "正在等你给它取名字";
+    catMascot.setAttribute("aria-label", `和${name}互动`);
+    catMascot.title = `轻触 ${name} 招手，拖动可以转身`;
+    catGrowthLabel.textContent = "会招手的 Hello Kitty";
     catBubble.textContent = getCatMessage();
   }
 
@@ -1908,7 +2056,7 @@
     catMascot.classList.remove("is-chatting");
     void catMascot.offsetWidth;
     catMascot.classList.add("is-chatting");
-    catBubble.textContent = getCatMessage();
+    catBubble.textContent = "Hello Kitty 向你挥挥手，今天也要开心呀！";
   }
 
   function openArchive() {

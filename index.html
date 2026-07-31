@@ -74,6 +74,12 @@
             <span class="home-card-icon purple-icon" aria-hidden="true">✦</span><span><strong>只属于我们的角落</strong><small>密码本、给未来的信和不想忘记的小事</small></span><b aria-hidden="true">→</b>
           </button>
         </section>
+        <section class="home-group" aria-labelledby="pet-group-title">
+          <p id="pet-group-title">宠物互动</p>
+          <button class="home-card pet-open" type="button">
+            <span class="home-card-icon pink-icon" aria-hidden="true">♥</span><span><strong>宠物互动（测试）</strong><small>摸摸 Hello Kitty，看看她会做什么</small></span><b aria-hidden="true">→</b>
+          </button>
+        </section>
       </div>
       <section class="next-date-card" aria-labelledby="next-date-title">
         <p id="next-date-title">下次约会行动</p>
@@ -444,20 +450,23 @@
       </form>
       <div class="keepsake-list future-letter-list" id="future-letter-list" aria-live="polite"></div>
     </section>
+
+    <section class="screen pet-screen" data-screen="17" aria-labelledby="step-17-title" hidden>
+      <button class="back-button" type="button" data-back="0" aria-label="返回空间首页"><span aria-hidden="true">←</span></button>
+      <p class="eyebrow">PET PLAYROOM</p>
+      <h1 id="step-17-title" tabindex="-1">宠物互动（测试）</h1>
+      <p class="supporting-copy compact-copy">轻触 Hello Kitty，她会招手、轻轻跳一下，还会给你一个小小回应。</p>
+    </section>
   </main>
 
-  <aside class="cat-corner" id="cat-float" aria-labelledby="cat-title">
+  <aside class="cat-corner" id="cat-float" aria-labelledby="cat-title" hidden>
     <button class="cat-mascot" id="cat-mascot" type="button" aria-label="和猫猫说话" title="和猫猫说话">
-      <span class="cat-3d-stage" id="cat-3d-stage" aria-hidden="true"></span>
-      <span class="cat-ear cat-ear-left" aria-hidden="true"></span><span class="cat-ear cat-ear-right" aria-hidden="true"></span>
-      <span class="cat-face" aria-hidden="true"><i></i><i></i><b></b></span>
-      <span class="cat-paw cat-paw-left" aria-hidden="true"></span><span class="cat-paw cat-paw-right" aria-hidden="true"></span>
-      <span class="cat-tail" aria-hidden="true"></span>
+      <img class="hello-kitty-image" src="hello-kitty.webp" alt="穿粉色裙子的 Hello Kitty" draggable="false">
     </button>
     <div class="cat-chat">
-      <p id="cat-title">Leo & Emily 的猫猫</p>
-        <strong id="cat-growth-label">正在等你来陪伴它</strong>
-      <p class="cat-bubble" id="cat-bubble" role="status" aria-live="polite">点点我吧，我有话想说。</p>
+      <p id="cat-title">LEO & EMILY 的 Hello Kitty</p>
+      <strong id="cat-growth-label">宠物互动测试中</strong>
+      <p class="cat-bubble" id="cat-bubble" role="status" aria-live="polite">轻轻碰我一下，我会招手。</p>
     </div>
   </aside>
 
@@ -484,10 +493,7 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   <div class="sr-only" id="movement-status" aria-live="polite"></div>
-  <script src="three.min.js"></script>
-  <script src="fflate.min.js"></script>
-  <script src="FBXLoader.js"></script>
-  <script src="app.js?v=20260731-fbx-cat-2"></script>
+  <script src="app.js?v=20260731-hello-kitty-2d"></script>
   <script src="pwa.js?v=20260730-pwa-update"></script>
 </body>
 </html>
