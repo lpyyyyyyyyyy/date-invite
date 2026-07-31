@@ -26,14 +26,18 @@
       const stage = document.querySelector("#cat-preview");
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
-      camera.position.set(0, 1.25, 7.2);
+      camera.position.set(0, 1.25, 10);
       const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 0.88;
       stage.appendChild(renderer.domElement);
 
-      const cream = new THREE.MeshStandardMaterial({ color: 0xf4dfc6, roughness: 0.88, metalness: 0 });
-      const pale = new THREE.MeshStandardMaterial({ color: 0xfff5e9, roughness: 0.92, metalness: 0 });
-      const point = new THREE.MeshStandardMaterial({ color: 0x5b4549, roughness: 0.83, metalness: 0 });
+      const cream = new THREE.MeshStandardMaterial({ color: 0xeed6bb, roughness: 0.88, metalness: 0 });
+      const pale = new THREE.MeshStandardMaterial({ color: 0xffecd5, roughness: 0.92, metalness: 0 });
+      const point = new THREE.MeshStandardMaterial({ color: 0x533a42, roughness: 0.83, metalness: 0 });
+      const mask = new THREE.MeshStandardMaterial({ color: 0x856d70, roughness: 0.86, metalness: 0 });
       const white = new THREE.MeshStandardMaterial({ color: 0xfffbf4, roughness: 0.42, metalness: 0 });
       const blue = new THREE.MeshStandardMaterial({ color: 0x23bdeb, roughness: 0.12, metalness: 0.16 });
       const pupil = new THREE.MeshStandardMaterial({ color: 0x252229, roughness: 0.2, metalness: 0.02 });
@@ -54,7 +58,7 @@
         return mesh;
       }
       function addFur(parent, center, radii, count, material, skipFace) {
-        const hair = new THREE.InstancedMesh(new THREE.ConeGeometry(0.022, 0.13, 5), material, count);
+        const hair = new THREE.InstancedMesh(new THREE.ConeGeometry(0.014, 0.055, 5), material, count);
         const helper = new THREE.Object3D(), direction = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), rotation = new THREE.Quaternion();
         for (let i = 0; i < count; i += 1) {
           const z = 1 - (2 * (i + 0.5)) / count, radius = Math.sqrt(1 - z * z), angle = i * 2.399963229728653;
@@ -63,14 +67,14 @@
           direction.normalize();
           helper.position.set(center[0] + direction.x * radii[0], center[1] + direction.y * radii[1], center[2] + direction.z * radii[2]);
           rotation.setFromUnitVectors(up, direction); helper.quaternion.copy(rotation);
-          const length = 0.78 + (i % 5) * 0.08; helper.scale.set(length, length, length); helper.updateMatrix(); hair.setMatrixAt(i, helper.matrix);
+          const length = 0.8 + (i % 5) * 0.035; helper.scale.set(length, length, length); helper.updateMatrix(); hair.setMatrixAt(i, helper.matrix);
         }
         hair.instanceMatrix.needsUpdate = true; parent.add(hair);
       }
 
       fluffy(body, [0, -0.34, 0], [1.02, 1.08, 0.8], cream, 32);
       fluffy(head, [0, 1.2, 0.04], [1.3, 1.16, 1], cream, 32);
-      fluffy(head, [0, 1.08, 0.75], [0.9, 0.7, 0.14], point, 26);
+      fluffy(head, [0, 1.08, 0.75], [0.9, 0.7, 0.14], mask, 26);
       fluffy(head, [0, 0.54, 0.89], [0.76, 0.42, 0.18], pale, 24);
       fluffy(body, [0, -0.18, 0.78], [0.58, 0.75, 0.12], pale, 22);
       fluffy(body, [-0.57, -1.04, 0.5], [0.42, 0.27, 0.35], point, 20);
@@ -100,16 +104,16 @@
       const tailCurve = new THREE.CatmullRomCurve3([new THREE.Vector3(0.88, -0.58, -0.2), new THREE.Vector3(1.45, -0.05, -0.36), new THREE.Vector3(1.42, 0.66, -0.22), new THREE.Vector3(1, 0.82, -0.12)]);
       tail.add(new THREE.Mesh(new THREE.TubeGeometry(tailCurve, 28, 0.17, 12, false), point));
 
-      scene.add(new THREE.HemisphereLight(0xffefd9, 0x6f4660, 2.3));
-      const key = new THREE.DirectionalLight(0xfff5e9, 2.1); key.position.set(-3, 5, 5); scene.add(key);
-      const fill = new THREE.PointLight(0xffa7b3, 1.5, 12); fill.position.set(3, 1, 4); scene.add(fill);
+      scene.add(new THREE.HemisphereLight(0xffefd9, 0x6f4660, 1.35));
+      const key = new THREE.DirectionalLight(0xfff5e9, 1.05); key.position.set(-3, 5, 5); scene.add(key);
+      const fill = new THREE.PointLight(0xffa7b3, 0.55, 12); fill.position.set(3, 1, 4); scene.add(fill);
 
       let targetRotation = root.rotation.y, dragging = false, lastX = 0, lastY = 0;
       stage.addEventListener("pointerdown", (event) => { dragging = true; lastX = event.clientX; lastY = event.clientY; stage.setPointerCapture(event.pointerId); });
       stage.addEventListener("pointermove", (event) => { if (!dragging) return; targetRotation += (event.clientX - lastX) * 0.015; head.rotation.x = Math.max(-0.22, Math.min(0.22, head.rotation.x + (event.clientY - lastY) * 0.004)); lastX = event.clientX; lastY = event.clientY; });
       stage.addEventListener("pointerup", () => { dragging = false; });
       stage.addEventListener("pointercancel", () => { dragging = false; });
-      function resize() { const width = stage.clientWidth, height = stage.clientHeight; renderer.setSize(width, height, false); camera.aspect = width / height; camera.updateProjectionMatrix(); }
+      function resize() { const width = stage.clientWidth, height = stage.clientHeight; renderer.setSize(width, height, false); camera.aspect = width / height; camera.position.z = width / height < 0.7 ? 12.4 : 10; camera.updateProjectionMatrix(); }
       new ResizeObserver(resize).observe(stage); resize();
       const clock = new THREE.Clock();
       (function animate() { const time = clock.getElapsedTime(); root.position.y = Math.sin(time * 1.5) * 0.1; root.rotation.y += (targetRotation - root.rotation.y) * 0.08; tail.rotation.y = Math.sin(time * 2.1) * 0.2; head.rotation.z = Math.sin(time * 1.4) * 0.035; renderer.render(scene, camera); requestAnimationFrame(animate); })();
