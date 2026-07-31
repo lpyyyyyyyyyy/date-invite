@@ -68,6 +68,12 @@
             <span class="home-card-icon purple-icon" aria-hidden="true">?</span><span><strong>两个人的小游戏</strong><small>把害羞的话交给转盘来问</small></span><b aria-hidden="true">→</b>
           </button>
         </section>
+        <section class="home-group" aria-labelledby="keepsakes-group-title">
+          <p id="keepsakes-group-title">我们的小秘密</p>
+          <button class="home-card keepsakes-open" type="button">
+            <span class="home-card-icon purple-icon" aria-hidden="true">✦</span><span><strong>只属于我们的角落</strong><small>密码本、给未来的信和不想忘记的小事</small></span><b aria-hidden="true">→</b>
+          </button>
+        </section>
       </div>
       <section class="next-date-card" aria-labelledby="next-date-title">
         <p id="next-date-title">下次约会行动</p>
@@ -393,6 +399,51 @@
       <button class="primary-button coral-button dice-roll" id="dice-roll" type="button">摇骰子</button>
       <button class="secondary-button dice-next" id="dice-next" type="button" disabled>结束本局，重新摇</button>
     </section>
+
+    <section class="screen secret-hub-screen" data-screen="14" aria-labelledby="step-14-title" hidden>
+      <button class="back-button" type="button" data-back="0" aria-label="返回空间首页"><span aria-hidden="true">←</span></button>
+      <p class="eyebrow">OUR LITTLE CORNER</p>
+      <h1 id="step-14-title" tabindex="-1">我们的小秘密</h1>
+      <p class="supporting-copy compact-copy">一些小资料、一封晚点打开的信，都放在这个只有我们懂的角落。</p>
+      <button class="secret-card couple-book-open" type="button">
+        <span class="secret-card-icon blue-icon" aria-hidden="true">⌘</span><span><strong>情侣密码本</strong><small>喜欢、尺码、忌口和专属暗号</small></span><b aria-hidden="true">→</b>
+      </button>
+      <button class="secret-card future-letter-open" type="button">
+        <span class="secret-card-icon purple-icon" aria-hidden="true">✉</span><span><strong>给未来的信</strong><small>写好现在，等未来慢慢打开</small></span><b aria-hidden="true">→</b>
+      </button>
+    </section>
+
+    <section class="screen keepsake-screen" data-screen="15" aria-labelledby="step-15-title" hidden>
+      <button class="back-button" type="button" data-back="0" aria-label="返回空间首页"><span aria-hidden="true">←</span></button>
+      <p class="eyebrow">JUST US KNOW</p>
+      <h1 id="step-15-title" tabindex="-1">情侣密码本</h1>
+      <p class="supporting-copy compact-copy">收好喜欢、尺码、忌口和暗号。请不要记录真实账号或支付密码。</p>
+      <form class="keepsake-form" id="couple-note-form">
+        <label for="couple-note-title">这一条叫做什么？</label>
+        <input id="couple-note-title" type="text" maxlength="20" placeholder="例如：最爱的奶茶" required>
+        <label for="couple-note-value">记下来</label>
+        <textarea id="couple-note-value" maxlength="180" rows="3" placeholder="例如：少糖去冰，永远加珍珠" required></textarea>
+        <button class="primary-button coral-button" type="submit">收进密码本</button>
+      </form>
+      <div class="keepsake-list" id="couple-note-list" aria-live="polite"></div>
+    </section>
+
+    <section class="screen keepsake-screen" data-screen="16" aria-labelledby="step-16-title" hidden>
+      <button class="back-button" type="button" data-back="0" aria-label="返回空间首页"><span aria-hidden="true">←</span></button>
+      <p class="eyebrow">OPEN WHEN</p>
+      <h1 id="step-16-title" tabindex="-1">给未来的信</h1>
+      <p class="supporting-copy compact-copy">写下现在的心情，等到约定的那一天再打开。</p>
+      <form class="keepsake-form" id="future-letter-form">
+        <label for="future-letter-title">信的标题</label>
+        <input id="future-letter-title" type="text" maxlength="28" placeholder="给未来的我们" required>
+        <label for="future-letter-date">哪一天才能打开？</label>
+        <input id="future-letter-date" type="date" required>
+        <label for="future-letter-content">想说的话</label>
+        <textarea id="future-letter-content" maxlength="600" rows="6" placeholder="把现在最想说的话留在这里……" required></textarea>
+        <button class="primary-button coral-button" type="submit">封好这封信</button>
+      </form>
+      <div class="keepsake-list future-letter-list" id="future-letter-list" aria-live="polite"></div>
+    </section>
   </main>
 
   <dialog class="roulette-dialog" id="roulette-dialog" aria-labelledby="roulette-title">
@@ -407,7 +458,7 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   <div class="sr-only" id="movement-status" aria-live="polite"></div>
-  <script src="app.js?v=20260730-invitation-reset"></script>
+  <script src="app.js?v=20260730-couple-hub"></script>
   <script src="pwa.js?v=20260730-pwa-update"></script>
 </body>
 </html>

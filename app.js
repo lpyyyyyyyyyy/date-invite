@@ -5,6 +5,8 @@
   const ARCHIVE_KEY = "cute-date-invite-archive-v1";
   const ANNIVERSARY_KEY = "cute-date-invite-anniversaries-v1";
   const THINGS_KEY = "cute-date-invite-100-things-v1";
+  const COUPLE_NOTES_KEY = "cute-date-invite-couple-notes-v1";
+  const FUTURE_LETTERS_KEY = "cute-date-invite-future-letters-v1";
   const noLabels = ["不要", "再想想嘛", "点不到我", "真的不要吗"];
   const hundredThings = [
     "一起骑自行车", "穿对方挑选的衣服", "一起去露营", "一起看烟花", "一起坐热气球", "一起跑步健身", "一起唱歌", "亲手写信给对方", "一起过圣诞节", "一起打游戏",
@@ -108,6 +110,15 @@
   const diceStatus = document.querySelector("#dice-status");
   const diceRoll = document.querySelector("#dice-roll");
   const diceNext = document.querySelector("#dice-next");
+  const coupleNoteForm = document.querySelector("#couple-note-form");
+  const coupleNoteTitle = document.querySelector("#couple-note-title");
+  const coupleNoteValue = document.querySelector("#couple-note-value");
+  const coupleNoteList = document.querySelector("#couple-note-list");
+  const futureLetterForm = document.querySelector("#future-letter-form");
+  const futureLetterTitle = document.querySelector("#future-letter-title");
+  const futureLetterDate = document.querySelector("#future-letter-date");
+  const futureLetterContent = document.querySelector("#future-letter-content");
+  const futureLetterList = document.querySelector("#future-letter-list");
 
   let toastTimer = null;
   let menuTransitionTimer = null;
@@ -118,6 +129,8 @@
   let archiveRecords = loadArchive();
   let anniversaries = loadAnniversaries();
   let completedThings = loadCompletedThings();
+  let coupleNotes = loadCoupleNotes();
+  let futureLetters = loadFutureLetters();
   let archiveReturnScreen = 1;
   let activeMemoryRecordId = "";
   let selectedMood = "";
@@ -264,6 +277,40 @@
     }
   }
 
+  function loadCoupleNotes() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(COUPLE_NOTES_KEY) || "[]");
+      return Array.isArray(saved) ? saved.filter((item) => item && typeof item.id === "string" && typeof item.title === "string" && typeof item.value === "string").slice(0, 50) : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function persistCoupleNotes() {
+    try {
+      localStorage.setItem(COUPLE_NOTES_KEY, JSON.stringify(coupleNotes));
+    } catch (error) {
+      showToast("浏览器未允许保存密码本");
+    }
+  }
+
+  function loadFutureLetters() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(FUTURE_LETTERS_KEY) || "[]");
+      return Array.isArray(saved) ? saved.filter((item) => item && typeof item.id === "string" && typeof item.title === "string" && typeof item.content === "string" && /^\d{4}-\d{2}-\d{2}$/.test(item.unlockDate)).slice(0, 50) : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function persistFutureLetters() {
+    try {
+      localStorage.setItem(FUTURE_LETTERS_KEY, JSON.stringify(futureLetters));
+    } catch (error) {
+      showToast("浏览器未允许保存未来的信");
+    }
+  }
+
   function initialize() {
     document.querySelector(".progress").hidden = true;
     dateInput.min = getToday();
@@ -273,11 +320,15 @@
     syncActivitySelection();
     syncFoodSelection();
     updateHomeCountdown();
+    window.setInterval(updateHomeCountdown, 60000);
 
     document.querySelector(".home-plan").addEventListener("click", () => showScreen(1));
     document.querySelector(".anniversary-open").addEventListener("click", () => showScreen(9));
     document.querySelector(".things-open").addEventListener("click", () => showScreen(10));
     document.querySelector(".game-open").addEventListener("click", () => showScreen(11));
+    document.querySelector(".keepsakes-open").addEventListener("click", () => showScreen(14));
+    document.querySelector(".couple-book-open").addEventListener("click", () => showScreen(15));
+    document.querySelector(".future-letter-open").addEventListener("click", () => showScreen(16));
     document.querySelector(".truth-open").addEventListener("click", () => showScreen(12));
     document.querySelector(".dice-open").addEventListener("click", () => showScreen(13));
     yesButton.addEventListener("click", () => {
@@ -332,6 +383,8 @@
     diceCup.addEventListener("pointercancel", cancelDiceCupSwipe);
     diceCup.addEventListener("keydown", handleDiceCupKeydown);
     diceNext.addEventListener("click", resetDiceRound);
+    coupleNoteForm.addEventListener("submit", addCoupleNote);
+    futureLetterForm.addEventListener("submit", addFutureLetter);
 
     window.addEventListener("resize", scheduleDodgeRecalculation, { passive: true });
     if ("ResizeObserver" in window) {
@@ -377,6 +430,12 @@
     if (screenNumber === 10) renderThings();
     if (screenNumber === 12) drawTruthWheel();
     if (screenNumber === 13) renderDice(diceCurrent);
+    if (screenNumber === 15) renderCoupleNotes();
+    if (screenNumber === 16) {
+      futureLetterDate.min = getToday();
+      if (!futureLetterDate.value) futureLetterDate.value = getTomorrow();
+      renderFutureLetters();
+    }
 
     window.scrollTo({ top: 0, behavior: "auto" });
     const heading = document.querySelector(`[data-screen="${screenNumber}"] h1`);
@@ -1184,6 +1243,106 @@
     persistAnniversaries();
     renderAnniversaries();
     showToast("纪念日已删除");
+  }
+
+  function addCoupleNote(event) {
+    event.preventDefault();
+    const title = coupleNoteTitle.value.trim();
+    const value = coupleNoteValue.value.trim();
+    if (!title || !value) return;
+    coupleNotes.unshift({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, title, value, createdAt: Date.now() });
+    persistCoupleNotes();
+    coupleNoteForm.reset();
+    renderCoupleNotes();
+    showToast("已经收进情侣密码本");
+  }
+
+  function renderCoupleNotes() {
+    coupleNoteList.replaceChildren();
+    if (!coupleNotes.length) {
+      const empty = document.createElement("p");
+      empty.className = "keepsake-empty";
+      empty.textContent = "先从对方最喜欢的一样东西开始记吧。";
+      coupleNoteList.append(empty);
+      return;
+    }
+    coupleNotes.sort((a, b) => b.createdAt - a.createdAt).forEach((item) => {
+      const card = document.createElement("article");
+      card.className = "keepsake-item note-item";
+      const heading = document.createElement("strong");
+      heading.textContent = item.title;
+      const body = document.createElement("p");
+      body.textContent = item.value;
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "keepsake-delete";
+      remove.textContent = "删除";
+      remove.setAttribute("aria-label", `删除${item.title}`);
+      remove.addEventListener("click", () => deleteCoupleNote(item.id));
+      card.append(heading, body, remove);
+      coupleNoteList.append(card);
+    });
+  }
+
+  function deleteCoupleNote(id) {
+    if (!window.confirm("确定删除这一条吗？")) return;
+    coupleNotes = coupleNotes.filter((item) => item.id !== id);
+    persistCoupleNotes();
+    renderCoupleNotes();
+  }
+
+  function addFutureLetter(event) {
+    event.preventDefault();
+    const title = futureLetterTitle.value.trim();
+    const content = futureLetterContent.value.trim();
+    const unlockDate = futureLetterDate.value;
+    if (!title || !content || !/^\d{4}-\d{2}-\d{2}$/.test(unlockDate)) return;
+    futureLetters.unshift({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, title, content, unlockDate, createdAt: Date.now() });
+    persistFutureLetters();
+    futureLetterForm.reset();
+    futureLetterDate.value = getTomorrow();
+    renderFutureLetters();
+    showToast("这封信已经封好啦");
+  }
+
+  function renderFutureLetters() {
+    const today = getToday();
+    futureLetterList.replaceChildren();
+    if (!futureLetters.length) {
+      const empty = document.createElement("p");
+      empty.className = "keepsake-empty";
+      empty.textContent = "写一封给未来的信，等特别的日子再打开。";
+      futureLetterList.append(empty);
+      return;
+    }
+    futureLetters.sort((a, b) => a.unlockDate.localeCompare(b.unlockDate)).forEach((letter) => {
+      const isOpen = letter.unlockDate <= today;
+      const card = document.createElement("article");
+      card.className = `keepsake-item letter-item${isOpen ? " is-open" : " is-locked"}`;
+      const meta = document.createElement("p");
+      meta.className = "letter-meta";
+      meta.textContent = isOpen ? `已在 ${formatDateForDisplay(letter.unlockDate)} 解锁` : `将在 ${formatDateForDisplay(letter.unlockDate)} 打开`;
+      const heading = document.createElement("strong");
+      heading.textContent = letter.title;
+      const body = document.createElement("p");
+      body.className = "letter-body";
+      body.textContent = isOpen ? letter.content : "这封信还在等未来的你们。";
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "keepsake-delete";
+      remove.textContent = "删除";
+      remove.setAttribute("aria-label", `删除${letter.title}`);
+      remove.addEventListener("click", () => deleteFutureLetter(letter.id));
+      card.append(meta, heading, body, remove);
+      futureLetterList.append(card);
+    });
+  }
+
+  function deleteFutureLetter(id) {
+    if (!window.confirm("确定删除这封信吗？")) return;
+    futureLetters = futureLetters.filter((item) => item.id !== id);
+    persistFutureLetters();
+    renderFutureLetters();
   }
 
   function openRoulette(kind) {

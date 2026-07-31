@@ -940,6 +940,31 @@ h1 {
 
 .things-screen { overflow-y: auto; padding-left: 18px; padding-right: 18px; }
 .things-screen h1 { font-size: 28px; }
+.keepsake-screen { overflow-y: auto; padding-right: 20px; padding-left: 20px; }
+.keepsake-form { width: min(100%, 410px); margin: 24px auto 0; text-align: left; }
+.keepsake-form label { display: block; margin: 15px 0 7px; color: var(--ink); font-size: 13px; font-weight: 800; }
+.keepsake-form input, .keepsake-form textarea { box-sizing: border-box; width: 100%; border: 2px solid var(--line); border-radius: 8px; color: var(--ink); background: #fff; font: inherit; font-weight: 700; }
+.keepsake-form input { height: 48px; padding: 0 11px; }
+.keepsake-form textarea { min-height: 92px; padding: 10px 11px; line-height: 1.55; resize: vertical; }
+.keepsake-form .primary-button { width: 100%; margin-top: 20px; }
+.keepsake-list { display: grid; gap: 10px; width: min(100%, 410px); margin: 24px auto 0; padding-bottom: 22px; text-align: left; }
+.keepsake-empty { margin: 0; padding: 20px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); background: #fff; font-size: 13px; line-height: 1.6; text-align: center; }
+.keepsake-item { position: relative; min-height: 82px; padding: 14px 52px 14px 14px; border: 1px solid #e5d6dd; border-radius: 8px; background: #fff; box-shadow: 3px 3px 0 #f1e4e9; }
+.keepsake-item strong { display: block; color: var(--ink); font-size: 15px; line-height: 1.4; }
+.keepsake-item > p { margin: 7px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
+.keepsake-delete { position: absolute; top: 12px; right: 11px; min-height: 30px; padding: 4px 7px; border: 1px solid #e9c7cf; border-radius: 7px; color: #b3263f; background: #fff; cursor: pointer; font-size: 11px; font-weight: 800; }
+.letter-item { border-color: #d9c8e7; background: #fcf9ff; }
+.letter-item.is-locked { background: #f6f1fa; }
+.letter-item.is-locked .letter-body { color: #806b8e; font-style: italic; }
+.letter-meta { color: #86629c !important; font-size: 11px !important; font-weight: 900; }
+.secret-hub-screen { justify-content: center; }
+.secret-card { display: grid; grid-template-columns: 58px minmax(0, 1fr) 22px; align-items: center; gap: 13px; width: min(100%, 410px); min-height: 106px; margin: 16px auto 0; padding: 15px; border: 2px solid var(--line); border-radius: 8px; color: var(--ink); background: #fff; box-shadow: 6px 6px 0 #e8dcf1; cursor: pointer; text-align: left; }
+.secret-card:hover { border-color: #b690d6; }
+.secret-card strong, .secret-card small { display: block; }
+.secret-card strong { font-size: 16px; }
+.secret-card small { margin-top: 4px; color: var(--muted); font-size: 12px; font-weight: 700; line-height: 1.5; }
+.secret-card > b { color: #744c98; font-size: 22px; }
+.secret-card-icon { display: grid; width: 54px; height: 54px; place-items: center; border: 2px solid var(--ink); border-radius: 50%; font-size: 25px; font-weight: 900; }
 .things-progress { width: min(100%, 420px); margin: 24px auto 0; padding: 14px; border: 1px solid #d3e7ed; border-radius: 8px; background: #f1fbfd; text-align: left; }
 .things-progress > div:first-child { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .things-progress p { margin: 0; color: #39778a; font-size: 12px; font-weight: 900; }
