@@ -1,0 +1,21 @@
+{
+  "name": "Leo And Emily",
+  "short_name": "Leo & Emily",
+  "id": "/date-invite/",
+  "start_url": "/date-invite/",
+  "display": "standalone",
+  "background_color": "#fff8f3",
+  "theme_color": "#ff8fa3",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
