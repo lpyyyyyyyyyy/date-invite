@@ -8,6 +8,7 @@
   const COUPLE_NOTES_KEY = "cute-date-invite-couple-notes-v1";
   const FUTURE_LETTERS_KEY = "cute-date-invite-future-letters-v1";
   const CAT_KEY = "cute-date-invite-cat-v1";
+  const REPAIR_KEY = "cute-date-invite-repair-v1";
   const noLabels = ["不要", "再想想嘛", "点不到我", "真的不要吗"];
   const hundredThings = [
     "一起骑自行车", "穿对方挑选的衣服", "一起去露营", "一起看烟花", "一起坐热气球", "一起跑步健身", "一起唱歌", "亲手写信给对方", "一起过圣诞节", "一起打游戏",
@@ -83,6 +84,17 @@
   const cat3DStage = document.querySelector("#cat-3d-stage");
   const catGrowthLabel = document.querySelector("#cat-growth-label");
   const catBubble = document.querySelector("#cat-bubble");
+  const petActionButtons = [...document.querySelectorAll("[data-pet-action]")];
+  const petTalkForm = document.querySelector("#pet-talk-form");
+  const petTalkInput = document.querySelector("#pet-talk-input");
+  const repairForm = document.querySelector("#repair-form");
+  const repairTone = document.querySelector("#repair-tone");
+  const repairExtra = document.querySelector("#repair-extra");
+  const repairResult = document.querySelector("#repair-result");
+  const repairCopy = document.querySelector("#repair-copy");
+  const repairShare = document.querySelector("#repair-share");
+  const repairMoodButtons = [...document.querySelectorAll("[data-repair-mood]")];
+  const repairChecklist = [...document.querySelectorAll("[data-repair-check]")];
   const catNameDialog = document.querySelector("#cat-name-dialog");
   const catNameForm = document.querySelector("#cat-name-form");
   const catNameInput = document.querySelector("#cat-name-input");
@@ -131,6 +143,9 @@
 
   let toastTimer = null;
   let kittyGreetingTimer = null;
+  let petActionTimer = null;
+  let petAction = "idle";
+  let petActionUntil = 0;
   let menuTransitionTimer = null;
   let countdownTimer = null;
   let resizeFrame = null;
@@ -142,6 +157,7 @@
   let coupleNotes = loadCoupleNotes();
   let futureLetters = loadFutureLetters();
   let catState = loadCatState();
+  let repairState = loadRepairState();
   let catModelRoot = null;
   let archiveReturnScreen = 1;
   let activeMemoryRecordId = "";
@@ -346,6 +362,31 @@
     }
   }
 
+  function loadRepairState() {
+    const fallback = { mood: "委屈", tone: "认真道歉", extra: "", message: "", checked: [] };
+    try {
+      const saved = JSON.parse(localStorage.getItem(REPAIR_KEY) || "null");
+      if (!saved || typeof saved !== "object") return fallback;
+      return {
+        mood: typeof saved.mood === "string" ? saved.mood : fallback.mood,
+        tone: typeof saved.tone === "string" ? saved.tone : fallback.tone,
+        extra: typeof saved.extra === "string" ? saved.extra.slice(0, 180) : "",
+        message: typeof saved.message === "string" ? saved.message.slice(0, 600) : "",
+        checked: Array.isArray(saved.checked) ? saved.checked.filter((item) => typeof item === "string").slice(0, 12) : [],
+      };
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function persistRepairState() {
+    try {
+      localStorage.setItem(REPAIR_KEY, JSON.stringify(repairState));
+    } catch (error) {
+      showToast("浏览器暂时不能保存和好内容");
+    }
+  }
+
   function recordCatVisit() {
     const today = getToday();
     if (catState.lastVisitDate === today) return;
@@ -368,6 +409,7 @@
     updateHomeCountdown();
     recordCatVisit();
     updateCatMascot();
+    renderRepairState();
     initializeCatModel();
     window.setInterval(updateHomeCountdown, 60000);
 
@@ -379,6 +421,7 @@
     document.querySelector(".couple-book-open").addEventListener("click", () => showScreen(15));
     document.querySelector(".future-letter-open").addEventListener("click", () => showScreen(16));
     document.querySelector(".pet-open").addEventListener("click", () => showScreen(17));
+    document.querySelector(".repair-open")?.addEventListener("click", () => showScreen(18));
     catMascot.addEventListener("click", (event) => {
       if (catMascot.dataset.dragged === "true") {
         catMascot.dataset.dragged = "";
@@ -387,6 +430,28 @@
       }
       openCatConversation();
     });
+    petActionButtons.forEach((button) => button.addEventListener("click", () => triggerPetAction(button.dataset.petAction)));
+    petTalkForm?.addEventListener("submit", submitPetTalk);
+    repairForm?.addEventListener("submit", generateRepairMessage);
+    repairMoodButtons.forEach((button) => button.addEventListener("click", () => {
+      repairState.mood = button.dataset.repairMood || "委屈";
+      persistRepairState();
+      renderRepairState();
+    }));
+    repairTone?.addEventListener("change", () => {
+      repairState.tone = repairTone.value;
+      persistRepairState();
+    });
+    repairExtra?.addEventListener("input", () => {
+      repairState.extra = repairExtra.value.slice(0, 180);
+      persistRepairState();
+    });
+    repairChecklist.forEach((checkbox) => checkbox.addEventListener("change", () => {
+      repairState.checked = repairChecklist.filter((item) => item.checked).map((item) => item.value);
+      persistRepairState();
+    }));
+    repairCopy?.addEventListener("click", () => copyRepairMessage());
+    repairShare?.addEventListener("click", () => shareRepairMessage());
     catNameForm.addEventListener("submit", saveCatName);
     document.querySelector(".truth-open").addEventListener("click", () => showScreen(12));
     document.querySelector(".dice-open").addEventListener("click", () => showScreen(13));
@@ -444,6 +509,36 @@
     diceNext.addEventListener("click", resetDiceRound);
     coupleNoteForm.addEventListener("submit", addCoupleNote);
     futureLetterForm.addEventListener("submit", addFutureLetter);
+
+    window.addEventListener("shared-sync-applied", () => {
+      // 共享房间收到另一台设备的数据后，重新读取本机镜像并刷新当前视图。
+      state = loadState();
+      archiveRecords = loadArchive();
+      anniversaries = loadAnniversaries();
+      completedThings = loadCompletedThings();
+      coupleNotes = loadCoupleNotes();
+      futureLetters = loadFutureLetters();
+      catState = loadCatState();
+      repairState = loadRepairState();
+      syncActivitySelection();
+      syncFoodSelection();
+      updateHomeCountdown();
+      updateCatMascot();
+      if (currentScreen === 3) {
+        dateInput.min = getToday();
+        dateInput.value = state.date;
+        timeInput.value = state.time;
+        locationInput.value = state.location;
+      } else if (currentScreen === 4) syncActivitySelection();
+      else if (currentScreen === 5) syncFoodSelection();
+      else if (currentScreen === 6) updateResult();
+      else if (currentScreen === 7) renderArchive();
+      else if (currentScreen === 9) renderAnniversaries();
+      else if (currentScreen === 10) renderThings();
+      else if (currentScreen === 15) renderCoupleNotes();
+      else if (currentScreen === 16) renderFutureLetters();
+      else if (currentScreen === 18) renderRepairState();
+    });
 
     window.addEventListener("resize", scheduleDodgeRecalculation, { passive: true });
     if ("ResizeObserver" in window) {
@@ -1603,11 +1698,159 @@
   }
 
   function getCatName() {
-    return "Hello Kitty";
+    return "乔巴";
   }
 
   function openCatConversation() {
-    chatWithCat();
+    const choices = ["greet", "cross", "happy"];
+    triggerPetAction(choices[Math.floor(Math.random() * choices.length)]);
+  }
+
+  function petActionMessage(action) {
+    return {
+      greet: "乔巴举起小手和你打招呼：今天也要一起开心呀！",
+      cross: "乔巴双手抱胸认真点头：我会把你们的约会计划记好的！",
+      happy: "乔巴开心地举起双手：耶！下一次见面一定会很棒！",
+    }[action] || "乔巴眨眨眼，安静地陪着你。";
+  }
+
+  function triggerPetAction(action = "greet", message = "") {
+    const available = new Set(["greet", "cross", "happy"]);
+    petAction = available.has(action) ? action : "greet";
+    petActionUntil = Date.now() + 2100;
+    if (petActionTimer) clearTimeout(petActionTimer);
+    catMascot.dataset.petAction = petAction;
+    catMascot.classList.add("is-chatting");
+    catBubble.textContent = message || petActionMessage(petAction);
+    petActionButtons.forEach((button) => {
+      button.setAttribute("aria-pressed", button.dataset.petAction === petAction ? "true" : "false");
+    });
+    petActionTimer = setTimeout(() => {
+      petAction = "idle";
+      petActionUntil = 0;
+      catMascot.dataset.petAction = "idle";
+      catMascot.classList.remove("is-chatting");
+      petActionButtons.forEach((button) => button.setAttribute("aria-pressed", "false"));
+      petActionTimer = null;
+    }, 2200);
+  }
+
+  function getChopperReply(message) {
+    const text = String(message || "").trim();
+    const next = archiveRecords.filter((record) => formatRecordTime(record) > Date.now()).sort((a, b) => formatRecordTime(a) - formatRecordTime(b))[0];
+    if (/你好|嗨|哈喽|乔巴/.test(text)) return { action: "greet", text: "你好呀！乔巴已经听见你啦，今天也要记得开心。" };
+    if (/想你|喜欢|爱你|想念/.test(text)) return { action: "happy", text: "我也会把这句话收好，陪你们一直期待下一次见面。" };
+    if (/约会|见面|什么时候|倒计时/.test(text) && next) return { action: "greet", text: `我查到啦：${getCountdownText(next)}，${formatDateForDisplay(next.date)}见！` };
+    if (/吃|美食|餐|火锅|烤肉/.test(text)) return { action: "happy", text: `下次可以吃${next?.menu || "你们最喜欢的东西"}，我负责在旁边加油！` };
+    if (/玩|去哪|活动|电影|散步|游乐园/.test(text)) return { action: "happy", text: `那就安排${next?.activity || "一个让你们都开心的活动"}，听起来就很棒！` };
+    if (/谢谢|辛苦/.test(text)) return { action: "cross", text: "不用谢！乔巴会一直守护你们的小日子。" };
+    return { action: "greet", text: `乔巴听到了：“${text.slice(0, 40)}”。再和我说一点嘛！` };
+  }
+
+  function submitPetTalk(event) {
+    event.preventDefault();
+    const message = petTalkInput.value.trim().slice(0, 80);
+    if (!message) {
+      petTalkInput.focus();
+      return;
+    }
+    const reply = getChopperReply(message);
+    triggerPetAction(reply.action, reply.text);
+    petTalkInput.value = "";
+  }
+
+  const repairTemplates = {
+    "委屈": [
+      "我刚才让你觉得不被理解，对不起。你愿意的话，我想先听你说完。",
+      "我在乎你的感受，今天先不争对错，给我一次好好抱抱你的机会。",
+    ],
+    "生气": [
+      "你生气一定有原因，我不急着解释，先认真听你说。对不起让你难受了。",
+      "我知道一句对不起不能马上把委屈变走，但我愿意留下来把这件事好好说清楚。",
+    ],
+    "难过": [
+      "我看到你难过了，真的很心疼。你不用马上原谅我，我会陪你把话说完。",
+      "先把难过交给我一会儿，好吗？我会认真记住你的感受，也会把能改的地方改好。",
+    ],
+    "我也有错": [
+      "这次我也有没做好的地方：___。我愿意改，也想听听你希望我怎么做。",
+      "我不想把责任推给任何人，这件事我会认真反省。___，对不起，请给我一次补救的机会。",
+    ],
+  };
+
+  function buildRepairMessage() {
+    const mood = repairState.mood || "委屈";
+    const tone = repairState.tone || "认真道歉";
+    const options = repairTemplates[mood] || repairTemplates["委屈"];
+    let message = options[Math.floor(Math.random() * options.length)];
+    const extra = repairState.extra.trim();
+    if (message.includes("___")) message = message.replace("___", extra || "我刚才没有好好顾及你的感受");
+    else if (extra) message += ` 我还想补充：${extra}`;
+    const endings = {
+      "认真道歉": "我不求你立刻消气，只希望你知道，我真的在乎你。",
+      "可爱撒娇": "给我一个补救的机会嘛，我会乖乖听话的。",
+      "温柔解释": "等你愿意的时候，我们慢慢说，我会把你放在心上。",
+      "给她一点空间": "你可以先照顾好自己的心情，我会在这里等你，不催你。",
+    };
+    return `${message} ${endings[tone] || endings["认真道歉"]}`;
+  }
+
+  function renderRepairState() {
+    repairMoodButtons.forEach((button) => button.setAttribute("aria-pressed", button.dataset.repairMood === repairState.mood ? "true" : "false"));
+    if (repairTone) repairTone.value = repairState.tone || "认真道歉";
+    if (repairExtra) repairExtra.value = repairState.extra || "";
+    repairChecklist.forEach((checkbox) => {
+      checkbox.checked = repairState.checked.includes(checkbox.value);
+    });
+    if (repairResult) repairResult.textContent = repairState.message || "选一个她现在的心情，我来帮你组织第一句话。";
+  }
+
+  function generateRepairMessage(event) {
+    event?.preventDefault();
+    repairState.tone = repairTone?.value || "认真道歉";
+    repairState.extra = repairExtra?.value.trim().slice(0, 180) || "";
+    repairState.message = buildRepairMessage();
+    repairState.updatedAt = Date.now();
+    persistRepairState();
+    renderRepairState();
+    showToast("已经帮你把第一句话写好了");
+  }
+
+  async function copyRepairMessage() {
+    const message = repairState.message || buildRepairMessage();
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
+      await navigator.clipboard.writeText(message);
+      showToast("这句话已复制，可以发给她了");
+    } catch (error) {
+      try {
+        const helper = document.createElement("textarea");
+        helper.value = message;
+        helper.setAttribute("readonly", "");
+        helper.style.position = "fixed";
+        helper.style.opacity = "0";
+        document.body.append(helper);
+        helper.select();
+        document.execCommand("copy");
+        helper.remove();
+        showToast("这句话已复制，可以发给她了");
+      } catch (copyError) {
+        showToast("暂时无法自动复制，请长按文字复制");
+      }
+    }
+  }
+
+  async function shareRepairMessage() {
+    const message = repairState.message || buildRepairMessage();
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "给她的一句话", text: message });
+        return;
+      }
+      await copyRepairMessage();
+    } catch (error) {
+      // Sharing can be cancelled by the user; keep the generated text visible.
+    }
   }
 
   function saveCatName(event) {
@@ -1625,6 +1868,292 @@
   }
 
   function initializeCatModel() {
+    if (!cat3DStage || !window.THREE || !catMascot) return;
+    catMascot.classList.remove("is-2d-ready");
+
+    try {
+      const Three = window.THREE;
+      const scene = new Three.Scene();
+      const camera = new Three.PerspectiveCamera(32, 1, 0.1, 100);
+      camera.position.set(0, 0.04, 8.35);
+      camera.lookAt(0, 0.04, 0);
+      const renderer = new Three.WebGLRenderer({ alpha: true, antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setClearColor(0x000000, 0);
+      renderer.outputEncoding = Three.sRGBEncoding;
+      renderer.toneMapping = Three.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.02;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = Three.PCFSoftShadowMap;
+      cat3DStage.appendChild(renderer.domElement);
+
+      const fur = new Three.MeshPhysicalMaterial({ color: 0xd39a5d, roughness: 0.45, clearcoat: 0.12 });
+      const furLight = new Three.MeshPhysicalMaterial({ color: 0xf1c080, roughness: 0.4, clearcoat: 0.14 });
+      const furCream = new Three.MeshPhysicalMaterial({ color: 0xffd49b, roughness: 0.42, clearcoat: 0.12 });
+      const hatRed = new Three.MeshPhysicalMaterial({ color: 0xd93842, roughness: 0.32, clearcoat: 0.28, clearcoatRoughness: 0.22 });
+      const hatDark = new Three.MeshPhysicalMaterial({ color: 0xb62436, roughness: 0.38, clearcoat: 0.2 });
+      const shirt = new Three.MeshPhysicalMaterial({ color: 0x252735, roughness: 0.48, clearcoat: 0.08 });
+      const shorts = new Three.MeshPhysicalMaterial({ color: 0xf4f1e9, roughness: 0.52, clearcoat: 0.1 });
+      const hoof = new Three.MeshPhysicalMaterial({ color: 0x40373c, roughness: 0.38, clearcoat: 0.18 });
+      const antler = new Three.MeshPhysicalMaterial({ color: 0xb47a36, roughness: 0.5, clearcoat: 0.08 });
+      const eye = new Three.MeshPhysicalMaterial({ color: 0x2a1f2b, roughness: 0.3, clearcoat: 0.25 });
+      const eyeShine = new Three.MeshBasicMaterial({ color: 0xffffff });
+      const nose = new Three.MeshPhysicalMaterial({ color: 0x234da5, roughness: 0.25, clearcoat: 0.32 });
+      const cheek = new Three.MeshPhysicalMaterial({ color: 0xf28a84, roughness: 0.5, transparent: true, opacity: 0.58, depthWrite: false });
+      const starMat = new Three.MeshPhysicalMaterial({ color: 0xffd32f, roughness: 0.32, clearcoat: 0.22 });
+      const root = new Three.Group();
+      root.name = "Chopper articulated root";
+      scene.add(root);
+
+      const addSphere = (parent, position, scale, material) => {
+        const mesh = new Three.Mesh(new Three.SphereGeometry(1, 36, 24), material);
+        mesh.position.set(...position);
+        mesh.scale.set(...scale);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        parent.add(mesh);
+        return mesh;
+      };
+      const addBox = (parent, position, scale, material, rotation = [0, 0, 0]) => {
+        const mesh = new Three.Mesh(new Three.BoxGeometry(1, 1, 1), material);
+        mesh.position.set(...position);
+        mesh.scale.set(...scale);
+        mesh.rotation.set(...rotation);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        parent.add(mesh);
+        return mesh;
+      };
+      const addCapsule = (parent, position, radius, length, material) => {
+        const capsule = new Three.Group();
+        capsule.position.set(...position);
+        const cylinder = new Three.Mesh(new Three.CylinderGeometry(radius, radius * 1.03, length, 24), material);
+        cylinder.castShadow = true;
+        cylinder.receiveShadow = true;
+        capsule.add(cylinder);
+        addSphere(capsule, [0, length / 2, 0], [radius, radius, radius], material);
+        addSphere(capsule, [0, -length / 2, 0], [radius * 1.03, radius * 1.03, radius * 1.03], material);
+        parent.add(capsule);
+        return capsule;
+      };
+      const addTube = (parent, points, radius, material) => {
+        const curve = new Three.CatmullRomCurve3(points);
+        const mesh = new Three.Mesh(new Three.TubeGeometry(curve, 20, radius, 8, false), material);
+        mesh.castShadow = true;
+        parent.add(mesh);
+        return mesh;
+      };
+      const addExtrudedShape = (parent, shape, depth, material, position) => {
+        const geometry = new Three.ExtrudeGeometry(shape, {
+          depth,
+          bevelEnabled: true,
+          bevelSegments: 3,
+          bevelSize: 0.025,
+          bevelThickness: 0.025,
+          curveSegments: 12,
+        });
+        geometry.center();
+        const mesh = new Three.Mesh(geometry, material);
+        mesh.position.set(...position);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        parent.add(mesh);
+        return mesh;
+      };
+
+      // Body, shirt emblem, shorts and hooves.
+      const body = new Three.Group();
+      body.name = "Chopper body";
+      root.add(body);
+      addSphere(body, [0, -0.52, 0], [0.78, 0.8, 0.52], shirt);
+      addSphere(body, [0, -1.05, 0], [0.74, 0.36, 0.5], shorts);
+      const star = new Three.Shape();
+      for (let i = 0; i < 10; i += 1) {
+        const angle = -Math.PI / 2 + i * Math.PI / 5;
+        const radius = i % 2 === 0 ? 0.24 : 0.105;
+        const point = [Math.cos(angle) * radius, Math.sin(angle) * radius];
+        if (i === 0) star.moveTo(...point); else star.lineTo(...point);
+      }
+      star.closePath();
+      addExtrudedShape(body, star, 0.08, starMat, [0, -0.54, 0.51]);
+      const leftLeg = new Three.Group();
+      const rightLeg = new Three.Group();
+      leftLeg.position.set(-0.33, -1.2, 0.02);
+      rightLeg.position.set(0.33, -1.2, 0.02);
+      addCapsule(leftLeg, [0, -0.29, 0], 0.12, 0.42, furLight);
+      addCapsule(rightLeg, [0, -0.29, 0], 0.12, 0.42, furLight);
+      addSphere(leftLeg, [0, -0.57, 0.13], [0.19, 0.1, 0.29], hoof);
+      addSphere(rightLeg, [0, -0.57, 0.13], [0.19, 0.1, 0.29], hoof);
+      root.add(leftLeg, rightLeg);
+
+      // Head rig: hat, antlers, ears and face move together, while the root stays planted.
+      const headRig = new Three.Group();
+      headRig.name = "Chopper head rig";
+      headRig.position.set(0, 0.48, 0);
+      root.add(headRig);
+      addSphere(headRig, [0, 0.18, 0], [1.08, 0.82, 0.72], furLight);
+      addSphere(headRig, [-0.82, 0.12, -0.02], [0.25, 0.34, 0.24], fur);
+      addSphere(headRig, [0.82, 0.12, -0.02], [0.25, 0.34, 0.24], fur);
+      addSphere(headRig, [-0.43, 0.11, 0.68], [0.1, 0.17, 0.055], eye);
+      addSphere(headRig, [0.43, 0.11, 0.68], [0.1, 0.17, 0.055], eye);
+      addSphere(headRig, [-0.4, 0.2, 0.735], [0.026, 0.042, 0.014], eyeShine);
+      addSphere(headRig, [0.46, 0.2, 0.735], [0.026, 0.042, 0.014], eyeShine);
+      addSphere(headRig, [0, -0.02, 0.73], [0.15, 0.11, 0.07], nose);
+      addSphere(headRig, [-0.64, -0.04, 0.62], [0.16, 0.09, 0.035], cheek);
+      addSphere(headRig, [0.64, -0.04, 0.62], [0.16, 0.09, 0.035], cheek);
+      addTube(headRig, [
+        new Three.Vector3(-0.08, -0.18, 0.71),
+        new Three.Vector3(0, -0.23, 0.73),
+        new Three.Vector3(0.08, -0.18, 0.71),
+      ], 0.018, eye);
+
+      const hat = new Three.Group();
+      hat.name = "Chopper red hat";
+      hat.position.set(0, 0.72, 0);
+      const hatBody = new Three.Mesh(new Three.CylinderGeometry(0.72, 0.93, 0.76, 40), hatRed);
+      hatBody.position.y = 0.35;
+      hatBody.rotation.z = -0.04;
+      hatBody.castShadow = true;
+      hatBody.receiveShadow = true;
+      hat.add(hatBody);
+      const hatBrim = new Three.Mesh(new Three.TorusGeometry(0.91, 0.105, 12, 48), hatRed);
+      hatBrim.rotation.x = Math.PI / 2;
+      hatBrim.position.set(0, -0.02, 0.02);
+      hatBrim.castShadow = true;
+      hat.add(hatBrim);
+      addBox(hat, [0, 0.38, 0.69], [0.16, 0.43, 0.055], eyeShine);
+      addBox(hat, [0, 0.38, 0.7], [0.43, 0.16, 0.06], eyeShine);
+      headRig.add(hat);
+
+      const addAntler = (side) => {
+        const antlerRig = new Three.Group();
+        antlerRig.position.set(side * 0.78, 0.62, -0.04);
+        antlerRig.rotation.z = side * 0.12;
+        addCapsule(antlerRig, [0, 0.28, 0], 0.095, 0.46, antler);
+        const branchOne = new Three.Group();
+        branchOne.position.set(side * 0.03, 0.46, 0);
+        branchOne.rotation.z = side * 0.76;
+        addCapsule(branchOne, [0, 0.19, 0], 0.075, 0.3, antler);
+        antlerRig.add(branchOne);
+        const branchTwo = new Three.Group();
+        branchTwo.position.set(side * 0.02, 0.31, 0);
+        branchTwo.rotation.z = -side * 0.9;
+        addCapsule(branchTwo, [0, 0.16, 0], 0.07, 0.25, antler);
+        antlerRig.add(branchTwo);
+        headRig.add(antlerRig);
+      };
+      addAntler(-1);
+      addAntler(1);
+
+      // Independent arm rigs allow greetings and the crossed-arm pose without rotating the whole character.
+      const leftArm = new Three.Group();
+      const rightArm = new Three.Group();
+      leftArm.name = "Chopper left arm";
+      rightArm.name = "Chopper right arm";
+      leftArm.position.set(-0.72, -0.43, 0.12);
+      rightArm.position.set(0.72, -0.43, 0.12);
+      leftArm.rotation.z = -0.45;
+      rightArm.rotation.z = 0.45;
+      addSphere(leftArm, [0, 0.02, 0], [0.22, 0.22, 0.25], shirt);
+      addSphere(rightArm, [0, 0.02, 0], [0.22, 0.22, 0.25], shirt);
+      addCapsule(leftArm, [0, -0.31, 0], 0.135, 0.4, furLight);
+      addCapsule(rightArm, [0, -0.31, 0], 0.135, 0.4, furLight);
+      const leftHand = new Three.Group();
+      const rightHand = new Three.Group();
+      leftHand.position.set(0, -0.62, 0.03);
+      rightHand.position.set(0, -0.62, 0.03);
+      addSphere(leftHand, [0, 0, 0], [0.19, 0.2, 0.16], furLight);
+      addSphere(rightHand, [0, 0, 0], [0.19, 0.2, 0.16], furLight);
+      leftArm.add(leftHand);
+      rightArm.add(rightHand);
+      root.add(leftArm, rightArm);
+
+      const floorShadow = new Three.Mesh(new Three.CircleGeometry(1.03, 48), new Three.MeshBasicMaterial({ color: 0x8a6678, transparent: true, opacity: 0.22, depthWrite: false }));
+      floorShadow.rotation.x = -Math.PI / 2;
+      floorShadow.scale.set(1.35, 0.42, 1);
+      floorShadow.position.set(0, -1.98, 0.05);
+      floorShadow.renderOrder = -1;
+      scene.add(floorShadow);
+      scene.add(new Three.HemisphereLight(0xfff0e6, 0x4b3d4c, 1.5));
+      const key = new Three.DirectionalLight(0xffffff, 1.35);
+      key.position.set(-3.5, 5.2, 5);
+      key.castShadow = true;
+      key.shadow.mapSize.set(768, 768);
+      key.shadow.camera.left = -4;
+      key.shadow.camera.right = 4;
+      key.shadow.camera.top = 4;
+      key.shadow.camera.bottom = -4;
+      scene.add(key);
+      const fill = new Three.PointLight(0xffa4bd, 0.35, 10);
+      fill.position.set(3, 2.5, 4);
+      scene.add(fill);
+
+      const resize = () => {
+        const width = Math.max(1, cat3DStage.clientWidth);
+        const height = Math.max(1, cat3DStage.clientHeight);
+        renderer.setSize(width, height, false);
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+      };
+      if ("ResizeObserver" in window) new ResizeObserver(resize).observe(cat3DStage);
+      else window.addEventListener("resize", resize, { passive: true });
+      resize();
+      renderer.domElement.addEventListener("webglcontextlost", (event) => {
+        event.preventDefault();
+        catMascot.classList.remove("is-3d-ready");
+        catBubble.textContent = "这台设备暂时无法显示 3D 乔巴，但其他功能仍可使用。";
+      });
+      catMascot.dataset.petModel = "chopper-rigged-web";
+      catMascot.classList.add("is-3d-ready");
+      const clock = new Three.Clock();
+      const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      const approach = (current, target, amount = 0.16) => current + (target - current) * amount;
+      const animate = () => {
+        const time = clock.getElapsedTime();
+        const activeAction = petActionUntil > Date.now() ? petAction : "idle";
+        const beat = Math.sin(time * 12);
+        let leftTarget = -0.45;
+        let rightTarget = 0.45;
+        let headTarget = 0;
+        let pulse = 1;
+        if (activeAction === "greet") {
+          rightTarget = 2.12 + (reducedMotion ? 0 : Math.sin(time * 12.5) * 0.18);
+          rightHand.rotation.z = reducedMotion ? 0 : Math.sin(time * 12.5) * 0.24;
+          leftHand.rotation.z = 0;
+        } else if (activeAction === "cross") {
+          leftTarget = 1.22;
+          rightTarget = -1.22;
+          leftHand.rotation.z = -0.35;
+          rightHand.rotation.z = 0.35;
+        } else if (activeAction === "happy") {
+          leftTarget = 1.82 + (reducedMotion ? 0 : beat * 0.12);
+          rightTarget = -1.82 - (reducedMotion ? 0 : beat * 0.12);
+          headTarget = reducedMotion ? 0 : Math.sin(time * 7) * 0.05;
+          pulse = reducedMotion ? 1 : 1 + Math.sin(time * 12) * 0.025;
+          leftHand.rotation.z = 0;
+          rightHand.rotation.z = 0;
+        } else {
+          leftHand.rotation.z = 0;
+          rightHand.rotation.z = 0;
+        }
+        leftArm.rotation.z = approach(leftArm.rotation.z, leftTarget);
+        rightArm.rotation.z = approach(rightArm.rotation.z, rightTarget);
+        headRig.rotation.z = approach(headRig.rotation.z, headTarget, 0.1);
+        body.scale.y = approach(body.scale.y, pulse, 0.14);
+        if (!catFloat.hidden && !document.hidden) renderer.render(scene, camera);
+        window.requestAnimationFrame(animate);
+      };
+      animate();
+    } catch (error) {
+      console.warn("Chopper 3D model could not initialize.", error);
+      cat3DStage.replaceChildren();
+      catMascot.classList.remove("is-3d-ready");
+      catBubble.textContent = "这台设备暂时无法显示 3D 乔巴，但其他功能仍可使用。";
+    }
+    return;
+  }
+
+  function initializeCatModelLegacy() {
     if (!cat3DStage || !window.THREE) return;
     catMascot.classList.remove("is-2d-ready");
 
@@ -2142,19 +2671,13 @@
   function updateCatMascot() {
     const name = getCatName();
     catMascot.setAttribute("aria-label", `和${name}互动`);
-    catMascot.title = `轻触 ${name} 招手，拖动可以转身`;
-    catGrowthLabel.textContent = "会招手的 Hello Kitty";
+    catMascot.title = `轻触 ${name}，让他随机做一个动作`;
+    catGrowthLabel.textContent = "会打招呼、抱胸和开心动作的乔巴";
     catBubble.textContent = getCatMessage();
   }
 
   function chatWithCat() {
-    if (kittyGreetingTimer) clearTimeout(kittyGreetingTimer);
-    catMascot.classList.add("is-chatting");
-    catBubble.textContent = "Hello Kitty 举起小手向你招手，今天也要开心呀！";
-    kittyGreetingTimer = setTimeout(() => {
-      catMascot.classList.remove("is-chatting");
-      kittyGreetingTimer = null;
-    }, 1450);
+    triggerPetAction("greet");
   }
 
   function openArchive() {

@@ -77,7 +77,19 @@
         <section class="home-group" aria-labelledby="pet-group-title">
           <p id="pet-group-title">宠物互动</p>
           <button class="home-card pet-open" type="button">
-            <span class="home-card-icon pink-icon" aria-hidden="true">♥</span><span><strong>宠物互动（测试）</strong><small>摸摸 Hello Kitty，看看她会做什么</small></span><b aria-hidden="true">→</b>
+            <span class="home-card-icon pink-icon" aria-hidden="true">♥</span><span><strong>宠物互动（测试）</strong><small>点击乔巴打招呼、抱胸和开心互动</small></span><b aria-hidden="true">→</b>
+          </button>
+        </section>
+        <section class="home-group" aria-labelledby="repair-group-title">
+          <p id="repair-group-title">情绪急救</p>
+          <button class="home-card repair-open" type="button">
+            <span class="home-card-icon coral-icon" aria-hidden="true">♡</span><span><strong>和好小屋</strong><small>吵架了？先抱抱，再好好说</small></span><b aria-hidden="true">→</b>
+          </button>
+        </section>
+        <section class="home-group" aria-labelledby="shared-group-title">
+          <p id="shared-group-title">双人同步</p>
+          <button class="home-card shared-open" type="button" aria-haspopup="dialog">
+            <span class="home-card-icon shared-icon" aria-hidden="true">↔</span><span><strong>我们的共享房间</strong><small id="shared-home-status">创建房间，把消息和保存的内容同步给彼此</small></span><b aria-hidden="true">→</b>
           </button>
         </section>
       </div>
@@ -454,19 +466,111 @@
     <section class="screen pet-screen" data-screen="17" aria-labelledby="step-17-title" hidden>
       <button class="back-button" type="button" data-back="0" aria-label="返回空间首页"><span aria-hidden="true">←</span></button>
       <p class="eyebrow">PET PLAYROOM</p>
-      <h1 id="step-17-title" tabindex="-1">宠物互动（测试）</h1>
-      <p class="supporting-copy compact-copy">轻触 Hello Kitty，她会抬起手臂向你招手，双腿也会轻轻配合动作。</p>
+      <h1 id="step-17-title" tabindex="-1">乔巴互动（测试）</h1>
+      <p class="supporting-copy compact-copy">轻触乔巴，他会随机打招呼、双手抱胸或开心庆祝，也可以直接和他说句话。</p>
+      <div class="pet-action-bar" aria-label="乔巴动作">
+        <button class="pet-action-button" type="button" data-pet-action="greet" aria-pressed="false">打招呼</button>
+        <button class="pet-action-button" type="button" data-pet-action="cross" aria-pressed="false">抱胸</button>
+        <button class="pet-action-button" type="button" data-pet-action="happy" aria-pressed="false">开心</button>
+      </div>
+      <form class="pet-talk-form" id="pet-talk-form">
+        <label for="pet-talk-input">和乔巴说句话</label>
+        <div class="pet-talk-row">
+          <input id="pet-talk-input" type="text" maxlength="80" autocomplete="off" placeholder="例如：乔巴，想你了">
+          <button class="primary-button coral-button" type="submit">发送</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="screen reconcile-screen" data-screen="18" aria-labelledby="step-18-title" hidden>
+      <button class="back-button" type="button" data-back="0" aria-label="返回空间首页"><span aria-hidden="true">←</span></button>
+      <p class="eyebrow">MAKE UP ROOM</p>
+      <h1 id="step-18-title" tabindex="-1">和好小屋</h1>
+      <p class="supporting-copy compact-copy">我们先别急着赢，先把彼此哄好。选一个她现在的心情，我来帮你组织第一句话。</p>
+      <div class="repair-moods" role="group" aria-label="她现在的心情">
+        <button class="repair-mood" type="button" data-repair-mood="委屈" aria-pressed="false">委屈</button>
+        <button class="repair-mood" type="button" data-repair-mood="生气" aria-pressed="false">生气</button>
+        <button class="repair-mood" type="button" data-repair-mood="难过" aria-pressed="false">难过</button>
+        <button class="repair-mood" type="button" data-repair-mood="我也有错" aria-pressed="false">我也有错</button>
+      </div>
+      <form class="repair-form" id="repair-form">
+        <label for="repair-tone">想用什么方式哄她？</label>
+        <select id="repair-tone">
+          <option>认真道歉</option>
+          <option>可爱撒娇</option>
+          <option>温柔解释</option>
+          <option>给她一点空间</option>
+        </select>
+        <label for="repair-extra">想补充的话（可选）</label>
+        <textarea id="repair-extra" maxlength="180" rows="3" placeholder="写下具体发生的事，乔巴会帮你放进话里"></textarea>
+        <button class="primary-button coral-button" type="submit">生成哄人话</button>
+      </form>
+      <article class="repair-result-card" aria-labelledby="repair-result-title">
+        <p class="eyebrow" id="repair-result-title">给她的一句话</p>
+        <p id="repair-result" role="status" aria-live="polite">选一个她现在的心情，我来帮你组织第一句话。</p>
+        <div class="repair-result-actions">
+          <button class="secondary-button" id="repair-copy" type="button">复制这句话</button>
+          <button class="primary-button coral-button" id="repair-share" type="button">发给她</button>
+        </div>
+      </article>
+      <fieldset class="repair-checklist">
+        <legend>和好行动清单</legend>
+        <label><input type="checkbox" data-repair-check value="先暂停十分钟">先暂停十分钟，等情绪缓下来</label>
+        <label><input type="checkbox" data-repair-check value="认真听完">认真听完她的话，不抢着解释</label>
+        <label><input type="checkbox" data-repair-check value="不翻旧账">这次只解决这次，不翻旧账</label>
+        <label><input type="checkbox" data-repair-check value="给一个拥抱">愿意的话，给她一个拥抱或视频</label>
+      </fieldset>
     </section>
   </main>
 
+  <dialog class="shared-dialog" id="shared-dialog" aria-labelledby="shared-title">
+    <button class="shared-close" id="shared-close" type="button" aria-label="关闭双人共享">×</button>
+    <p class="eyebrow">TOGETHER ONLINE</p>
+    <h2 id="shared-title">双人共享房间</h2>
+    <p class="shared-intro">创建一个小房间，把邀请、约会计划、回忆和你们发的话同步给彼此。</p>
+
+    <section class="shared-join-panel" id="shared-join-panel" aria-label="创建或加入房间">
+      <label for="shared-room-input">房间码</label>
+      <div class="shared-room-row">
+        <input id="shared-room-input" type="text" inputmode="text" maxlength="8" autocomplete="off" placeholder="例如：AB7K2M" aria-describedby="shared-room-help">
+        <button class="primary-button coral-button" id="shared-join-button" type="button">加入</button>
+      </div>
+      <p class="shared-help" id="shared-room-help">让其中一人先创建，再把房间码或邀请链接发给另一人。</p>
+      <button class="secondary-button shared-create-button" id="shared-create-button" type="button">创建新房间</button>
+    </section>
+
+    <section class="shared-room-panel" id="shared-room-panel" hidden aria-label="当前共享房间">
+      <div class="shared-room-heading">
+        <div><p class="eyebrow">ROOM CODE</p><strong id="shared-room-code">------</strong></div>
+        <span class="shared-connection-pill is-offline" id="shared-connection-pill">未连接</span>
+      </div>
+      <div class="shared-link-actions">
+        <button class="secondary-button" id="shared-copy-link" type="button">复制邀请链接</button>
+        <button class="secondary-button" id="shared-share-link" type="button">系统分享</button>
+      </div>
+      <p class="shared-status" id="shared-status" role="status" aria-live="polite">正在准备房间…</p>
+      <section class="shared-chat" aria-labelledby="shared-chat-title">
+        <h3 id="shared-chat-title">你们的小纸条</h3>
+        <div class="shared-messages" id="shared-messages" role="log" aria-live="polite" aria-relevant="additions text"></div>
+        <form class="shared-message-form" id="shared-message-form">
+          <label class="sr-only" for="shared-message-input">发一条小纸条</label>
+          <input id="shared-message-input" type="text" maxlength="240" autocomplete="off" placeholder="写一句想对她说的话…">
+          <button class="primary-button coral-button" type="submit">发送</button>
+        </form>
+      </section>
+      <button class="secondary-button shared-leave-button" id="shared-leave-button" type="button">退出这个房间</button>
+    </section>
+    <p class="shared-footnote">双方在线时会实时同步；暂时没网时，内容仍会保存在各自手机里。请不要填写账号、密码等敏感信息。</p>
+  </dialog>
+
   <aside class="cat-corner" id="cat-float" aria-labelledby="cat-title" hidden>
-    <button class="cat-mascot" id="cat-mascot" type="button" aria-label="和 Hello Kitty 互动" title="轻触 Hello Kitty 招手">
+    <button class="cat-mascot" id="cat-mascot" type="button" aria-label="和乔巴互动" title="轻触乔巴，让他随机做一个动作">
       <span class="cat-3d-stage" id="cat-3d-stage" aria-hidden="true"></span>
     </button>
     <div class="cat-chat">
-      <p id="cat-title">LEO & EMILY 的 Hello Kitty</p>
-      <strong id="cat-growth-label">宠物互动测试中</strong>
-      <p class="cat-bubble" id="cat-bubble" role="status" aria-live="polite">轻轻碰我一下，我会招手。</p>
+      <p id="cat-title">LEO & EMILY 的乔巴</p>
+      <strong id="cat-growth-label">会和你互动的乔巴</strong>
+      <p class="cat-bubble" id="cat-bubble" role="status" aria-live="polite">轻轻碰我一下，我会和你打招呼。</p>
     </div>
   </aside>
 
@@ -494,7 +598,8 @@
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   <div class="sr-only" id="movement-status" aria-live="polite"></div>
   <script src="three.min.js"></script>
-  <script src="app.js?v=20260731-hello-kitty-detail"></script>
-  <script src="pwa.js?v=20260730-pwa-update"></script>
+  <script src="app.js?v=20260803-chopper-reconcile"></script>
+  <script src="shared-sync.js?v=20260803-room-sync"></script>
+  <script src="pwa.js?v=20260803-pwa-update"></script>
 </body>
 </html>

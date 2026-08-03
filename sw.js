@@ -1,11 +1,13 @@
-const CACHE_NAME = "leo-emily-runtime-v8";
+const CACHE_NAME = "leo-emily-runtime-v10";
 const OFFLINE_ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
-  "./app.js?v=20260731-hello-kitty-detail",
+  "./app.js?v=20260803-chopper-reconcile",
+  "./shared-sync.js?v=20260803-room-sync",
   "./pwa.js",
+  "./pwa.js?v=20260803-pwa-update",
   "./manifest.webmanifest",
   "./apple-touch-icon.png",
   "./icon-192.png",
