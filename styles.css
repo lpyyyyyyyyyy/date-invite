@@ -37,7 +37,9 @@ body {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
   letter-spacing: 0;
 }
@@ -47,7 +49,9 @@ button {
 }
 
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
   outline: 3px solid #287fa9;
   outline-offset: 3px;
 }
@@ -283,7 +287,10 @@ h1 {
 .next-date-card p { margin: 0 0 5px; color: #287a6d; font-size: 12px; font-weight: 900; }
 .next-date-card strong { display: block; color: #326f65; font-size: 13px; line-height: 1.55; }
 
-.shared-dialog { position: fixed; width: min(calc(100% - 28px), 470px); max-height: min(90dvh, 720px); margin: auto; padding: 27px 20px 20px; overflow-y: auto; border: 2px solid #d8edf0; border-radius: 16px; color: var(--ink); background: #fffdfb; box-shadow: 0 20px 60px rgba(64, 91, 99, 0.24); text-align: left; }
+.shared-dialog { position: fixed; inset: 0; width: min(calc(100% - 28px), 470px); max-height: 90vh; max-height: min(90vh, 720px); max-height: min(90dvh, 720px); margin: auto; padding: 27px 20px 20px; padding-left: calc(20px + env(safe-area-inset-left)); padding-right: calc(20px + env(safe-area-inset-right)); padding-bottom: calc(20px + env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; border: 2px solid #d8edf0; border-radius: 16px; color: var(--ink); background: #fffdfb; box-shadow: 0 20px 60px rgba(64, 91, 99, 0.24); text-align: left; }
+.shared-dialog:not([open]) { display: none; }
+.roulette-dialog:not([open]),
+.cat-name-dialog:not([open]) { display: none; }
 .shared-dialog::backdrop { background: rgba(61, 46, 53, 0.42); backdrop-filter: blur(2px); }
 .shared-dialog[open] { animation: shared-dialog-in 220ms ease both; }
 @keyframes shared-dialog-in { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -321,7 +328,26 @@ h1 {
 .shared-message-form input:focus { border-color: #5ab3bc; outline: 0; box-shadow: 0 0 0 3px rgba(90, 179, 188, 0.14); }
 .shared-message-form .primary-button { width: auto; min-width: 58px; min-height: 40px; margin: 0; padding: 6px 11px; font-size: 12px; }
 .shared-leave-button { width: 100%; margin-top: 12px; color: #9b6673; border-color: #eddce0; font-size: 12px; }
+.shared-backup { margin-top: 14px; padding: 13px; border: 1px solid #f0dfe5; border-radius: 12px; background: linear-gradient(135deg, #fff8fa 0%, #fffdf7 100%); }
+.shared-backup-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.shared-backup-heading h3 { margin: 0; color: #91495f; font-size: 13px; }
+.shared-backup-heading p { margin: 4px 0 0; color: #8d737b; font-size: 11px; line-height: 1.55; }
+.shared-backup-heading > span { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: #a64d68; background: #ffe2eb; font-size: 18px; font-weight: 900; }
+.shared-backup-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 11px; }
+.shared-backup-actions .secondary-button { width: 100%; min-height: 39px; margin: 0; padding: 7px 8px; border-color: #efcdd8; color: #985269; background: rgba(255, 255, 255, 0.82); font-size: 12px; }
+.shared-backup-actions .secondary-button:hover { border-color: #e79ab2; background: #fff; }
+.shared-backup-status { min-height: 18px; margin: 8px 1px 0; color: #967780; font-size: 10px; font-weight: 700; line-height: 1.5; }
+.shared-backup-status[data-tone="success"] { color: #498071; }
+.shared-backup-status[data-tone="error"] { color: #b45a68; }
 .shared-footnote { margin-top: 16px; color: #8d7d82; }
+
+@media (max-width: 370px) {
+  .shared-dialog { width: calc(100% - 16px); padding-right: 14px; padding-left: 14px; }
+  .shared-room-row { grid-template-columns: minmax(0, 1fr) 64px; }
+  .shared-room-row .primary-button { min-width: 0; padding-right: 8px; padding-left: 8px; }
+  .shared-link-actions { grid-template-columns: 1fr; }
+  .shared-backup-actions { grid-template-columns: 1fr; }
+}
 .cat-corner { position: fixed; z-index: 60; right: max(12px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: 136px minmax(0, 178px); align-items: end; gap: 2px; width: min(calc(100vw - 24px), 320px); pointer-events: none; text-align: left; }
 .cat-corner[hidden] { display: none !important; }
 .cat-mascot { position: relative; width: 136px; height: 138px; padding: 0; border: 0; background: transparent; cursor: pointer; touch-action: manipulation; pointer-events: auto; transform-origin: 50% 85%; transition: transform 220ms ease; }
@@ -1322,5 +1348,247 @@ h1 {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
+  }
+}
+
+/*
+ * Quiet polish layer
+ * 保留原有尺寸与交互语义，只把层级、留白、触控反馈和小屏安全区收得更舒服。
+ */
+:root {
+  --surface-elevated: rgba(255, 255, 255, 0.94);
+  --line-soft: rgba(219, 190, 201, 0.68);
+  --shadow-card: 0 14px 32px rgba(92, 54, 67, 0.09), 0 3px 8px rgba(92, 54, 67, 0.05);
+  --shadow-float: 0 22px 56px rgba(92, 54, 67, 0.17), 0 4px 14px rgba(92, 54, 67, 0.08);
+}
+
+html {
+  background: #fff4f6;
+}
+
+body {
+  background:
+    radial-gradient(circle at 8% 7%, rgba(255, 216, 226, 0.62), transparent 28%),
+    radial-gradient(circle at 92% 88%, rgba(204, 239, 232, 0.52), transparent 30%),
+    #fff4f6;
+}
+
+.app-shell {
+  background: linear-gradient(180deg, #fffefd 0%, #fffafc 100%);
+  isolation: isolate;
+}
+
+.screen {
+  padding-right: clamp(16px, 4.5vw, 32px);
+  padding-left: clamp(16px, 4.5vw, 32px);
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+}
+
+.home-sections {
+  gap: 20px;
+  margin-top: 27px;
+}
+
+.home-card,
+.secret-card,
+.game-card {
+  min-height: 80px;
+  padding: 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: 15px;
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-card);
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.home-card:hover,
+.secret-card:hover,
+.game-card:hover {
+  border-color: rgba(244, 95, 118, 0.58);
+  box-shadow: 0 18px 34px rgba(92, 54, 67, 0.13), 0 4px 9px rgba(92, 54, 67, 0.06);
+  transform: translateY(-2px);
+}
+
+.home-card:active,
+.secret-card:active,
+.game-card:active {
+  box-shadow: 0 8px 18px rgba(92, 54, 67, 0.1);
+  transform: translateY(1px);
+}
+
+.home-card-icon {
+  border-radius: 13px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+.secret-card-icon,
+.game-card-icon {
+  border-radius: 50%;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+.next-date-card {
+  margin-top: 27px;
+  border-radius: 15px;
+  background: rgba(239, 250, 245, 0.9);
+  box-shadow: var(--shadow-card);
+}
+
+.choice-button,
+.primary-button,
+.secondary-button,
+.back-button,
+.archive-button,
+.anniversary-add,
+.roulette-open,
+.shared-close,
+.roulette-close {
+  border-radius: 13px;
+}
+
+.primary-button {
+  transition: transform 180ms ease, filter 180ms ease, box-shadow 180ms ease;
+}
+
+.primary-button:active:not(:disabled) {
+  box-shadow: 0 4px 9px rgba(117, 63, 76, 0.16);
+  transform: translateY(2px);
+}
+
+.secondary-button {
+  border-color: var(--line-soft);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 16px rgba(92, 54, 67, 0.06);
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.secondary-button:hover {
+  border-color: rgba(244, 95, 118, 0.5);
+  box-shadow: 0 10px 20px rgba(92, 54, 67, 0.09);
+  transform: translateY(-1px);
+}
+
+.secondary-button:active:not(:disabled) {
+  box-shadow: 0 4px 10px rgba(92, 54, 67, 0.06);
+  transform: translateY(1px);
+}
+
+.back-button,
+.archive-button,
+.anniversary-add {
+  border-color: var(--line-soft);
+  background: rgba(255, 253, 251, 0.9);
+  box-shadow: 0 8px 20px rgba(92, 54, 67, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.food-option,
+.thing-item,
+.input-wrap,
+.other-choice,
+.truth-question,
+.dice-table,
+.map-card,
+.archive-item,
+.anniversary-item,
+.keepsake-item,
+.things-progress,
+.repair-result-card,
+.repair-checklist,
+.shared-chat {
+  border-radius: 14px;
+}
+
+.food-option {
+  border-width: 1px;
+  box-shadow: 0 7px 16px rgba(92, 54, 67, 0.06);
+  transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+
+.food-option:hover {
+  box-shadow: 0 11px 22px rgba(92, 54, 67, 0.09);
+  transform: translateY(-2px);
+}
+
+.food-option.is-selected {
+  box-shadow: 0 9px 20px rgba(244, 95, 118, 0.16);
+}
+
+.archive-item,
+.anniversary-item,
+.keepsake-item,
+.things-progress,
+.truth-question,
+.repair-result-card,
+.repair-checklist,
+.map-card {
+  box-shadow: var(--shadow-card);
+}
+
+.input-wrap,
+.repair-form select,
+.repair-form textarea,
+.keepsake-form input,
+.keepsake-form textarea,
+.anniversary-form input,
+.memory-form textarea,
+.shared-room-row input,
+.shared-message-form input,
+.cat-name-dialog input {
+  border-radius: 12px;
+}
+
+.poster-frame,
+.roulette-dialog,
+.cat-name-dialog {
+  border-radius: 17px;
+  box-shadow: var(--shadow-float);
+}
+
+.roulette-dialog,
+.cat-name-dialog {
+  border-color: var(--line-soft);
+}
+
+.roulette-dialog::backdrop,
+.cat-name-dialog::backdrop {
+  background: rgba(58, 39, 49, 0.44);
+  backdrop-filter: blur(5px);
+}
+
+.toast {
+  bottom: max(18px, calc(env(safe-area-inset-bottom) + 10px));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 13px;
+  box-shadow: var(--shadow-float);
+}
+
+@media (max-width: 460px) {
+  .screen {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .home-card,
+  .secret-card,
+  .game-card {
+    padding: 12px;
+  }
+
+  .shared-dialog {
+    max-height: calc(100dvh - 20px);
+    padding-top: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-card,
+  .secret-card,
+  .game-card,
+  .food-option,
+  .primary-button,
+  .secondary-button {
+    transition: none;
   }
 }

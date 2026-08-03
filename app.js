@@ -236,7 +236,12 @@
     }
   }
 
+  function backupBeforeSave(reason) {
+    try { window.DateInviteBackups?.capture?.(reason); } catch (error) { /* 备份失败不影响正常保存 */ }
+  }
+
   function persistState() {
+    backupBeforeSave("约会计划");
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (error) {
@@ -259,6 +264,7 @@
   }
 
   function persistArchive() {
+    backupBeforeSave("回忆与照片");
     try {
       localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archiveRecords));
     } catch (error) {
@@ -281,6 +287,7 @@
   }
 
   function persistAnniversaries() {
+    backupBeforeSave("纪念日");
     try {
       localStorage.setItem(ANNIVERSARY_KEY, JSON.stringify(anniversaries));
     } catch (error) {
@@ -298,6 +305,7 @@
   }
 
   function persistCompletedThings() {
+    backupBeforeSave("100 件事");
     try {
       localStorage.setItem(THINGS_KEY, JSON.stringify([...completedThings]));
     } catch (error) {
@@ -315,6 +323,7 @@
   }
 
   function persistCoupleNotes() {
+    backupBeforeSave("情侣密码本");
     try {
       localStorage.setItem(COUPLE_NOTES_KEY, JSON.stringify(coupleNotes));
     } catch (error) {
@@ -332,6 +341,7 @@
   }
 
   function persistFutureLetters() {
+    backupBeforeSave("给未来的信");
     try {
       localStorage.setItem(FUTURE_LETTERS_KEY, JSON.stringify(futureLetters));
     } catch (error) {
@@ -380,6 +390,7 @@
   }
 
   function persistRepairState() {
+    backupBeforeSave("和好小屋");
     try {
       localStorage.setItem(REPAIR_KEY, JSON.stringify(repairState));
     } catch (error) {
@@ -407,10 +418,12 @@
     syncActivitySelection();
     syncFoodSelection();
     updateHomeCountdown();
-    recordCatVisit();
-    updateCatMascot();
+    if (catMascot) {
+      recordCatVisit();
+      updateCatMascot();
+      initializeCatModel();
+    }
     renderRepairState();
-    initializeCatModel();
     window.setInterval(updateHomeCountdown, 60000);
 
     document.querySelector(".home-plan").addEventListener("click", () => showScreen(1));
@@ -420,9 +433,9 @@
     document.querySelector(".keepsakes-open").addEventListener("click", () => showScreen(14));
     document.querySelector(".couple-book-open").addEventListener("click", () => showScreen(15));
     document.querySelector(".future-letter-open").addEventListener("click", () => showScreen(16));
-    document.querySelector(".pet-open").addEventListener("click", () => showScreen(17));
+    document.querySelector(".pet-open")?.addEventListener("click", () => showScreen(17));
     document.querySelector(".repair-open")?.addEventListener("click", () => showScreen(18));
-    catMascot.addEventListener("click", (event) => {
+    catMascot?.addEventListener("click", (event) => {
       if (catMascot.dataset.dragged === "true") {
         catMascot.dataset.dragged = "";
         event.preventDefault();
@@ -452,7 +465,7 @@
     }));
     repairCopy?.addEventListener("click", () => copyRepairMessage());
     repairShare?.addEventListener("click", () => shareRepairMessage());
-    catNameForm.addEventListener("submit", saveCatName);
+    catNameForm?.addEventListener("submit", saveCatName);
     document.querySelector(".truth-open").addEventListener("click", () => showScreen(12));
     document.querySelector(".dice-open").addEventListener("click", () => showScreen(13));
     yesButton.addEventListener("click", () => {
@@ -523,7 +536,7 @@
       syncActivitySelection();
       syncFoodSelection();
       updateHomeCountdown();
-      updateCatMascot();
+      if (catMascot) updateCatMascot();
       if (currentScreen === 3) {
         dateInput.min = getToday();
         dateInput.value = state.date;
@@ -553,6 +566,9 @@
       menuTransitionTimer = null;
     }
 
+    // The pet theme can be omitted from the HTML without leaving a dead route.
+    if (screenNumber === 17 && !catMascot) screenNumber = 0;
+
     currentScreen = screenNumber;
     screens.forEach((screen) => {
       const isActive = Number(screen.dataset.screen) === screenNumber;
@@ -564,12 +580,12 @@
       dot.classList.toggle("is-current", Number(dot.dataset.progress) === screenNumber);
     });
     document.querySelector(".progress").hidden = screenNumber === 0 || screenNumber > 6;
-    document.body.classList.toggle("is-pet-screen", screenNumber === 17);
-    catFloat.hidden = screenNumber !== 17;
+    document.body.classList.toggle("is-pet-screen", screenNumber === 17 && Boolean(catFloat));
+    if (catFloat) catFloat.hidden = screenNumber !== 17;
 
     if (screenNumber === 0) {
       updateHomeCountdown();
-      updateCatMascot();
+      if (catMascot) updateCatMascot();
     }
     if (screenNumber === 1) resetInvitationButtons();
     if (screenNumber === 3) {
@@ -595,7 +611,7 @@
       if (!futureLetterDate.value) futureLetterDate.value = getTomorrow();
       renderFutureLetters();
     }
-    if (screenNumber === 17) updateCatMascot();
+    if (screenNumber === 17 && catMascot) updateCatMascot();
 
     window.scrollTo({ top: 0, behavior: "auto" });
     const heading = document.querySelector(`[data-screen="${screenNumber}"] h1`);
@@ -1715,6 +1731,7 @@
   }
 
   function triggerPetAction(action = "greet", message = "") {
+    if (!catMascot || !catBubble) return;
     const available = new Set(["greet", "cross", "happy"]);
     petAction = available.has(action) ? action : "greet";
     petActionUntil = Date.now() + 2100;
@@ -1855,6 +1872,7 @@
 
   function saveCatName(event) {
     event.preventDefault();
+    if (!catNameInput || !catNameDialog) return;
     const name = catNameInput.value.trim().slice(0, 12);
     if (!name) {
       catNameInput.focus();
@@ -2140,7 +2158,7 @@
         rightArm.rotation.z = approach(rightArm.rotation.z, rightTarget);
         headRig.rotation.z = approach(headRig.rotation.z, headTarget, 0.1);
         body.scale.y = approach(body.scale.y, pulse, 0.14);
-        if (!catFloat.hidden && !document.hidden) renderer.render(scene, camera);
+        if (catFloat && !catFloat.hidden && !document.hidden) renderer.render(scene, camera);
         window.requestAnimationFrame(animate);
       };
       animate();
@@ -2387,7 +2405,7 @@
         restingArm.rotation.z = 0.45 + (isGreeting && !reducedMotion ? Math.sin(time * 6.5) * 0.05 : 0);
         leftLeg.rotation.x = isGreeting && !reducedMotion ? Math.sin(time * 6.5) * 0.06 : 0;
         rightLeg.rotation.x = isGreeting && !reducedMotion ? -Math.sin(time * 6.5) * 0.06 : 0;
-        if (!catFloat.hidden && !document.hidden) renderer.render(scene, camera);
+        if (catFloat && !catFloat.hidden && !document.hidden) renderer.render(scene, camera);
         window.requestAnimationFrame(animate);
       };
       animate();
@@ -2669,6 +2687,7 @@
   }
 
   function updateCatMascot() {
+    if (!catMascot || !catGrowthLabel || !catBubble) return;
     const name = getCatName();
     catMascot.setAttribute("aria-label", `和${name}互动`);
     catMascot.title = `轻触 ${name}，让他随机做一个动作`;
@@ -2802,14 +2821,36 @@
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onerror = () => reject(new Error("读取失败"));
-      reader.onload = () => { const image = new Image(); image.onerror = () => reject(new Error("图片无效")); image.onload = () => { const scale = Math.min(1, 1000 / Math.max(image.naturalWidth, image.naturalHeight)); const canvas = document.createElement("canvas"); canvas.width = Math.max(1, Math.round(image.naturalWidth * scale)); canvas.height = Math.max(1, Math.round(image.naturalHeight * scale)); const context = canvas.getContext("2d"); if (!context) return reject(new Error("不支持绘图")); context.drawImage(image, 0, 0, canvas.width, canvas.height); resolve(canvas.toDataURL("image/jpeg", 0.78)); }; image.src = reader.result; };
+      reader.onload = () => {
+        const image = new Image();
+        image.onerror = () => reject(new Error("图片无效"));
+        image.onload = () => {
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d");
+          if (!context) return reject(new Error("不支持绘图"));
+
+          // 让照片既清楚又适合两台手机同步；必要时逐步压缩，避免把半截图片发过去。
+          const presets = [[1000, 0.78], [820, 0.72], [680, 0.66], [560, 0.6]];
+          let compressed = "";
+          for (const [maxSide, quality] of presets) {
+            const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+            canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            compressed = canvas.toDataURL("image/jpeg", quality);
+            if (compressed.length <= 850000) break;
+          }
+          resolve(compressed);
+        };
+        image.src = reader.result;
+      };
       reader.readAsDataURL(file);
     });
   }
 
   function renderMemoryPhotos(record) {
     memoryPhotos.replaceChildren();
-    record.photos.forEach((source, index) => { const wrap = document.createElement("div"); wrap.className = "memory-photo"; const image = document.createElement("img"); image.src = source; image.alt = `回忆照片 ${index + 1}`; const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "×"; remove.setAttribute("aria-label", `删除回忆照片 ${index + 1}`); remove.addEventListener("click", () => { record.photos.splice(index, 1); persistArchive(); renderMemoryPhotos(record); }); wrap.append(image, remove); memoryPhotos.append(wrap); });
+    record.photos.forEach((source, index) => { const wrap = document.createElement("div"); wrap.className = "memory-photo"; const image = document.createElement("img"); image.src = source; image.alt = `回忆照片 ${index + 1}`; const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "×"; remove.setAttribute("aria-label", `删除回忆照片 ${index + 1}`); remove.addEventListener("click", () => { record.photos.splice(index, 1); record.updatedAt = Date.now(); persistArchive(); renderMemoryPhotos(record); }); wrap.append(image, remove); memoryPhotos.append(wrap); });
   }
 
   function canvasToBlob(canvas) {

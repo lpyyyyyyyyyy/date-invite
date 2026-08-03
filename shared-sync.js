@@ -9,6 +9,8 @@
   const ROOM_KEY = "cute-date-invite-shared-room-v1";
   const META_KEY = "cute-date-invite-shared-meta-v1";
   const CHAT_KEY = "cute-date-invite-shared-messages-v1";
+  const META_ROOM_KEY = `${META_KEY}-room`;
+  const CHAT_ROOM_KEY = `${CHAT_KEY}-room`;
   const SYNC_KEYS = [
     "cute-date-invite-v1",
     "cute-date-invite-archive-v1",
@@ -16,7 +18,6 @@
     "cute-date-invite-100-things-v1",
     "cute-date-invite-couple-notes-v1",
     "cute-date-invite-future-letters-v1",
-    "cute-date-invite-cat-v1",
     "cute-date-invite-repair-v1",
     CHAT_KEY,
   ];
@@ -24,8 +25,16 @@
   const PEER_SOURCES = [
     "https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js",
     "https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js",
   ];
   const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  // DataChannel 在 iOS Safari 等环境中的单条消息上限并不一致。
+  // 发送前必须保证 JSON 没有被半截截断，否则对方会把损坏的数据写进本地存储。
+  // 约会照片在应用内已经压缩过；给三张照片和文字留出足够空间，
+  // 同时把整包控制在移动端 DataChannel 比较稳妥的范围内。
+  const MAX_SNAPSHOT_VALUE_CHARS = 2400000;
+  const MAX_SNAPSHOT_TOTAL_CHARS = 7000000;
+  const MAX_SYNC_PHOTO_CHARS = 900000;
 
   const dialog = document.querySelector("#shared-dialog");
   const openButtons = [...document.querySelectorAll(".shared-open")];
@@ -57,6 +66,9 @@
   let reconnectTimer = null;
   let applyingRemote = false;
   let roomWasOpened = false;
+  // 每次关闭/重建 Peer 都递增。防止网络抖动时，旧的异步连接回调覆盖新连接。
+  let connectionGeneration = 0;
+  let hostUnavailableAttempts = 0;
 
   function safeGet(key) {
     try { return window.localStorage.getItem(key); } catch (error) { return null; }
@@ -67,7 +79,7 @@
   }
 
   function safeRemove(key) {
-    try { window.localStorage.removeItem(key); } catch (error) { /* ignore */ }
+    try { window.localStorage.removeItem(key); return true; } catch (error) { return false; }
   }
 
   function readMeta() {
@@ -78,38 +90,93 @@
   }
 
   let keyMeta = readMeta();
+  // 删除操作需要一个可同步的墓碑；仅发送 null 无法区分“没初始化”与“用户刚删除”。
+  let keyTombstones = {};
+  try {
+    const savedTombstones = JSON.parse(safeGet(`${META_KEY}-deleted`) || "{}");
+    if (savedTombstones && typeof savedTombstones === "object") keyTombstones = savedTombstones;
+  } catch (error) { keyTombstones = {}; }
+  let syncRoomCode = String(safeGet(META_ROOM_KEY) || "");
 
-  function touchKey(key, at = Date.now()) {
-    if (!SYNC_KEY_SET.has(key)) return;
-    keyMeta[key] = Number.isFinite(at) ? at : Date.now();
+  function scopeRoomData(code, preserveUnscoped = false) {
+    const normalized = normalizeCode(code);
+    if (!normalized) return;
+    const previous = syncRoomCode;
+    const previousChatRoom = String(safeGet(CHAT_ROOM_KEY) || "");
+    if (previous && previous !== normalized) {
+      keyMeta = {};
+      keyTombstones = {};
+      // 小纸条属于房间；切换房间时不要把上一对人的私密聊天带过去。
+      try { window.DateInviteBackups?.capture?.("切换共享房间前"); } catch (error) { /* 不影响切换 */ }
+      applyingRemote = true;
+      try { safeRemove(CHAT_KEY); } finally { applyingRemote = false; }
+    } else if (!previous && !preserveUnscoped) {
+      // 新建/加入房间时，旧版本留下的全局时间戳不应影响首次合并。
+      keyMeta = {};
+      keyTombstones = {};
+      if (previousChatRoom && previousChatRoom !== normalized) {
+        applyingRemote = true;
+        try { safeRemove(CHAT_KEY); } finally { applyingRemote = false; }
+      }
+    } else if (!previous && !previousChatRoom && preserveUnscoped) {
+      // 兼容旧版本：第一次启用共享时保留已有本地纸条。
+    }
+    syncRoomCode = normalized;
+    safeSet(META_ROOM_KEY, normalized);
+    safeSet(CHAT_ROOM_KEY, normalized);
+    persistMeta();
+  }
+
+  function persistMeta() {
     safeSet(META_KEY, JSON.stringify(keyMeta));
+    safeSet(`${META_KEY}-deleted`, JSON.stringify(keyTombstones));
+  }
+
+  function touchKey(key, at = Date.now(), deleted = false) {
+    if (!SYNC_KEY_SET.has(key)) return;
+    const stamp = Number.isFinite(at) ? at : Date.now();
+    keyMeta[key] = stamp;
+    if (deleted) keyTombstones[key] = stamp;
+    else delete keyTombstones[key];
+    persistMeta();
   }
 
   function patchStorage() {
     if (window.__dateInviteSharedStoragePatched) return;
+    if (!window.Storage || !Storage.prototype) return;
     const originalSetItem = Storage.prototype.setItem;
     const originalRemoveItem = Storage.prototype.removeItem;
-    Storage.prototype.setItem = function patchedSetItem(key, value) {
-      const result = originalSetItem.call(this, key, value);
-      let isLocal = false;
-      try { isLocal = this === window.localStorage; } catch (error) { isLocal = false; }
-      if (isLocal && !applyingRemote && SYNC_KEY_SET.has(String(key))) {
-        touchKey(String(key));
-        scheduleSnapshotBroadcast();
-      }
-      return result;
-    };
-    Storage.prototype.removeItem = function patchedRemoveItem(key) {
-      const result = originalRemoveItem.call(this, key);
-      let isLocal = false;
-      try { isLocal = this === window.localStorage; } catch (error) { isLocal = false; }
-      if (isLocal && !applyingRemote && SYNC_KEY_SET.has(String(key))) {
-        touchKey(String(key));
-        scheduleSnapshotBroadcast();
-      }
-      return result;
-    };
-    window.__dateInviteSharedStoragePatched = true;
+    try {
+      Storage.prototype.setItem = function patchedSetItem(key, value) {
+        const result = originalSetItem.call(this, key, value);
+        let isLocal = false;
+        try { isLocal = this === window.localStorage; } catch (error) { isLocal = false; }
+        if (isLocal && !applyingRemote && SYNC_KEY_SET.has(String(key))) {
+          touchKey(String(key), Date.now(), false);
+          scheduleSnapshotBroadcast();
+        }
+        return result;
+      };
+      Storage.prototype.removeItem = function patchedRemoveItem(key) {
+        const result = originalRemoveItem.call(this, key);
+        let isLocal = false;
+        try { isLocal = this === window.localStorage; } catch (error) { isLocal = false; }
+        if (isLocal && !applyingRemote && SYNC_KEY_SET.has(String(key))) {
+          // 记录删除标记，避免删除操作在另一台手机上被旧数组重新合并回来。
+          touchKey(String(key), Date.now(), true);
+          scheduleSnapshotBroadcast();
+        }
+        return result;
+      };
+      window.__dateInviteSharedStoragePatched = true;
+    } catch (error) {
+      // 某些隐私模式会把 Storage 原型设为只读；同步不可用时不能阻塞主应用。
+      try {
+        Storage.prototype.setItem = originalSetItem;
+        Storage.prototype.removeItem = originalRemoveItem;
+      } catch (restoreError) { /* ignore */ }
+      window.__dateInviteSharedStoragePatched = false;
+    }
   }
 
   function randomCode() {
@@ -132,6 +199,14 @@
     return `leo-emily-${code.toLowerCase()}`;
   }
 
+  function normalizeHostId(value, code) {
+    const candidate = String(value || "").trim().toLowerCase();
+    // 只接受本应用生成的 PeerJS ID，避免旧链接/手工输入的非法 ID 让 PeerJS 直接报错。
+    return /^leo-emily-[a-z0-9]{6,8}$/.test(candidate) && candidate.endsWith(code.toLowerCase())
+      ? candidate
+      : makeHostId(code);
+  }
+
   function loadRoom() {
     try {
       const saved = JSON.parse(safeGet(ROOM_KEY) || "null");
@@ -141,7 +216,7 @@
       return {
         code,
         role: saved.role,
-        hostId: typeof saved.hostId === "string" ? saved.hostId : makeHostId(code),
+        hostId: normalizeHostId(saved.hostId, code),
         updatedAt: Number(saved.updatedAt) || Date.now(),
       };
     } catch (error) { return null; }
@@ -185,7 +260,7 @@
     } else {
       dialog.setAttribute("open", "");
     }
-    if (activeRoom && !peer) connectSavedRoom();
+    if (activeRoom && (!peer || peer.destroyed || peer.disconnected || !connection?.open)) connectSavedRoom();
   }
 
   function closeSharedDialog() {
@@ -214,7 +289,9 @@
   }
 
   function closePeer() {
+    connectionGeneration += 1;
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    if (storageBroadcastTimer) { clearTimeout(storageBroadcastTimer); storageBroadcastTimer = null; }
     if (connection) {
       try { connection.close(); } catch (error) { /* ignore */ }
       connection = null;
@@ -227,8 +304,10 @@
 
   function makeRoom() {
     const code = randomCode();
+    scopeRoomData(code);
     activeRoom = { code, role: "host", hostId: makeHostId(code), updatedAt: Date.now() };
     myRole = "host";
+    hostUnavailableAttempts = 0;
     saveRoom();
     renderRoomUI();
     connectHost();
@@ -242,8 +321,10 @@
       return;
     }
     const queryHost = new URLSearchParams(window.location.search).get("host");
-    activeRoom = { code, role: "guest", hostId: queryHost || makeHostId(code), updatedAt: Date.now() };
+    scopeRoomData(code);
+    activeRoom = { code, role: "guest", hostId: normalizeHostId(queryHost, code), updatedAt: Date.now() };
     myRole = "guest";
+    hostUnavailableAttempts = 0;
     saveRoom();
     renderRoomUI();
     connectGuest();
@@ -251,22 +332,52 @@
 
   async function connectHost() {
     closePeer();
+    const generation = connectionGeneration;
+    const room = activeRoom;
+    if (!room) return;
     setStatus("正在创建房间…", "waiting");
     try {
       await ensurePeerLibrary();
-      peer = new window.Peer(activeRoom.hostId, { debug: 0 });
-      peer.on("open", () => setStatus("房间已创建，把邀请链接发给她吧。", "waiting"));
-      peer.on("connection", (incoming) => {
+      if (generation !== connectionGeneration || activeRoom !== room) return;
+      const nextPeer = new window.Peer(room.hostId, { debug: 0 });
+      if (generation !== connectionGeneration || activeRoom !== room) {
+        try { nextPeer.destroy(); } catch (error) { /* ignore */ }
+        return;
+      }
+      peer = nextPeer;
+      nextPeer.on("open", () => {
+        if (generation !== connectionGeneration || peer !== nextPeer) return;
+        hostUnavailableAttempts = 0;
+        setStatus("房间已创建，把邀请链接发给她吧。", "waiting");
+      });
+      nextPeer.on("connection", (incoming) => {
+        if (generation !== connectionGeneration || peer !== nextPeer) {
+          try { incoming.close(); } catch (error) { /* ignore */ }
+          return;
+        }
         if (connection && connection.open) {
           incoming.close();
           return;
         }
-        attachConnection(incoming);
+        attachConnection(incoming, generation, nextPeer);
       });
-      peer.on("error", (error) => {
+      nextPeer.on("error", (error) => {
+        if (generation !== connectionGeneration || peer !== nextPeer) return;
         if (error?.type === "unavailable-id") {
+          if (hostUnavailableAttempts < 3) {
+            hostUnavailableAttempts += 1;
+            const retryDelay = 500 * hostUnavailableAttempts;
+            setStatus("房间正在恢复连接，请稍等…", "waiting");
+            setTimeout(() => {
+              if (generation === connectionGeneration && activeRoom === room) connectHost();
+            }, retryDelay);
+            return;
+          }
+          hostUnavailableAttempts = 0;
           setStatus("这个房间码刚好被占用，正在换一个新的…", "offline");
-          activeRoom = { code: randomCode(), role: "host", hostId: "", updatedAt: Date.now() };
+          const replacementCode = randomCode();
+          scopeRoomData(replacementCode);
+          activeRoom = { code: replacementCode, role: "host", hostId: "", updatedAt: Date.now() };
           activeRoom.hostId = makeHostId(activeRoom.code);
           saveRoom();
           renderRoomUI();
@@ -274,48 +385,74 @@
           return;
         }
         setStatus("共享服务暂时连接不上，请检查网络后重试。", "offline");
+        scheduleReconnect();
       });
     } catch (error) {
+      if (generation !== connectionGeneration || activeRoom !== room) return;
       setStatus(error.message || "共享服务暂时不可用，页面仍可离线使用。", "offline");
     }
   }
 
   async function connectGuest() {
     closePeer();
+    const generation = connectionGeneration;
+    const room = activeRoom;
+    if (!room) return;
     setStatus("正在寻找另一部手机…", "waiting");
     try {
       await ensurePeerLibrary();
-      peer = new window.Peer(undefined, { debug: 0 });
-      peer.on("open", () => {
-        const outgoing = peer.connect(activeRoom.hostId, { reliable: true });
-        attachConnection(outgoing);
+      if (generation !== connectionGeneration || activeRoom !== room) return;
+      const nextPeer = new window.Peer(undefined, { debug: 0 });
+      if (generation !== connectionGeneration || activeRoom !== room) {
+        try { nextPeer.destroy(); } catch (error) { /* ignore */ }
+        return;
+      }
+      peer = nextPeer;
+      nextPeer.on("open", () => {
+        if (generation !== connectionGeneration || peer !== nextPeer || activeRoom !== room) return;
+        const outgoing = nextPeer.connect(room.hostId, { reliable: true });
+        attachConnection(outgoing, generation, nextPeer);
       });
-      peer.on("error", (error) => {
+      nextPeer.on("error", (error) => {
+        if (generation !== connectionGeneration || peer !== nextPeer) return;
         if (error?.type === "peer-unavailable" || error?.type === "disconnected") {
           setStatus("还没找到对方。请确认她已打开同一个邀请链接。", "waiting");
+          scheduleReconnect();
         } else {
           setStatus("共享服务暂时连接不上，请检查网络后重试。", "offline");
+          scheduleReconnect();
         }
       });
     } catch (error) {
+      if (generation !== connectionGeneration || activeRoom !== room) return;
       setStatus(error.message || "共享服务暂时不可用，页面仍可离线使用。", "offline");
     }
   }
 
-  function attachConnection(nextConnection) {
+  function attachConnection(nextConnection, generation = connectionGeneration, ownerPeer = peer) {
     connection = nextConnection;
     setStatus("正在牵手连接…", "waiting");
     connection.on("open", () => {
+      if (generation !== connectionGeneration || peer !== ownerPeer || connection !== nextConnection) {
+        try { nextConnection.close(); } catch (error) { /* ignore */ }
+        return;
+      }
       setStatus("已连接：你们现在可以互相发消息了。", "online");
       sendPacket({ type: "hello", snapshot: collectSnapshot() });
     });
-    connection.on("data", handlePacket);
+    connection.on("data", (packet) => {
+      if (generation !== connectionGeneration || peer !== ownerPeer || connection !== nextConnection) return;
+      handlePacket(packet);
+    });
     connection.on("close", () => {
-      if (connection === nextConnection) connection = null;
+      if (generation !== connectionGeneration || peer !== ownerPeer || connection !== nextConnection) return;
+      connection = null;
       setStatus("对方暂时离开了，重新打开链接就会继续同步。", "waiting");
       scheduleReconnect();
     });
-    connection.on("error", () => setStatus("连接出现波动，正在等待重新连接…", "waiting"));
+    connection.on("error", () => {
+      if (generation === connectionGeneration && peer === ownerPeer && connection === nextConnection) setStatus("连接出现波动，正在等待重新连接…", "waiting");
+    });
   }
 
   function scheduleReconnect() {
@@ -335,34 +472,97 @@
     try { return JSON.parse(raw); } catch (error) { return fallback; }
   }
 
+  function compactArray(value) {
+    const output = [];
+    for (const item of value) {
+      const candidate = JSON.stringify([...output, item]);
+      if (candidate.length > MAX_SNAPSHOT_VALUE_CHARS) break;
+      output.push(item);
+    }
+    return JSON.stringify(output);
+  }
+
+  function compactArchive(records) {
+    const output = [];
+    for (const record of records) {
+      if (!record || typeof record !== "object") continue;
+      const copy = { ...record };
+      // 只发送完整的图片字符串；截断 base64 会生成无法显示的坏图片。
+      copy.photos = Array.isArray(record.photos)
+        ? record.photos.filter((photo) => typeof photo === "string" && photo.length <= MAX_SYNC_PHOTO_CHARS).slice(0, 3)
+        : [];
+      let candidate = JSON.stringify([...output, copy]);
+      if (candidate.length > MAX_SNAPSHOT_VALUE_CHARS) {
+        // 先保留记录文字和日期，必要时舍弃图片；不会损坏整个 JSON。
+        copy.photos = [];
+        candidate = JSON.stringify([...output, copy]);
+        if (candidate.length > MAX_SNAPSHOT_VALUE_CHARS) break;
+      }
+      output.push(copy);
+    }
+    return JSON.stringify(output);
+  }
+
   function snapshotValue(key) {
     const raw = safeGet(key);
     if (raw == null) return null;
-    // 照片已经在应用内压缩过；再限制单张大小，避免 WebRTC 数据通道被大文件堵住。
-    if (key === "cute-date-invite-archive-v1") {
-      const records = parseJSON(raw, []);
-      if (Array.isArray(records)) {
-        return JSON.stringify(records.filter((record) => record && typeof record === "object").map((record) => ({
-          ...record,
-          photos: Array.isArray(record.photos) ? record.photos.slice(0, 3).map((photo) => String(photo).slice(0, 600000)) : [],
-        })));
-      }
+    if (raw.length <= MAX_SNAPSHOT_VALUE_CHARS) return raw;
+
+    // 过大的值必须经过结构化压缩，绝不能直接 slice 原始 JSON。
+    const parsed = parseJSON(raw, undefined);
+    if (parsed === undefined) return null;
+    if (key === "cute-date-invite-archive-v1" && Array.isArray(parsed)) return compactArchive(parsed);
+    if (Array.isArray(parsed)) return compactArray(parsed);
+    if (typeof parsed === "string") return JSON.stringify(parsed.slice(0, MAX_SNAPSHOT_VALUE_CHARS - 2));
+    if (parsed && typeof parsed === "object") {
+      const compacted = {};
+      Object.entries(parsed).forEach(([field, value]) => {
+        const candidate = JSON.stringify({ ...compacted, [field]: value });
+        if (candidate.length <= MAX_SNAPSHOT_VALUE_CHARS) compacted[field] = value;
+      });
+      const result = JSON.stringify(compacted);
+      return result.length <= MAX_SNAPSHOT_VALUE_CHARS ? result : null;
     }
-    return raw.length > 2800000 ? raw.slice(0, 2800000) : raw;
+    return raw;
   }
 
   function collectSnapshot() {
     const data = {};
-    SYNC_KEYS.forEach((key) => { data[key] = snapshotValue(key); });
-    return { data, meta: { ...keyMeta }, sentAt: Date.now() };
+    let totalChars = 0;
+    SYNC_KEYS.forEach((key) => {
+      const value = snapshotValue(key);
+      if (typeof value === "string" && totalChars + value.length <= MAX_SNAPSHOT_TOTAL_CHARS) {
+        data[key] = value;
+        totalChars += value.length;
+      } else {
+        // null 表示本次快照未携带该项；接收端会保留本地值。
+        data[key] = null;
+      }
+    });
+    return { roomCode: activeRoom?.code || syncRoomCode || "", data, meta: { ...keyMeta }, deleted: { ...keyTombstones }, sentAt: Date.now() };
   }
 
-  function mergeArrays(key, localValue, remoteValue) {
+  function mergeArrays(key, localValue, remoteValue, localStamp = 0, remoteStamp = 0) {
     if (key === "cute-date-invite-100-things-v1") {
-      return [...new Set([...localValue, ...remoteValue].filter((item) => Number.isInteger(item)))];
+      const local = new Set(localValue.filter((item) => Number.isInteger(item)));
+      const remote = new Set(remoteValue.filter((item) => Number.isInteger(item)));
+      // 当较新的数组只是旧数组的子集时，视为一次取消勾选/删除，而不是重新并集。
+      if (remoteStamp > localStamp && remote.size < local.size && [...remote].every((item) => local.has(item))) return [...remote];
+      if (localStamp > remoteStamp && local.size < remote.size && [...local].every((item) => remote.has(item))) return [...local];
+      return [...new Set([...local, ...remote])];
     }
     const hasIds = [...localValue, ...remoteValue].every((item) => item && typeof item === "object" && typeof item.id === "string");
-    if (!hasIds) return [...new Set([...localValue, ...remoteValue])];
+    if (!hasIds) {
+      const localKeys = new Set(localValue.map((item) => JSON.stringify(item)));
+      const remoteKeys = new Set(remoteValue.map((item) => JSON.stringify(item)));
+      if (remoteStamp > localStamp && remoteKeys.size < localKeys.size && [...remoteKeys].every((item) => localKeys.has(item))) return [...remoteValue];
+      if (localStamp > remoteStamp && localKeys.size < remoteKeys.size && [...localKeys].every((item) => remoteKeys.has(item))) return [...localValue];
+      return [...new Set([...localValue, ...remoteValue].map((item) => JSON.stringify(item)))].map((item) => parseJSON(item, item));
+    }
+    const localIds = new Set(localValue.map((item) => item.id));
+    const remoteIds = new Set(remoteValue.map((item) => item.id));
+    if (remoteStamp > localStamp && remoteIds.size < localIds.size && [...remoteIds].every((id) => localIds.has(id))) return remoteValue;
+    if (localStamp > remoteStamp && localIds.size < remoteIds.size && [...localIds].every((id) => remoteIds.has(id))) return localValue;
     const merged = new Map();
     [...localValue, ...remoteValue].forEach((item) => {
       const previous = merged.get(item.id);
@@ -370,7 +570,8 @@
       else {
         const previousTime = Number(previous.updatedAt || previous.createdAt || 0);
         const currentTime = Number(item.updatedAt || item.createdAt || 0);
-        merged.set(item.id, currentTime >= previousTime ? item : previous);
+        const shouldUseCurrent = currentTime > previousTime || (currentTime === previousTime && remoteStamp >= localStamp);
+        merged.set(item.id, shouldUseCurrent ? item : previous);
       }
     });
     return [...merged.values()];
@@ -381,8 +582,10 @@
     if (localRaw == null) return remoteRaw;
     const localValue = parseJSON(localRaw, undefined);
     const remoteValue = parseJSON(remoteRaw, undefined);
+    if (remoteValue === undefined) return localRaw;
+    if (localValue === undefined) return remoteRaw;
     if (Array.isArray(localValue) && Array.isArray(remoteValue)) {
-      return JSON.stringify(mergeArrays(key, localValue, remoteValue));
+      return JSON.stringify(mergeArrays(key, localValue, remoteValue, localStamp, remoteStamp));
     }
     if (localValue && remoteValue && typeof localValue === "object" && typeof remoteValue === "object") {
       if (remoteStamp > localStamp) return remoteRaw;
@@ -395,23 +598,56 @@
 
   function applySnapshot(snapshot) {
     if (!snapshot || typeof snapshot !== "object" || !snapshot.data) return false;
+    if (snapshot.roomCode && activeRoom && normalizeCode(snapshot.roomCode) !== activeRoom.code) return false;
+    // 先把本机版本放进备份，再合并对方的计划、照片和纪念日。
+    try { window.DateInviteBackups?.capture?.("收到对方同步内容"); } catch (error) { /* 备份不可用时仍继续同步 */ }
     let changed = false;
     applyingRemote = true;
     try {
       SYNC_KEYS.forEach((key) => {
         const remoteRaw = typeof snapshot.data[key] === "string" ? snapshot.data[key] : null;
-        if (remoteRaw == null) return;
         const localRaw = safeGet(key);
         const localStamp = Number(keyMeta[key] || 0);
         const remoteStamp = Number(snapshot.meta?.[key] || 0);
-        const merged = mergeRawValue(key, localRaw, remoteRaw, localStamp, remoteStamp);
-        if (typeof merged === "string" && merged !== localRaw) {
-          safeSet(key, merged);
-          changed = true;
+        const localDeletedAt = Number(keyTombstones[key] || 0);
+        const remoteDeletedAt = Number(snapshot.deleted?.[key] || 0);
+
+        // 远端明确删除且时间更新时，删除本地副本；旧快照不能把已删除内容复活。
+        if (remoteDeletedAt > 0 && remoteDeletedAt >= remoteStamp) {
+          if (remoteDeletedAt > Math.max(localStamp, localDeletedAt)) {
+            let deletedApplied = true;
+            if (localRaw != null) {
+              if (safeRemove(key)) changed = true;
+              else {
+                deletedApplied = false;
+                setStatus("本机存储空间不足，无法应用对方的删除操作。", "offline");
+              }
+            }
+            if (deletedApplied) {
+              keyMeta[key] = remoteDeletedAt;
+              keyTombstones[key] = remoteDeletedAt;
+            }
+          }
+          return;
         }
+        // 本地删除标记比这份远端值更新时，保留删除标记，等待把它回传给对方。
+        if (localDeletedAt >= remoteStamp && localDeletedAt > 0) return;
+        // null 且没有删除标记表示该项没有被这次快照携带，不能覆盖本地值。
+        if (remoteRaw == null) return;
+        const merged = mergeRawValue(key, localRaw, remoteRaw, localStamp, remoteStamp);
+        let applied = true;
+        if (typeof merged === "string" && merged !== localRaw) {
+          if (safeSet(key, merged)) changed = true;
+          else {
+            applied = false;
+            setStatus("本机存储空间不足，部分共享内容未能保存。", "offline");
+          }
+        }
+        if (!applied) return;
         if (remoteStamp > localStamp) keyMeta[key] = remoteStamp;
+        if (remoteStamp >= localDeletedAt) delete keyTombstones[key];
       });
-      safeSet(META_KEY, JSON.stringify(keyMeta));
+      persistMeta();
     } finally {
       applyingRemote = false;
     }
@@ -424,15 +660,19 @@
     if (packet.type === "hello") {
       const changed = applySnapshot(packet.snapshot);
       sendPacket({ type: "snapshot", snapshot: collectSnapshot() });
-      if (changed) renderMessages();
+      if (changed) announceSnapshotApplied();
       return;
     }
     if (packet.type === "snapshot") {
       const changed = applySnapshot(packet.snapshot);
-      if (changed) {
-        renderMessages();
-        sendPacket({ type: "snapshot", snapshot: collectSnapshot() });
-      }
+      if (changed) announceSnapshotApplied();
+      // 用一次性 ack 把本机更新（包括较新的值/删除墓碑）回传；ack 本身不再触发回包，避免快照来回循环。
+      sendPacket({ type: "snapshot-ack", snapshot: collectSnapshot() });
+      return;
+    }
+    if (packet.type === "snapshot-ack") {
+      const changed = applySnapshot(packet.snapshot);
+      if (changed) announceSnapshotApplied();
       return;
     }
     if (packet.type === "chat" && packet.message) {
@@ -442,6 +682,11 @@
         sendPacket({ type: "chat-ack", id: packet.message.id });
       }
     }
+  }
+
+  function announceSnapshotApplied() {
+    renderMessages();
+    setStatus("内容已同步：约会计划、照片、纪念日和和好小屋会自动显示在双方手机。", "online");
   }
 
   function loadMessages() {
@@ -467,6 +712,7 @@
     });
     if (!changed) return false;
     const merged = [...map.values()].sort((a, b) => a.createdAt - b.createdAt).slice(-100);
+    try { window.DateInviteBackups?.capture?.("共享小纸条"); } catch (error) { /* 备份不可用时仍继续发送 */ }
     applyingRemote = true;
     safeSet(CHAT_KEY, JSON.stringify(merged));
     applyingRemote = false;
@@ -589,8 +835,12 @@
         renderRoomUI();
       }
       roomInput.value = incomingCode;
-      setStatus("这是一个共享邀请，输入后点击“加入”即可。", "waiting");
-      setTimeout(openSharedDialog, 120);
+      setStatus("正在打开共享邀请，稍等一下就会自动加入。", "waiting");
+      setTimeout(() => {
+        openSharedDialog();
+        // 邀请链接自带房间码和主机 ID；收到链接的一方无需再手动复制房间码。
+        if (!activeRoom && params.get("host")) joinRoom();
+      }, 120);
     }
   }
 
@@ -608,6 +858,9 @@
     dialog.addEventListener("cancel", closeSharedDialog);
     renderRoomUI();
     if (activeRoom) {
+      // 已保存的房间代表用户主动配置过共享；页面重开后也应能自动恢复断线重连。
+      roomWasOpened = true;
+      scopeRoomData(activeRoom.code, true);
       roomInput.value = activeRoom.code;
       setStatus("正在恢复上次的共享房间…", "waiting");
       // 只在曾经主动创建/加入过房间时加载外部实时连接库。
