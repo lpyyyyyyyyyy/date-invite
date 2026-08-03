@@ -9,6 +9,8 @@
   const FUTURE_LETTERS_KEY = "cute-date-invite-future-letters-v1";
   const CAT_KEY = "cute-date-invite-cat-v1";
   const REPAIR_KEY = "cute-date-invite-repair-v1";
+  // 仅用于这台设备去重：提醒开关仍随约会计划一起共享。
+  const REMINDER_RUNTIME_KEY = "cute-date-invite-reminder-runtime-v1";
   const noLabels = ["不要", "再想想嘛", "点不到我", "真的不要吗"];
   const hundredThings = [
     "一起骑自行车", "穿对方挑选的衣服", "一起去露营", "一起看烟花", "一起坐热气球", "一起跑步健身", "一起唱歌", "亲手写信给对方", "一起过圣诞节", "一起打游戏",
@@ -79,6 +81,9 @@
   const memoryPhoto = document.querySelector("#memory-photo");
   const memoryPhotos = document.querySelector("#memory-photos");
   const homeCountdown = document.querySelector("#home-countdown");
+  const reminderToggle = document.querySelector("#reminder-toggle");
+  const reminderPermissionButton = document.querySelector("#reminder-permission-button");
+  const reminderStatus = document.querySelector("#reminder-status");
   const catFloat = document.querySelector("#cat-float");
   const catMascot = document.querySelector("#cat-mascot");
   const cat3DStage = document.querySelector("#cat-3d-stage");
@@ -208,7 +213,8 @@
       menuIsOther: false,
       activeRecordId: "",
       dodgeCount: 0,
-      currentCorner: ""
+      currentCorner: "",
+      reminderEnabled: false
     };
   }
 
@@ -229,7 +235,8 @@
         menuIsOther: Boolean(saved.menuIsOther),
         activeRecordId: typeof saved.activeRecordId === "string" ? saved.activeRecordId : "",
         dodgeCount: Number.isInteger(saved.dodgeCount) && saved.dodgeCount >= 0 ? saved.dodgeCount : 0,
-        currentCorner: corners.includes(saved.currentCorner) ? saved.currentCorner : ""
+        currentCorner: corners.includes(saved.currentCorner) ? saved.currentCorner : "",
+        reminderEnabled: Boolean(saved.reminderEnabled)
       };
     } catch (error) {
       return fallback;
@@ -365,6 +372,7 @@
   }
 
   function persistCatState() {
+    backupBeforeSave("宠物互动状态");
     try {
       localStorage.setItem(CAT_KEY, JSON.stringify(catState));
     } catch (error) {
@@ -418,6 +426,9 @@
     syncActivitySelection();
     syncFoodSelection();
     updateHomeCountdown();
+    renderReminderSettings();
+    configureServiceWorkerReminder();
+    scheduleForegroundReminder();
     if (catMascot) {
       recordCatVisit();
       updateCatMascot();
@@ -483,6 +494,20 @@
     });
     saveButton.addEventListener("click", saveOrShareCard);
     calendarButton.addEventListener("click", addPlanToCalendar);
+    reminderToggle?.addEventListener("change", async () => {
+      state.reminderEnabled = reminderToggle.checked;
+      persistState();
+      if (state.reminderEnabled && "Notification" in window && Notification.permission === "default") {
+        await requestReminderPermission();
+      }
+      renderReminderSettings();
+      configureServiceWorkerReminder();
+    });
+    reminderPermissionButton?.addEventListener("click", async () => {
+      await requestReminderPermission();
+      renderReminderSettings();
+      configureServiceWorkerReminder();
+    });
 
     document.querySelectorAll("[data-next]").forEach((button) => {
       button.addEventListener("click", () => showScreen(Number(button.dataset.next)));
@@ -536,6 +561,8 @@
       syncActivitySelection();
       syncFoodSelection();
       updateHomeCountdown();
+      renderReminderSettings();
+      configureServiceWorkerReminder();
       if (catMascot) updateCatMascot();
       if (currentScreen === 3) {
         dateInput.min = getToday();
@@ -1669,6 +1696,108 @@
     return new Date(`${record.date}T${record.time}:00`).getTime();
   }
 
+  function getNextPlan() {
+    return archiveRecords
+      .filter((record) => formatRecordTime(record) > Date.now())
+      .sort((left, right) => formatRecordTime(left) - formatRecordTime(right))[0] || null;
+  }
+
+  function reminderPlanPayload(plan = getNextPlan()) {
+    if (!plan) return null;
+    return {
+      date: String(plan.date || ""),
+      time: String(plan.time || ""),
+      location: String(plan.location || "").slice(0, 80),
+      activity: String(plan.activity || "").slice(0, 80),
+      menu: String(plan.menu || "").slice(0, 80)
+    };
+  }
+
+  function reminderText(plan) {
+    if (!plan) return "还没有下一次约会计划，先一起定个时间吧。";
+    return `${getCountdownText(plan)}。${formatDateForDisplay(plan.date)} ${plan.time}，${plan.activity || "一起见面"}${plan.location ? ` · ${plan.location}` : ""}`;
+  }
+
+  function renderReminderSettings() {
+    const plan = getNextPlan();
+    if (reminderToggle) reminderToggle.checked = Boolean(state.reminderEnabled);
+    if (!reminderStatus) return;
+    if (!("Notification" in window)) {
+      reminderStatus.textContent = `此浏览器不支持系统通知；开启后会在打开页面时提醒。${reminderText(plan)}`;
+      if (reminderPermissionButton) reminderPermissionButton.hidden = true;
+      return;
+    }
+    const permission = Notification.permission;
+    if (reminderPermissionButton) {
+      reminderPermissionButton.hidden = permission === "granted";
+      reminderPermissionButton.disabled = permission === "denied";
+      reminderPermissionButton.textContent = permission === "denied" ? "通知权限已被关闭" : "允许系统通知";
+    }
+    const delivery = permission === "granted" ? "系统通知已允许" : permission === "denied" ? "系统通知被关闭，将在页面打开时提醒" : "尚未允许系统通知";
+    reminderStatus.textContent = `${state.reminderEnabled ? "每日 00:00 提醒已开启" : "每日提醒已关闭"} · ${delivery}。${reminderText(plan)}`;
+  }
+
+  async function requestReminderPermission() {
+    if (!("Notification" in window)) return "unsupported";
+    try { return await Notification.requestPermission(); } catch (error) { return Notification.permission; }
+  }
+
+  function configureServiceWorkerReminder() {
+    if (!("serviceWorker" in navigator)) return;
+    const config = { type: "date-plan-reminder-config", enabled: Boolean(state.reminderEnabled), plan: reminderPlanPayload(), updatedAt: Date.now() };
+    navigator.serviceWorker.ready.then(async (registration) => {
+      (registration.active || navigator.serviceWorker.controller)?.postMessage(config);
+      // Background Sync / Periodic Sync are best-effort only; the foreground timer below covers an open app.
+      try { await registration.sync?.register("date-plan-reminder"); } catch (error) { /* unavailable or denied */ }
+      try { await registration.periodicSync?.register("date-plan-reminder", { minInterval: 12 * 60 * 60 * 1000 }); } catch (error) { /* unsupported on most browsers */ }
+    }).catch(() => { /* the app still has its foreground fallback */ });
+  }
+
+  function readReminderRuntime() {
+    try {
+      const value = JSON.parse(localStorage.getItem(REMINDER_RUNTIME_KEY) || "{}");
+      return value && typeof value === "object" ? value : {};
+    } catch (error) { return {}; }
+  }
+
+  function markReminderDelivered(day) {
+    try { localStorage.setItem(REMINDER_RUNTIME_KEY, JSON.stringify({ lastDay: day })); } catch (error) { /* private mode */ }
+  }
+
+  async function deliverForegroundReminder() {
+    if (!state.reminderEnabled) return;
+    const now = new Date();
+    const day = localDateString(now);
+    if (readReminderRuntime().lastDay === day) return;
+    const plan = getNextPlan();
+    const title = "今日约会计划提醒 ♥";
+    const body = reminderText(plan);
+    markReminderDelivered(day);
+    try {
+      if ("Notification" in window && Notification.permission === "granted") {
+        const registration = await navigator.serviceWorker?.ready;
+        if (registration?.showNotification) await registration.showNotification(title, { body, tag: `date-plan-${day}`, renotify: false, icon: "./icon-192.png", badge: "./icon-192.png", data: { url: "./" } });
+        else new Notification(title, { body, tag: `date-plan-${day}` });
+        return;
+      }
+    } catch (error) { /* toast fallback below */ }
+    showToast(`🔔 ${body}`);
+  }
+
+  function scheduleForegroundReminder() {
+    const arm = () => {
+      const now = new Date();
+      const nextMidnight = new Date(now);
+      nextMidnight.setHours(24, 0, 0, 0);
+      window.setTimeout(() => {
+        deliverForegroundReminder();
+        arm();
+      }, Math.max(1000, nextMidnight.getTime() - Date.now() + 150));
+    };
+    arm();
+    navigator.serviceWorker?.addEventListener("controllerchange", configureServiceWorkerReminder);
+  }
+
   function ensurePlanRecord() {
     if (!state.date || !state.time || !state.activity || !state.menu) return;
     const detail = { date: state.date, time: state.time, location: state.location, activity: state.activity, menu: state.menu, updatedAt: Date.now() };
@@ -1681,6 +1810,9 @@
       persistState();
     }
     persistArchive();
+    updateHomeCountdown();
+    renderReminderSettings();
+    configureServiceWorkerReminder();
   }
 
   function updateMap() {
@@ -1709,7 +1841,7 @@
   }
 
   function updateHomeCountdown() {
-    const next = archiveRecords.filter((record) => formatRecordTime(record) > Date.now()).sort((a, b) => formatRecordTime(a) - formatRecordTime(b))[0];
+    const next = getNextPlan();
     homeCountdown.textContent = next ? `${getCountdownText(next)} · ${formatDateForDisplay(next.date)}` : "还没有下一次约会计划";
   }
 

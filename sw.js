@@ -1,13 +1,15 @@
-const CACHE_NAME = "leo-emily-runtime-v13";
+const CACHE_NAME = "leo-emily-runtime-v14";
+const REMINDER_DB = "leo-emily-reminders-v1";
+const REMINDER_STORE = "settings";
 const OFFLINE_ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./backup.js",
-  "./backup.js?v=20260803-sync-backup",
+  "./backup.js?v=20260803-daily-reminder",
   "./app.js",
-  "./app.js?v=20260803-sync-backup",
-  "./shared-sync.js?v=20260803-sync-backup",
+  "./app.js?v=20260803-daily-reminder",
+  "./shared-sync.js?v=20260803-daily-reminder",
   "./pwa.js",
   "./pwa.js?v=20260803-pwa-update",
   "./manifest.webmanifest",
@@ -51,4 +53,100 @@ self.addEventListener("fetch", (event) => {
         return cached || caches.match("./");
       })
   );
+});
+
+function openReminderDatabase() {
+  return new Promise((resolve) => {
+    let request;
+    try { request = indexedDB.open(REMINDER_DB, 1); } catch (error) { resolve(null); return; }
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains(REMINDER_STORE)) database.createObjectStore(REMINDER_STORE);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = request.onblocked = () => resolve(null);
+  });
+}
+
+async function reminderGet(key) {
+  const database = await openReminderDatabase();
+  if (!database) return null;
+  return new Promise((resolve) => {
+    try {
+      const request = database.transaction(REMINDER_STORE, "readonly").objectStore(REMINDER_STORE).get(key);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => resolve(null);
+    } catch (error) { resolve(null); }
+  });
+}
+
+async function reminderSet(key, value) {
+  const database = await openReminderDatabase();
+  if (!database) return false;
+  return new Promise((resolve) => {
+    try {
+      const transaction = database.transaction(REMINDER_STORE, "readwrite");
+      transaction.objectStore(REMINDER_STORE).put(value, key);
+      transaction.oncomplete = () => resolve(true);
+      transaction.onerror = transaction.onabort = () => resolve(false);
+    } catch (error) { resolve(false); }
+  });
+}
+
+function localDay() {
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function reminderBody(plan) {
+  if (!plan?.date || !plan?.time) return "还没有下一次约会计划，打开小程序一起定个时间吧。";
+  const target = new Date(`${plan.date}T${plan.time}:00`).getTime();
+  const minutes = Math.max(0, Math.floor((target - Date.now()) / 60000));
+  const remaining = target > Date.now()
+    ? `距离约会还有 ${Math.floor(minutes / 1440)} 天 ${Math.floor((minutes % 1440) / 60)} 小时 ${minutes % 60} 分钟`
+    : "今天也值得留下一段回忆";
+  return `${remaining}。${plan.date} ${plan.time}${plan.activity ? `，${plan.activity}` : ""}${plan.location ? ` · ${plan.location}` : ""}`;
+}
+
+async function deliverDailyReminder() {
+  const config = await reminderGet("config");
+  if (!config?.enabled || !self.registration?.showNotification) return false;
+  const day = localDay();
+  const delivery = await reminderGet("delivery");
+  if (delivery?.lastDay === day) return false;
+  await self.registration.showNotification("今日约会计划提醒 ♥", {
+    body: reminderBody(config.plan),
+    tag: `date-plan-${day}`,
+    renotify: false,
+    icon: "./icon-192.png",
+    badge: "./icon-192.png",
+    data: { url: "./" }
+  });
+  await reminderSet("delivery", { lastDay: day, deliveredAt: Date.now() });
+  return true;
+}
+
+self.addEventListener("message", (event) => {
+  const message = event.data;
+  if (!message || message.type !== "date-plan-reminder-config") return;
+  event.waitUntil(reminderSet("config", {
+    enabled: Boolean(message.enabled),
+    plan: message.plan && typeof message.plan === "object" ? message.plan : null,
+    updatedAt: Number(message.updatedAt) || Date.now()
+  }));
+});
+
+// Browsers may run these later than midnight (or not at all); the page keeps a precise foreground fallback.
+self.addEventListener("sync", (event) => {
+  if (event.tag === "date-plan-reminder") event.waitUntil(deliverDailyReminder());
+});
+self.addEventListener("periodicsync", (event) => {
+  if (event.tag === "date-plan-reminder") event.waitUntil(deliverDailyReminder());
+});
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+    const existing = windows.find((client) => new URL(client.url).origin === self.location.origin);
+    return existing ? existing.focus() : clients.openWindow(event.notification.data?.url || "./");
+  }));
 });

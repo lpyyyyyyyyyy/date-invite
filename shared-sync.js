@@ -74,11 +74,18 @@
     try { return window.localStorage.getItem(key); } catch (error) { return null; }
   }
 
+  function backupBeforeSync(key) {
+    if (!SYNC_KEY_SET.has(String(key))) return;
+    try { window.DateInviteBackups?.capture?.("共享同步前"); } catch (error) { /* 备份失败不影响同步 */ }
+  }
+
   function safeSet(key, value) {
+    backupBeforeSync(key);
     try { window.localStorage.setItem(key, value); return true; } catch (error) { return false; }
   }
 
   function safeRemove(key) {
+    backupBeforeSync(key);
     try { window.localStorage.removeItem(key); return true; } catch (error) { return false; }
   }
 

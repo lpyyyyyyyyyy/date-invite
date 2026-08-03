@@ -5,7 +5,7 @@
   // 发布新版本时也不会覆盖已有资料。仅保留最近 30 份，避免无限占用手机空间。
   const DB_NAME = "leo-emily-local-backups-v1";
   const STORE_NAME = "snapshots";
-  const APP_VERSION = "20260803-sync-backup";
+  const APP_VERSION = "20260803-daily-reminder";
   const MAX_BACKUPS = 30;
   const BOOT_MARKER_KEY = `leo-emily-backup-boot-${APP_VERSION}`;
   const DATA_KEYS = [
@@ -28,6 +28,10 @@
 
   function safeSet(key, value) {
     try { window.localStorage.setItem(key, value); return true; } catch (error) { return false; }
+  }
+
+  function safeRemove(key) {
+    try { window.localStorage.removeItem(key); return true; } catch (error) { return false; }
   }
 
   function randomSuffix() {
@@ -175,6 +179,7 @@
     await capture("恢复备份前的当前资料");
     DATA_KEYS.forEach((key) => {
       if (typeof snapshot.data[key] === "string") safeSet(key, snapshot.data[key]);
+      else safeRemove(key);
     });
     window.dispatchEvent(new CustomEvent("shared-sync-applied"));
     return true;

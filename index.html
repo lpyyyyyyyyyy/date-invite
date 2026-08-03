@@ -90,6 +90,14 @@
       <section class="next-date-card" aria-labelledby="next-date-title">
         <p id="next-date-title">下次约会行动</p>
         <strong id="home-countdown" role="status" aria-live="polite">还没有下一次约会计划</strong>
+        <div class="reminder-settings" aria-labelledby="reminder-title">
+          <div class="reminder-heading">
+            <div><b id="reminder-title">每日约会提醒</b><small>每天 00:00 提醒下一次约会计划</small></div>
+            <label class="reminder-switch" for="reminder-toggle"><input id="reminder-toggle" type="checkbox" role="switch" aria-describedby="reminder-status"><span aria-hidden="true"></span><em>开启</em></label>
+          </div>
+          <p id="reminder-status" role="status" aria-live="polite"></p>
+          <button class="reminder-permission-button" id="reminder-permission-button" type="button">允许系统通知</button>
+        </div>
       </section>
     </section>
 
@@ -564,9 +572,9 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   <div class="sr-only" id="movement-status" aria-live="polite"></div>
-  <script src="backup.js?v=20260803-sync-backup"></script>
-  <script src="app.js?v=20260803-sync-backup"></script>
-  <script src="shared-sync.js?v=20260803-sync-backup"></script>
+  <script src="backup.js?v=20260803-daily-reminder"></script>
+  <script src="app.js?v=20260803-daily-reminder"></script>
+  <script src="shared-sync.js?v=20260803-daily-reminder"></script>
   <script src="pwa.js?v=20260803-pwa-update"></script>
 </body>
 </html>
