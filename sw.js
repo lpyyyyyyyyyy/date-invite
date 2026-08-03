@@ -1,4 +1,4 @@
-const CACHE_NAME = "leo-emily-runtime-v20-cloud-sync";
+const CACHE_NAME = "leo-emily-runtime-v23-original-media";
 const REMINDER_DB = "leo-emily-reminders-v1";
 const REMINDER_STORE = "settings";
 const OFFLINE_ASSETS = [
@@ -10,22 +10,33 @@ const OFFLINE_ASSETS = [
   "./backup.js?v=20260803-cloud-sync-v3",
   "./app.js",
   "./app.js?v=20260803-cloud-sync-v2",
+  "./app.js?v=20260803-photo-library-v1",
+  "./app.js?v=20260803-photo-library-v2",
   "./shared-sync.js",
   "./shared-sync.js?v=20260803-cloud-sync-v2",
   "./shared-sync.js?v=20260803-cloud-sync-v3",
   "./shared-interactions.js",
   "./shared-interactions.js?v=20260803-cloud-sync-v2",
+  "./shared-interactions.js?v=20260803-photo-library-v1",
+  "./shared-interactions.js?v=20260803-photo-library-v2",
   "./home-chat.js",
   "./home-chat.js?v=20260803-cloud-sync-v2",
   "./home-chat.js?v=20260803-cloud-sync-v3",
+  "./home-chat.js?v=20260803-original-media-v1",
+  "./home-chat.js?v=20260803-original-media-v2",
   "./cloud-config.js",
   "./cloud-config.js?v=20260803-cloud-sync-v2",
+  "./cloud-config.js?v=20260803-message-push-v1",
   "./cloud-sync.js",
   "./cloud-sync.js?v=20260803-cloud-sync-v2",
   "./cloud-sync.js?v=20260803-cloud-sync-v3",
   "./cloud-sync.js?v=20260803-cloud-sync-v4",
+  "./cloud-sync.js?v=20260803-message-push-v1",
+  "./cloud-sync.js?v=20260803-message-push-v2",
   "./pwa.js",
   "./pwa.js?v=20260803-pwa-update",
+  "./pwa.js?v=20260803-message-push-v1",
+  "./pwa.js?v=20260803-message-push-v2",
   "./manifest.webmanifest",
   "./apple-touch-icon.png",
   "./icon-192.png",
@@ -160,6 +171,49 @@ self.addEventListener("sync", (event) => {
 self.addEventListener("periodicsync", (event) => {
   if (event.tag === "date-plan-reminder") event.waitUntil(deliverDailyReminder());
 });
+
+function cleanNotificationText(value, fallback, limit) {
+  const text = String(value || "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, limit);
+  return text || fallback;
+}
+
+function sameOriginNotificationUrl(value) {
+  try {
+    const url = new URL(String(value || "./"), self.location.origin);
+    return url.origin === self.location.origin ? url.href : "./";
+  } catch (error) {
+    return "./";
+  }
+}
+
+function readPushPayload(event) {
+  let value = null;
+  try { value = event.data?.json?.(); } catch (error) {
+    try { value = JSON.parse(event.data?.text?.() || "{}"); } catch (parseError) { value = null; }
+  }
+  const data = value && typeof value === "object" ? value : {};
+  return {
+    title: cleanNotificationText(data.title, "Leo And Emily", 50),
+    body: cleanNotificationText(data.body, "你收到一条新的消息", 180),
+    tag: cleanNotificationText(data.tag, `leo-message-${Date.now()}`, 120),
+    url: sameOriginNotificationUrl(data.url),
+    sentAt: Number(data.sentAt) || Date.now()
+  };
+}
+
+// 这条事件由 CloudBase 云函数转发；即使网页没有打开，系统仍会把通知交给已安装的小程序。
+self.addEventListener("push", (event) => {
+  const payload = readPushPayload(event);
+  event.waitUntil(self.registration.showNotification(payload.title, {
+    body: payload.body,
+    tag: payload.tag,
+    renotify: true,
+    icon: "./icon-192.png",
+    badge: "./icon-192.png",
+    data: { url: payload.url, sentAt: payload.sentAt }
+  }));
+});
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   event.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {

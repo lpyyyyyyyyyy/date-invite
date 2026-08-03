@@ -550,21 +550,60 @@
     return success;
   }
 
+  function normalizeDatePlan(value) {
+    if (!value || typeof value !== "object") return null;
+    const date = String(value.date || "").slice(0, 20);
+    const time = String(value.time || "").slice(0, 12);
+    const location = String(value.location || "").trim().slice(0, 120);
+    const activity = String(value.activity || "").trim().slice(0, 80);
+    const menu = String(value.menu || "").trim().slice(0, 80);
+    if (!date && !time && !location && !activity && !menu) return null;
+    return {
+      id: String(value.id || value.recordId || "").slice(0, 120),
+      date,
+      time,
+      location,
+      activity,
+      menu
+    };
+  }
+
+  function attachmentFileId(value) {
+    return String(value?.fileId || value?.storageId || "").trim().slice(0, 800);
+  }
+
+  function normalizeAttachment(value) {
+    if (!value || typeof value !== "object") return null;
+    const kind = ["image", "video", "audio"].includes(value.kind) ? value.kind : "";
+    const data = typeof value.data === "string" ? value.data : "";
+    const fileId = attachmentFileId(value);
+    if (!kind || (!data && !fileId)) return null;
+    const size = Number(value.size);
+    return {
+      kind,
+      // data 是离线时保存在本机的原始 DataURL；云端图片只保留 fileId，避免撑爆 localStorage。
+      data,
+      fileId,
+      name: String(value.name || "").slice(0, 180),
+      mime: String(value.mime || "").slice(0, 120),
+      size: Number.isFinite(size) && size >= 0 ? Math.floor(size) : 0
+    };
+  }
+
   function normalizeMessage(value) {
     if (!value || typeof value !== "object") return null;
     const text = String(value.text || "").trim().slice(0, 500);
-    const attachment = value.attachment && typeof value.attachment === "object" ? {
-      kind: ["image", "video", "audio"].includes(value.attachment.kind) ? value.attachment.kind : "",
-      data: typeof value.attachment.data === "string" ? value.attachment.data : "",
-      name: String(value.attachment.name || "").slice(0, 100),
-      mime: String(value.attachment.mime || "").slice(0, 100)
-    } : null;
-    if (!text && !attachment?.data) return null;
+    const attachment = normalizeAttachment(value.attachment);
+    const plan = value.type === "date-plan" || value.kind === "date-plan" ? normalizeDatePlan(value.plan) : null;
+    if (!text && !attachment?.data && !attachment?.fileId && !plan) return null;
     return {
       id: String(value.id || `cloud-${now()}-${Math.random().toString(36).slice(2, 8)}`).slice(0, 100),
       author: value.author === "guest" ? "guest" : "host",
       text,
       attachment,
+      type: plan ? "date-plan" : "text",
+      kind: plan ? "date-plan" : "text",
+      plan,
       createdAt: Number(value.createdAt) || now()
     };
   }
@@ -574,17 +613,84 @@
     return Array.isArray(parsed) ? parsed.map(normalizeMessage).filter(Boolean).sort((left, right) => left.createdAt - right.createdAt).slice(-100) : [];
   }
 
+  function normalizePushSubscription(value) {
+    const source = value && typeof value.toJSON === "function" ? value.toJSON() : value;
+    if (!source || typeof source !== "object") return null;
+    const endpoint = String(source.endpoint || "").trim().slice(0, 2048);
+    const p256dh = String(source.keys?.p256dh || "").trim().slice(0, 256);
+    const auth = String(source.keys?.auth || "").trim().slice(0, 256);
+    if (!/^https:\/\//i.test(endpoint) || !p256dh || !auth) return null;
+    return { endpoint, keys: { p256dh, auth } };
+  }
+
+  function partnerIsOnline() {
+    return presence.some((item) => item.deviceId !== deviceId && now() - Number(item.updatedAt || 0) < PRESENCE_WINDOW);
+  }
+
+  function messagePushPreview(message) {
+    const attachment = message?.attachment;
+    if (attachment?.kind === "image") return "发来了一张照片";
+    if (attachment?.kind === "video") return "发来了一段视频";
+    if (attachment?.kind === "audio") return "发来了一段语音";
+    if (message?.kind === "date-plan" || message?.type === "date-plan") return String(message.text || "发来了一份新的约会计划").trim().slice(0, 110);
+    return String(message?.text || "发来了一条新消息").trim().slice(0, 110) || "发来了一条新消息";
+  }
+
+  function senderPushName() {
+    return currentRole() === "guest" ? "蔡子珊" : "刘平壹";
+  }
+
+  async function registerPushSubscription(subscription) {
+    const normalized = normalizePushSubscription(subscription);
+    if (!normalized) return { ok: false, error: "这台手机的通知订阅无效，请重新开启通知。" };
+    if (!ready || !collection || !navigator.onLine) return { ok: false, error: "共同空间正在连接，稍后会自动再试。" };
+    try {
+      const room = pairing || ensurePairing();
+      resultData(await collection.doc(`push_${deviceId}`).set({
+        roomId: room.roomId,
+        type: "push_subscription",
+        deviceId,
+        role: currentRole(),
+        subscription: normalized,
+        updatedAt: now(),
+        schemaVersion: CONFIG?.version || 2
+      }), "消息通知设备登记失败");
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: "消息通知设备暂时没登记成功，会在下次打开时自动重试。" };
+    }
+  }
+
+  function requestPartnerPush(message) {
+    if (!ready || !navigator.onLine || !app?.callFunction || !CONFIG?.pushFunction || partnerIsOnline()) return;
+    const room = pairing || ensurePairing();
+    const data = {
+      roomId: room.roomId,
+      senderDeviceId: deviceId,
+      senderName: senderPushName(),
+      messageId: String(message?.id || "").slice(0, 100),
+      kind: String(message?.kind || message?.attachment?.kind || "text").slice(0, 32),
+      text: messagePushPreview(message)
+    };
+    Promise.resolve(app.callFunction({ name: CONFIG.pushFunction, data }))
+      .catch(() => undefined);
+  }
+
   function sendCloudMessage(input) {
     const message = normalizeMessage({
-      id: `cloud-${now()}-${Math.random().toString(36).slice(2, 9)}`,
+      id: input && input.id ? input.id : `cloud-${now()}-${Math.random().toString(36).slice(2, 9)}`,
       author: currentRole(),
       text: input && input.text,
       attachment: input && input.attachment,
+      type: input && input.type,
+      kind: input && input.kind,
+      plan: input && input.plan,
       createdAt: now()
     });
     if (!message) return { ok: false, error: "写一点话，或选择一张照片、视频吧。" };
     const messages = cloudMessages();
     if (!messages.some((item) => item.id === message.id)) messages.push(message);
+    try { window.DateInviteBackups?.capture?.("发送聊天消息前"); } catch (error) { /* 备份不可用时仍可正常发消息。 */ }
     applyingRemote = true;
     const saved = safeSet("cute-date-invite-shared-messages-v1", JSON.stringify(messages.slice(-100)));
     applyingRemote = false;
@@ -592,7 +698,95 @@
     markLocalChange("cute-date-invite-shared-messages-v1", false);
     window.dispatchEvent(new CustomEvent(CHAT_EVENT, { detail: { messages } }));
     scheduleFlush(0);
+    requestPartnerPush(message);
     return { ok: true, delivered: Boolean(ready && navigator.onLine), message };
+  }
+
+  function uploadableBlob(value) {
+    return typeof Blob !== "undefined" && value instanceof Blob;
+  }
+
+  function mediaKindFor(file, requestedKind) {
+    if (["image", "video", "audio"].includes(requestedKind)) return requestedKind;
+    const mime = String(file?.type || "");
+    if (mime.startsWith("image/")) return "image";
+    if (mime.startsWith("video/")) return "video";
+    if (mime.startsWith("audio/")) return "audio";
+    return "";
+  }
+
+  function mediaExtension(name, mime) {
+    const matched = String(name || "").match(/\.([a-z0-9]{1,12})$/i);
+    if (matched) return `.${matched[1].toLowerCase()}`;
+    const byMime = {
+      "image/jpeg": ".jpg", "image/png": ".png", "image/gif": ".gif", "image/webp": ".webp", "image/heic": ".heic",
+      "video/mp4": ".mp4", "video/quicktime": ".mov", "audio/mpeg": ".mp3", "audio/mp4": ".m4a", "audio/wav": ".wav"
+    };
+    return byMime[String(mime || "").toLowerCase()] || "";
+  }
+
+  function mediaName(file, requestedName) {
+    const raw = String(requestedName || file?.name || "照片").replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_").trim();
+    return (raw || "照片").slice(0, 180);
+  }
+
+  async function uploadCloudAttachment(input = {}) {
+    const file = input.file;
+    const kind = mediaKindFor(file, input.kind);
+    if (!uploadableBlob(file) || !kind) return { ok: false, error: "请选择一张照片、视频或语音文件。" };
+    if (!ready || !storage || !navigator.onLine) {
+      return { ok: false, offline: true, error: "云端暂时不可用，将尝试把原图保存在本机。" };
+    }
+    const name = mediaName(file, input.name);
+    const mime = String(input.mime || file.type || "application/octet-stream").slice(0, 120);
+    const room = pairing || ensurePairing();
+    const path = `leo-emily/${room.roomId}/chat-media/${now()}-${randomId(12)}${mediaExtension(name, mime)}`;
+    try {
+      const data = resultData(await storage.upload(path, file, {
+        contentType: mime,
+        cacheControl: "private, max-age=0",
+        upsert: false
+      }), "原图上传失败");
+      const fileId = String(data?.id || data?.fileID || data?.fileId || "").trim().slice(0, 800);
+      if (!fileId) throw new Error("云存储没有返回照片编号");
+      return {
+        ok: true,
+        attachment: { kind, data: "", fileId, name, mime, size: Number(file.size) || 0 }
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        offline: !navigator.onLine,
+        error: error?.message || "原图上传失败，请稍后再试。"
+      };
+    }
+  }
+
+  async function sendCloudMediaMessage(input = {}) {
+    const uploaded = await uploadCloudAttachment(input);
+    if (!uploaded.ok) return uploaded;
+    const sent = await Promise.resolve(sendCloudMessage({
+      id: input.id,
+      text: input.text,
+      attachment: uploaded.attachment,
+      type: input.type,
+      kind: input.kind,
+      plan: input.plan
+    }));
+    return sent?.ok ? { ...sent, attachment: uploaded.attachment } : sent;
+  }
+
+  async function downloadCloudAttachment(attachment) {
+    const fileId = attachmentFileId(attachment);
+    if (!fileId) throw new Error("没有找到这份原图。" );
+    if (!ready || !storage) throw new Error("云端照片正在连接，请稍后再试。" );
+    const downloaded = resultData(await storage.download(fileId), "云端原图下载失败");
+    const source = downloaded?.fileContent || downloaded?.blob || downloaded?.data || downloaded;
+    if (typeof Blob !== "undefined" && source instanceof Blob) {
+      if (!source.type && attachment?.mime) return new Blob([source], { type: attachment.mime });
+      return source;
+    }
+    return new Blob([source], { type: attachment?.mime || "application/octet-stream" });
   }
 
   function mergeArrays(key, localValue, remoteValue, localStamp, remoteStamp) {
@@ -900,6 +1094,9 @@
     getInviteLink: invitationLink,
     getMessages: cloudMessages,
     sendMessage: sendCloudMessage,
+    sendMediaMessage: sendCloudMediaMessage,
+    downloadAttachment: downloadCloudAttachment,
+    registerPushSubscription,
     queueKey: (key) => {
       if (!SYNC_KEY_SET.has(String(key))) return false;
       markLocalChange(String(key), safeGet(String(key)) == null);

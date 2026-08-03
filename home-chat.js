@@ -3,6 +3,9 @@
 
   const MAX_VIDEO_BYTES = 1024 * 1024;
   const MAX_AUDIO_CHARS = 940000;
+  const CHAT_KEY = "cute-date-invite-shared-messages-v1";
+  const CHAT_EVENT = "date-invite-chat-changed";
+  const DATE_PLAN_CHAT_EVENT = "date-invite-plan-card-created";
   const MIND_PROMPTS = [
     "如果现在可以一起出门，你最想去哪里？",
     "我们下一次约会最应该吃什么？",
@@ -14,11 +17,13 @@
 
   let toastTimer = null;
   let pendingAttachment = null;
+  let mediaSending = false;
   let selectedPolaroidFrame = "";
   let voiceRecorder = null;
   let voiceStartedAt = 0;
   let voiceStopTimer = null;
   let activeMindId = "";
+  const attachmentSources = new Map();
 
   const byId = (id) => document.querySelector(`#${id}`);
   const shared = () => window.DateInviteShared || null;
@@ -64,22 +69,239 @@
     return Number.isNaN(date.getTime()) ? "刚刚" : date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
   }
 
+  function normalizeDatePlan(value) {
+    if (!value || typeof value !== "object") return null;
+    const date = String(value.date || "").slice(0, 20);
+    const time = String(value.time || "").slice(0, 12);
+    const location = String(value.location || "").trim().slice(0, 120);
+    const activity = String(value.activity || "").trim().slice(0, 80);
+    const menu = String(value.menu || "").trim().slice(0, 80);
+    if (!date && !time && !location && !activity && !menu) return null;
+    return {
+      id: String(value.id || value.recordId || "").slice(0, 120),
+      date,
+      time,
+      location,
+      activity,
+      menu
+    };
+  }
+
+  function attachmentFileId(value) {
+    return String(value?.fileId || value?.storageId || "").trim().slice(0, 800);
+  }
+
+  function normalizeChatAttachment(value) {
+    if (!value || typeof value !== "object") return null;
+    const kind = ["image", "video", "audio"].includes(value.kind) ? value.kind : "";
+    const data = typeof value.data === "string" ? value.data : "";
+    const fileId = attachmentFileId(value);
+    if (!kind || (!data && !fileId)) return null;
+    const size = Number(value.size);
+    return {
+      kind,
+      data,
+      fileId,
+      name: String(value.name || "").slice(0, 180),
+      mime: String(value.mime || "").slice(0, 120),
+      size: Number.isFinite(size) && size >= 0 ? Math.floor(size) : 0
+    };
+  }
+
+  function normalizeStoredChatMessage(value) {
+    if (!value || typeof value !== "object") return null;
+    const text = String(value.text || "").trim().slice(0, 500);
+    const attachment = normalizeChatAttachment(value.attachment);
+    const plan = value.type === "date-plan" || value.kind === "date-plan" ? normalizeDatePlan(value.plan) : null;
+    if (!text && !attachment?.data && !attachment?.fileId && !plan) return null;
+    return {
+      id: String(value.id || `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`).slice(0, 100),
+      author: value.author === "guest" ? "guest" : "host",
+      text,
+      attachment,
+      type: plan ? "date-plan" : "text",
+      kind: plan ? "date-plan" : "text",
+      plan,
+      createdAt: Number(value.createdAt) || Date.now()
+    };
+  }
+
+  function readStoredChatMessages() {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(CHAT_KEY) || "[]");
+      return Array.isArray(parsed)
+        ? parsed.map(normalizeStoredChatMessage).filter(Boolean).sort((left, right) => left.createdAt - right.createdAt).slice(-100)
+        : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function formatPlanDate(value) {
+    const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return String(value || "待定");
+    return `${match[1]}年${Number(match[2])}月${Number(match[3])}日`;
+  }
+
+  function datePlanText(plan) {
+    return `发起了一个约会计划：${formatPlanDate(plan.date)} ${plan.time || "时间待定"}，地点：${plan.location || "待定"}，玩：${plan.activity || "待定"}，吃：${plan.menu || "待定"}`;
+  }
+
+  function appendDatePlanCard(container, plan) {
+    const card = document.createElement("section");
+    card.className = "home-chat-date-plan";
+    card.setAttribute("aria-label", `新的约会计划：${formatPlanDate(plan.date)}`);
+    const title = document.createElement("strong");
+    title.className = "home-chat-date-plan-title";
+    title.textContent = "💌 新的约会计划";
+    card.append(title);
+    const details = document.createElement("div");
+    details.className = "home-chat-date-plan-details";
+    [
+      ["日期", formatPlanDate(plan.date)],
+      ["时间", plan.time || "待定"],
+      ["地点", plan.location || "待定"],
+      ["玩什么", plan.activity || "待定"],
+      ["吃什么", plan.menu || "待定"]
+    ].forEach(([label, value]) => {
+      const row = document.createElement("p");
+      const name = document.createElement("span");
+      name.textContent = `${label}：`;
+      const content = document.createElement("span");
+      content.textContent = value;
+      row.append(name, content);
+      details.append(row);
+    });
+    card.append(details);
+    container.append(card);
+  }
+
+  function savePlanCardLocally(message) {
+    const messages = readStoredChatMessages();
+    if (!messages.some((item) => item.id === message.id)) messages.push(message);
+    const trimmed = messages.sort((left, right) => left.createdAt - right.createdAt).slice(-100);
+    try {
+      try { window.DateInviteBackups?.capture?.("发送约会计划前"); } catch (backupError) { /* 备份不可用时不阻塞计划卡。 */ }
+      window.localStorage.setItem(CHAT_KEY, JSON.stringify(trimmed));
+    } catch (error) {
+      return { ok: false, error: "本机存储空间不足，约会卡片没有保存。" };
+    }
+    window.dispatchEvent(new CustomEvent(CHAT_EVENT, { detail: { messages: trimmed } }));
+    return { ok: true, delivered: false, message };
+  }
+
+  function sendDatePlanCard(input) {
+    const plan = normalizeDatePlan(input);
+    if (!plan) return { ok: false, error: "约会计划不完整，暂时不能发送。" };
+    const message = {
+      id: String(input?.id || plan.id || `date-plan-${Date.now()}`).slice(0, 100),
+      type: "date-plan",
+      kind: "date-plan",
+      plan,
+      text: datePlanText(plan),
+      createdAt: Date.now()
+    };
+    const cloudSync = cloud();
+    if (cloudIsActive() && typeof cloudSync?.sendMessage === "function") {
+      return cloudSync.sendMessage(message);
+    }
+    return savePlanCardLocally({ ...message, author: roomState().role });
+  }
+
+  function attachmentSourceKey(attachment) {
+    return attachmentFileId(attachment);
+  }
+
+  function rememberAttachmentSource(attachment, source) {
+    const key = attachmentSourceKey(attachment);
+    if (!key || !source) return;
+    attachmentSources.set(key, Promise.resolve(source));
+  }
+
+  function sourceForAttachment(attachment) {
+    if (attachment?.data) return Promise.resolve(attachment.data);
+    const key = attachmentSourceKey(attachment);
+    if (!key) return Promise.reject(new Error("没有找到这份附件。"));
+    const existing = attachmentSources.get(key);
+    if (existing) return existing;
+    const task = Promise.resolve(cloud()?.downloadAttachment?.(attachment))
+      .then((blob) => {
+        if (!blob) throw new Error("云端没有返回这份附件。" );
+        if (typeof URL !== "undefined" && typeof URL.createObjectURL === "function") return URL.createObjectURL(blob);
+        return readAsDataURL(blob);
+      });
+    attachmentSources.set(key, task);
+    task.catch(() => attachmentSources.delete(key));
+    return task;
+  }
+
+  function attachmentDownloadName(attachment) {
+    const raw = String(attachment?.name || "Leo-And-Emily-照片").replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_").trim();
+    return raw || "Leo-And-Emily-照片";
+  }
+
+  async function downloadChatAttachment(attachment) {
+    try {
+      const source = await sourceForAttachment(attachment);
+      const anchor = document.createElement("a");
+      anchor.href = source;
+      anchor.download = attachmentDownloadName(attachment);
+      anchor.hidden = true;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+    } catch (error) {
+      notice(error?.message || "这张照片暂时无法下载，请稍后再试。");
+    }
+  }
+
+  function makeImageDownloadable(image, attachment) {
+    image.tabIndex = 0;
+    image.setAttribute("role", "button");
+    image.setAttribute("aria-label", `下载照片：${attachmentDownloadName(attachment)}`);
+    image.addEventListener("click", () => downloadChatAttachment(attachment));
+    image.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        downloadChatAttachment(attachment);
+      }
+    });
+  }
+
+  function setMediaSource(media, attachment) {
+    sourceForAttachment(attachment)
+      .then((source) => { media.src = source; media.removeAttribute("aria-busy"); })
+      .catch(() => {
+        media.setAttribute("aria-busy", "false");
+        if (attachment.kind === "image") media.alt = "照片加载失败，点击可重试下载";
+      });
+  }
+
   function appendMedia(parent, attachment) {
-    if (!attachment?.data) return;
+    if (!attachment?.data && !attachmentFileId(attachment)) return;
     if (attachment.kind === "image") {
       const image = document.createElement("img");
-      image.src = attachment.data;
       image.alt = attachment.name || "分享的照片";
       image.className = "home-chat-media home-chat-image";
+      makeImageDownloadable(image, attachment);
+      if (attachment.data) image.src = attachment.data;
+      else {
+        image.setAttribute("aria-busy", "true");
+        setMediaSource(image, attachment);
+      }
       parent.append(image);
       return;
     }
     const media = document.createElement(attachment.kind === "video" ? "video" : "audio");
-    media.src = attachment.data;
     media.controls = true;
     media.preload = "metadata";
     media.className = `home-chat-media home-chat-${attachment.kind}`;
     if (attachment.kind === "video") media.playsInline = true;
+    if (attachment.data) media.src = attachment.data;
+    else {
+      media.setAttribute("aria-busy", "true");
+      setMediaSource(media, attachment);
+    }
     parent.append(media);
   }
 
@@ -141,7 +363,9 @@
   function renderHomeChat() {
     const list = byId("home-chat-list");
     if (!list) return;
-    const messages = cloudIsActive() ? (cloud()?.getMessages?.() || []) : (shared()?.getMessages?.() || []);
+    const messages = cloudIsActive()
+      ? (cloud()?.getMessages?.() || [])
+      : (readStoredChatMessages().length ? readStoredChatMessages() : (shared()?.getMessages?.() || []));
     const mine = roomState().role;
     list.replaceChildren();
     if (!messages.length) {
@@ -154,7 +378,10 @@
     messages.forEach((message) => {
       const card = document.createElement("article");
       card.className = `home-chat-bubble ${message.author === mine ? "is-me" : "is-them"}`;
-      if (message.text) {
+      if ((message.type === "date-plan" || message.kind === "date-plan") && message.plan) {
+        card.classList.add("is-date-plan");
+        appendDatePlanCard(card, message.plan);
+      } else if (message.text) {
         const text = document.createElement("p");
         text.textContent = message.text;
         card.append(text);
@@ -214,8 +441,13 @@
     if (!pendingAttachment) { preview.hidden = true; return; }
     preview.hidden = false;
     const label = document.createElement("span");
-    label.textContent = pendingAttachment.kind === "image" ? "已选照片" : pendingAttachment.kind === "video" ? "已选视频" : "已选语音";
+    if (pendingAttachment.sending) {
+      const progress = pendingAttachment.total > 1 ? `（${pendingAttachment.index}/${pendingAttachment.total}）` : "";
+      label.textContent = pendingAttachment.kind === "image" ? `正在发送原图${progress}…` : `正在发送附件${progress}…`;
+    }
+    else label.textContent = pendingAttachment.kind === "image" ? "已选照片" : pendingAttachment.kind === "video" ? "已选视频" : "已选语音";
     preview.append(label);
+    if (pendingAttachment.sending) return;
     appendMedia(preview, pendingAttachment);
     const remove = document.createElement("button");
     remove.type = "button";
@@ -231,34 +463,122 @@
     preview.append(remove);
   }
 
+  function chatMediaKind(file) {
+    const mime = String(file?.type || "");
+    if (mime.startsWith("image/")) return "image";
+    if (mime.startsWith("video/")) return "video";
+    if (mime.startsWith("audio/")) return "audio";
+    return "";
+  }
+
+  function setMediaSending(next) {
+    mediaSending = Boolean(next);
+    const mediaButton = byId("home-media-button");
+    if (mediaButton) {
+      mediaButton.disabled = mediaSending;
+      mediaButton.setAttribute("aria-disabled", String(mediaSending));
+      mediaButton.setAttribute("aria-busy", String(mediaSending));
+    }
+  }
+
+  async function sendRawMediaLocally(file, kind, text) {
+    const attachment = {
+      kind,
+      // 离线模式保留原始 DataURL 和原文件类型，不经过 Canvas 重压缩。
+      data: await readAsDataURL(file),
+      name: file.name,
+      mime: file.type,
+      size: Number(file.size) || 0
+    };
+    const sender = cloudIsActive() ? cloud()?.sendMessage : shared()?.sendMessage;
+    const result = await Promise.resolve(sender?.({ text, attachment }));
+    return { result, attachment };
+  }
+
+  async function sendSelectedChatMedia(file, kind, text) {
+    const cloudSync = cloud();
+    if (cloudIsActive() && typeof cloudSync?.sendMediaMessage === "function") {
+      const sent = await cloudSync.sendMediaMessage({
+        file,
+        kind,
+        text,
+        name: file.name,
+        mime: file.type
+      });
+      if (sent?.ok || !sent?.offline) return { result: sent, attachment: sent?.attachment || sent?.message?.attachment };
+    }
+    return sendRawMediaLocally(file, kind, text);
+  }
+
   async function chooseChatMedia() {
     const input = byId("home-media-input");
-    const file = input?.files?.[0];
-    if (!file) return;
+    const files = Array.from(input?.files || []);
+    if (!files.length || mediaSending) return;
+    const candidates = files.map((file) => ({ file, kind: chatMediaKind(file) }));
+    const invalid = candidates.find(({ file, kind }) => !kind || (kind === "video" && file.size > MAX_VIDEO_BYTES));
+    if (invalid) {
+      input.value = "";
+      notice(!invalid.kind ? "请选择照片、视频或语音文件" : "视频请控制在 1MB 以内");
+      return;
+    }
     try {
-      if (file.type.startsWith("image/")) {
-        pendingAttachment = { kind: "image", data: await compressImage(file), name: file.name, mime: "image/jpeg" };
-      } else if (file.type.startsWith("video/")) {
-        if (file.size > MAX_VIDEO_BYTES) throw new Error("视频请控制在 1MB 以内；云库接入后会支持更长视频");
-        pendingAttachment = { kind: "video", data: await readAsDataURL(file), name: file.name, mime: file.type };
-      } else {
-        throw new Error("请选择照片或视频文件");
+      setMediaSending(true);
+      const messageInput = byId("home-chat-input");
+      const caption = messageInput?.value || "";
+      let captionToSend = caption;
+      const sent = [];
+      const failures = [];
+      for (let index = 0; index < candidates.length; index += 1) {
+        const { file, kind } = candidates[index];
+        pendingAttachment = {
+          kind,
+          name: file.name,
+          mime: file.type,
+          size: Number(file.size) || 0,
+          sending: true,
+          index: index + 1,
+          total: candidates.length
+        };
+        updateMediaPreview();
+        try {
+          // 第一份成功发送的附件带上输入框里的文字；每个文件都直接按原始字节上传。
+          const { result, attachment } = await sendSelectedChatMedia(file, kind, captionToSend);
+          if (!result?.ok) throw new Error(result?.error || "附件暂时没有发送成功");
+          if (attachment?.fileId && typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
+            rememberAttachmentSource(attachment, URL.createObjectURL(file));
+          }
+          sent.push(file);
+          captionToSend = "";
+        } catch (error) {
+          failures.push(error?.message || file.name || "这份附件");
+        }
       }
+      input.value = "";
+      pendingAttachment = null;
       updateMediaPreview();
+      if (!sent.length) throw new Error(failures[0] || "附件暂时没有发送成功");
+      if (messageInput) messageInput.value = "";
+      renderHomeChat();
+      if (candidates.length > 1) {
+        notice(failures.length ? `已发送 ${sent.length} 个附件；${failures.length} 个暂时没有发送成功。` : `已发送 ${sent.length} 个原图附件。`);
+      }
     } catch (error) {
       pendingAttachment = null;
       input.value = "";
       updateMediaPreview();
       notice(error?.message || "这个附件暂时不能发送");
+    } finally {
+      setMediaSending(false);
     }
   }
 
-  function submitHomeChat(event) {
+  async function submitHomeChat(event) {
     event.preventDefault();
+    if (mediaSending) { notice("照片正在发送，请稍等一下。" ); return; }
     const input = byId("home-chat-input");
-    const result = cloudIsActive()
+    const result = await Promise.resolve(cloudIsActive()
       ? cloud()?.sendMessage?.({ text: input?.value || "", attachment: pendingAttachment })
-      : shared()?.sendMessage?.({ text: input?.value || "", attachment: pendingAttachment });
+      : shared()?.sendMessage?.({ text: input?.value || "", attachment: pendingAttachment }));
     if (!result?.ok) {
       if (!roomState().room) shared()?.openRoom?.();
       notice(result?.error || "先连接你们的空间，再开始聊天吧");
@@ -569,7 +889,13 @@
 
   function bindEvents() {
     byId("home-chat-form")?.addEventListener("submit", submitHomeChat);
-    byId("home-media-button")?.addEventListener("click", () => byId("home-media-input")?.click());
+    byId("home-media-button")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      if (mediaSending) { notice("照片正在发送，请稍等一下。"); return; }
+      const input = byId("home-media-input");
+      if (!input) { notice("照片选择器暂时没有准备好，请刷新后再试。"); return; }
+      input.click();
+    });
     byId("home-media-input")?.addEventListener("change", chooseChatMedia);
     byId("polaroid-photo-input")?.addEventListener("change", () => {
       const file = byId("polaroid-photo-input")?.files?.[0];
@@ -601,6 +927,13 @@
   function bindSharedState() {
     const sync = shared();
     const data = interactions();
+    window.addEventListener(DATE_PLAN_CHAT_EVENT, (event) => {
+      Promise.resolve(sendDatePlanCard(event.detail?.plan))
+        .then((result) => {
+          if (!result?.ok) notice(result?.error || "约会卡片会在聊天可用后自动补发。");
+        })
+        .catch(() => notice("约会卡片会在聊天可用后自动补发。"));
+    });
     if (!data) return;
     if (sync) {
       data.configureMindMatchTransport({
@@ -646,6 +979,11 @@
     renderMind();
     updateMediaPreview();
   }
+
+  window.DateInviteHomeChat = {
+    sendDatePlanCard,
+    render: renderHomeChat
+  };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initialize, { once: true });
   else initialize();

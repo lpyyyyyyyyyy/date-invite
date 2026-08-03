@@ -9,6 +9,8 @@
   const FUTURE_LETTERS_KEY = "cute-date-invite-future-letters-v1";
   const CAT_KEY = "cute-date-invite-cat-v1";
   const REPAIR_KEY = "cute-date-invite-repair-v1";
+  // 首页聊天会监听这个事件，把刚完成的约会计划变成一张可同步的小卡片。
+  const DATE_PLAN_CHAT_EVENT = "date-invite-plan-card-created";
   // 仅用于这台设备去重：提醒开关仍随约会计划一起共享。
   const REMINDER_RUNTIME_KEY = "cute-date-invite-reminder-runtime-v1";
   const noLabels = ["不要", "再想想嘛", "点不到我", "真的不要吗"];
@@ -256,10 +258,23 @@
     }
   }
 
+  function isPhotoLibraryEntry(record) {
+    return Boolean(record && typeof record === "object" && record.__leoEmilyPhotoLibrary === true);
+  }
+
+  function readPhotoLibraryEntries() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || "[]");
+      return Array.isArray(saved) ? saved.filter(isPhotoLibraryEntry) : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
   function loadArchive() {
     try {
       const saved = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || "[]");
-      return Array.isArray(saved) ? saved.filter((record) => record && typeof record.id === "string").map((record) => ({
+      return Array.isArray(saved) ? saved.filter((record) => record && typeof record.id === "string" && !isPhotoLibraryEntry(record)).map((record) => ({
         ...record,
         photos: Array.isArray(record.photos) ? record.photos.filter((photo) => typeof photo === "string").slice(0, 3) : [],
         memory: typeof record.memory === "string" ? record.memory : "",
@@ -273,7 +288,8 @@
   function persistArchive() {
     backupBeforeSave("回忆与照片");
     try {
-      localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archiveRecords));
+      // 照片库复用同一份可同步档案，但不会作为“约会记录”展示出来。
+      localStorage.setItem(ARCHIVE_KEY, JSON.stringify([...archiveRecords, ...readPhotoLibraryEntries()]));
     } catch (error) {
       showToast("浏览器未允许保存档案，当前页面仍可继续使用");
     }
@@ -1834,21 +1850,46 @@
     navigator.serviceWorker?.addEventListener("controllerchange", configureServiceWorkerReminder);
   }
 
+  function makePlanChatPayload(record) {
+    if (!record || typeof record.id !== "string") return null;
+    return {
+      id: `date-plan-${record.id}`,
+      recordId: record.id,
+      date: String(record.date || state.date || ""),
+      time: String(record.time || state.time || ""),
+      location: String(record.location || ""),
+      activity: String(record.activity || ""),
+      menu: String(record.menu || ""),
+      createdAt: Number(record.createdAt) || Date.now()
+    };
+  }
+
+  function announceNewPlanToChat(record) {
+    const plan = makePlanChatPayload(record);
+    if (!plan) return;
+    window.dispatchEvent(new CustomEvent(DATE_PLAN_CHAT_EVENT, { detail: { plan } }));
+  }
+
   function ensurePlanRecord() {
     if (!state.date || !state.time || !state.activity || !state.menu) return;
     const detail = { date: state.date, time: state.time, location: state.location, activity: state.activity, menu: state.menu, updatedAt: Date.now() };
     let record = archiveRecords.find((item) => item.id === state.activeRecordId);
+    let isNewRecord = false;
     if (record) Object.assign(record, detail);
     else {
       record = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, ...detail, createdAt: Date.now(), memory: "", mood: "", photos: [] };
       archiveRecords.unshift(record);
       state.activeRecordId = record.id;
+      isNewRecord = true;
       persistState();
     }
     persistArchive();
     updateHomeCountdown();
     renderReminderSettings();
     configureServiceWorkerReminder();
+    // 只在一份新计划第一次完成时发送，重新打开摘要页不会重复刷屏。
+    if (isNewRecord) announceNewPlanToChat(record);
+    return record;
   }
 
   function updateMap() {
@@ -2980,7 +3021,28 @@
     const capacity = record ? Math.max(0, 3 - (record.photos?.length || 0)) : 0;
     if (!record || !files.length) return;
     if (!capacity) { showToast("每次约会最多保存 3 张照片"); memoryPhoto.value = ""; return; }
-    try { record.photos.push(...await Promise.all(files.slice(0, capacity).map(compressPhoto))); record.updatedAt = Date.now(); persistArchive(); renderMemoryPhotos(record); if (files.length > capacity) showToast(`只保存了前 ${capacity} 张照片`); }
+    try {
+      const savedPhotos = await Promise.all(files.slice(0, capacity).map(compressPhoto));
+      record.photos.push(...savedPhotos);
+      record.updatedAt = Date.now();
+      persistArchive();
+      renderMemoryPhotos(record);
+      // 照片已先安全写进本次回忆；照片库模块会随即询问是否再收进分类。
+      window.dispatchEvent(new CustomEvent("date-invite-memory-photos-added", {
+        detail: {
+          recordId: record.id,
+          photos: savedPhotos,
+          record: {
+            date: record.date || "",
+            time: record.time || "",
+            location: record.location || "",
+            activity: record.activity || "",
+            menu: record.menu || ""
+          }
+        }
+      }));
+      if (files.length > capacity) showToast(`只保存了前 ${capacity} 张照片`);
+    }
     catch { showToast("照片读取失败，请换一张再试"); }
     memoryPhoto.value = "";
   }
