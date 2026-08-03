@@ -110,7 +110,9 @@ function reminderBody(plan) {
 
 async function deliverDailyReminder() {
   const config = await reminderGet("config");
-  if (!config?.enabled || !self.registration?.showNotification) return false;
+  if (!config?.enabled || !config.plan || !self.registration?.showNotification) return false;
+  // 没有这个时间标记的旧配置先不投递，等页面重新同步配置，避免升级后立即误发。
+  if (!Number(config.notBefore) || Number(config.notBefore) > Date.now()) return false;
   const day = localDay();
   const delivery = await reminderGet("delivery");
   if (delivery?.lastDay === day) return false;
@@ -132,6 +134,7 @@ self.addEventListener("message", (event) => {
   event.waitUntil(reminderSet("config", {
     enabled: Boolean(message.enabled),
     plan: message.plan && typeof message.plan === "object" ? message.plan : null,
+    notBefore: Number(message.notBefore) || 0,
     updatedAt: Number(message.updatedAt) || Date.now()
   }));
 });

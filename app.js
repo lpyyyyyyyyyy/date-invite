@@ -427,8 +427,11 @@
     syncFoodSelection();
     updateHomeCountdown();
     renderReminderSettings();
+    if (state.reminderEnabled && !Number(readReminderRuntime().notBefore)) armReminderRuntime();
     configureServiceWorkerReminder();
     scheduleForegroundReminder();
+    // 如果今天的 00:00 错过了才打开页面，补发一次；切换开关本身不会触发这里。
+    if (state.reminderEnabled) deliverForegroundReminder();
     if (catMascot) {
       recordCatVisit();
       updateCatMascot();
@@ -497,6 +500,8 @@
     reminderToggle?.addEventListener("change", async () => {
       state.reminderEnabled = reminderToggle.checked;
       persistState();
+      if (state.reminderEnabled) armReminderRuntime();
+      else clearReminderRuntime();
       if (state.reminderEnabled && "Notification" in window && Notification.permission === "default") {
         await requestReminderPermission();
       }
@@ -1744,7 +1749,10 @@
 
   function configureServiceWorkerReminder() {
     if (!("serviceWorker" in navigator)) return;
-    const config = { type: "date-plan-reminder-config", enabled: Boolean(state.reminderEnabled), plan: reminderPlanPayload(), updatedAt: Date.now() };
+    const runtime = readReminderRuntime();
+    const notBefore = Number(runtime.notBefore) || nextReminderMidnight();
+    if (state.reminderEnabled && !Number(runtime.notBefore)) armReminderRuntime(notBefore);
+    const config = { type: "date-plan-reminder-config", enabled: Boolean(state.reminderEnabled), plan: reminderPlanPayload(), notBefore, updatedAt: Date.now() };
     navigator.serviceWorker.ready.then(async (registration) => {
       (registration.active || navigator.serviceWorker.controller)?.postMessage(config);
       // Background Sync / Periodic Sync are best-effort only; the foreground timer below covers an open app.
@@ -1760,16 +1768,41 @@
     } catch (error) { return {}; }
   }
 
+  function writeReminderRuntime(value) {
+    try { localStorage.setItem(REMINDER_RUNTIME_KEY, JSON.stringify(value)); } catch (error) { /* private mode */ }
+  }
+
+  function nextReminderMidnight() {
+    const next = new Date();
+    next.setHours(24, 0, 0, 0);
+    return next.getTime();
+  }
+
+  function armReminderRuntime(notBefore = nextReminderMidnight()) {
+    const runtime = readReminderRuntime();
+    runtime.notBefore = Number(notBefore) || nextReminderMidnight();
+    writeReminderRuntime(runtime);
+  }
+
+  function clearReminderRuntime() {
+    writeReminderRuntime({});
+  }
+
   function markReminderDelivered(day) {
-    try { localStorage.setItem(REMINDER_RUNTIME_KEY, JSON.stringify({ lastDay: day })); } catch (error) { /* private mode */ }
+    const runtime = readReminderRuntime();
+    runtime.lastDay = day;
+    runtime.notBefore = nextReminderMidnight();
+    writeReminderRuntime(runtime);
   }
 
   async function deliverForegroundReminder() {
     if (!state.reminderEnabled) return;
     const now = new Date();
     const day = localDateString(now);
-    if (readReminderRuntime().lastDay === day) return;
+    const runtime = readReminderRuntime();
+    if (runtime.lastDay === day || Number(runtime.notBefore) > Date.now()) return;
     const plan = getNextPlan();
+    if (!plan) return;
     const title = "今日约会计划提醒 ♥";
     const body = reminderText(plan);
     markReminderDelivered(day);
@@ -1795,6 +1828,9 @@
       }, Math.max(1000, nextMidnight.getTime() - Date.now() + 150));
     };
     arm();
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") deliverForegroundReminder();
+    }, { passive: true });
     navigator.serviceWorker?.addEventListener("controllerchange", configureServiceWorkerReminder);
   }
 
