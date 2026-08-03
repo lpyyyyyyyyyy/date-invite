@@ -33,63 +33,118 @@
     </div>
 
     <section class="screen home-screen is-active" data-screen="0" aria-labelledby="home-title">
-      <div class="home-mark" aria-hidden="true">♥</div>
-      <p class="eyebrow">LEO AND EMILY</p>
-      <h1 id="home-title" tabindex="-1">Leo And Emily</h1>
-      <p class="supporting-copy">把每一次见面，留成只有我们知道的故事。</p>
-      <div class="home-sections">
-        <section class="home-group" aria-labelledby="date-group-title">
-          <p id="date-group-title">约会</p>
-          <button class="home-card home-plan" type="button">
-            <span class="home-card-icon" aria-hidden="true">♥</span><span><strong>约会计划</strong><small>选时间、地点、想玩什么和想吃什么</small></span><b aria-hidden="true">→</b>
-          </button>
+      <header class="home-topbar">
+        <section class="home-countdown-summary" aria-labelledby="home-countdown-label">
+          <span class="home-countdown-kicker" id="home-countdown-label">NEXT TIME WE MEET</span>
+          <strong id="home-countdown" role="status" aria-live="polite">还没有下一次约会计划</strong>
         </section>
-        <section class="home-group" aria-labelledby="memory-group-title">
-          <p id="memory-group-title">回忆录</p>
-          <button class="home-card library-open" type="button">
-            <span class="home-card-icon mint-icon" aria-hidden="true">✦</span><span><strong>我们的回忆</strong><small>照片、地点和每一次见面的心情</small></span><b aria-hidden="true">→</b>
-          </button>
-        </section>
-        <section class="home-group" aria-labelledby="anniversary-group-title">
-          <p id="anniversary-group-title">纪念日</p>
-          <button class="home-card anniversary-open" type="button">
-            <span class="home-card-icon yellow-icon" aria-hidden="true">♥</span><span><strong>我们的小日子</strong><small>看看已经相伴多久，或离特别一天还有多远</small></span><b aria-hidden="true">→</b>
-          </button>
-        </section>
-        <section class="home-group" aria-labelledby="things-group-title">
-          <p id="things-group-title">我们的清单</p>
-          <button class="home-card things-open" type="button">
-            <span class="home-card-icon blue-icon" aria-hidden="true">100</span><span><strong>蔡子珊和刘平壹要一起做的 100 件事</strong><small>把想一起完成的小事，一件一件打上勾</small></span><b aria-hidden="true">→</b>
-          </button>
-        </section>
-        <section class="home-group" aria-labelledby="game-group-title">
-          <p id="game-group-title">游戏区</p>
-          <button class="home-card game-open" type="button">
-            <span class="home-card-icon purple-icon" aria-hidden="true">?</span><span><strong>两个人的小游戏</strong><small>把害羞的话交给转盘来问</small></span><b aria-hidden="true">→</b>
-          </button>
-        </section>
-        <section class="home-group" aria-labelledby="keepsakes-group-title">
-          <p id="keepsakes-group-title">我们的小秘密</p>
-          <button class="home-card keepsakes-open" type="button">
-            <span class="home-card-icon purple-icon" aria-hidden="true">✦</span><span><strong>只属于我们的角落</strong><small>密码本、给未来的信和不想忘记的小事</small></span><b aria-hidden="true">→</b>
-          </button>
-        </section>
-        <section class="home-group" aria-labelledby="repair-group-title">
-          <p id="repair-group-title">情绪急救</p>
-          <button class="home-card repair-open" type="button">
-            <span class="home-card-icon coral-icon" aria-hidden="true">♡</span><span><strong>和好小屋</strong><small>吵架了？先抱抱，再好好说</small></span><b aria-hidden="true">→</b>
-          </button>
-        </section>
-        <section class="home-group" aria-labelledby="shared-group-title">
-          <p id="shared-group-title">双人同步</p>
-          <button class="home-card shared-open" type="button" aria-haspopup="dialog">
-            <span class="home-card-icon shared-icon" aria-hidden="true">↔</span><span><strong>我们的共享房间</strong><small id="shared-home-status">创建房间，把消息和保存的内容同步给彼此</small></span><b aria-hidden="true">→</b>
-          </button>
-        </section>
-      </div>
-      <section class="next-date-card" aria-labelledby="next-date-title">
-        <p id="next-date-title">下次约会行动</p>
-        <strong id="home-countdown" role="status" aria-live="polite">还没有下一次约会计划</strong>
+
+        <details class="theme-menu" id="theme-menu">
+          <summary id="theme-toggle" aria-label="打开主题入口">
+            <span class="theme-menu-icon" aria-hidden="true">✦</span>
+            <span>主题</span>
+          </summary>
+          <div class="theme-menu-panel" id="theme-menu-panel" aria-label="主题入口">
+            <div class="theme-menu-heading">
+              <div>
+                <p class="eyebrow">OUR LITTLE WORLD</p>
+                <strong>想做什么？</strong>
+              </div>
+              <button class="theme-menu-close" id="theme-close" type="button" aria-label="关闭主题入口">×</button>
+            </div>
+
+            <section class="theme-cluster" aria-labelledby="theme-date-title">
+              <p id="theme-date-title">约会与回忆</p>
+              <button class="home-card theme-launch theme-date-plan" id="theme-date-plan" type="button" data-next="1">
+                <span class="home-card-icon" aria-hidden="true">♥</span><span><strong>约会计划</strong><small>安排见面时间、地点、想吃的和想玩的</small></span><b aria-hidden="true">→</b>
+              </button>
+              <button class="home-card theme-launch library-open" id="theme-memory-book" type="button">
+                <span class="home-card-icon mint-icon" aria-hidden="true">✦</span><span><strong>回忆录</strong><small>照片、地点和每一次见面的心情</small></span><b aria-hidden="true">→</b>
+              </button>
+            </section>
+
+            <section class="theme-cluster" aria-labelledby="theme-us-title">
+              <p id="theme-us-title">我们的小宇宙</p>
+              <button class="home-card theme-launch anniversary-open" id="theme-anniversary" type="button">
+                <span class="home-card-icon yellow-icon" aria-hidden="true">♥</span><span><strong>我们的小日子</strong><small>纪念日、在一起多久和特别倒计时</small></span><b aria-hidden="true">→</b>
+              </button>
+              <button class="home-card theme-launch things-open" id="theme-things" type="button">
+                <span class="home-card-icon blue-icon" aria-hidden="true">100</span><span><strong>一起做的 100 件事</strong><small>把想完成的小事慢慢打上勾</small></span><b aria-hidden="true">→</b>
+              </button>
+              <button class="home-card theme-launch keepsakes-open" id="theme-keepsakes" type="button">
+                <span class="home-card-icon purple-icon" aria-hidden="true">✦</span><span><strong>小秘密</strong><small>密码本、未来的信和只属于我们的事</small></span><b aria-hidden="true">→</b>
+              </button>
+            </section>
+
+            <section class="theme-cluster" aria-labelledby="theme-play-title">
+              <p id="theme-play-title">一起玩，也一起好好说话</p>
+              <button class="home-card theme-launch game-open" id="theme-games" type="button">
+                <span class="home-card-icon purple-icon" aria-hidden="true">?</span><span><strong>双人小游戏</strong><small>真心话转盘和大话骰子都在这里</small></span><b aria-hidden="true">→</b>
+              </button>
+              <button class="home-card theme-launch repair-open" id="theme-repair" type="button">
+                <span class="home-card-icon coral-icon" aria-hidden="true">♡</span><span><strong>和好小屋</strong><small>有情绪时，先把想说的话好好说完</small></span><b aria-hidden="true">→</b>
+              </button>
+            </section>
+
+            <section class="theme-cluster theme-sync-cluster" aria-labelledby="theme-sync-title">
+              <p id="theme-sync-title">双人连接</p>
+              <button class="home-card theme-launch shared-open" id="theme-shared-room" type="button" aria-haspopup="dialog">
+                <span class="home-card-icon shared-icon" aria-hidden="true">↔</span><span><strong>我们的共享空间</strong><small id="shared-home-status">打开后自动连接彼此的共同回忆</small></span><b aria-hidden="true">→</b>
+              </button>
+            </section>
+
+            <section class="theme-cluster theme-new-interaction-cluster" aria-labelledby="theme-new-interaction-title">
+              <p id="theme-new-interaction-title">新的互动</p>
+              <button class="home-card theme-launch interactions-open" id="theme-interactions" type="button">
+                <span class="home-card-icon pink-icon" aria-hidden="true">♡</span><span><strong>互动小屋</strong><small>拍立得、声音明信片、心有灵犀和留言墙</small></span><b aria-hidden="true">→</b>
+              </button>
+            </section>
+          </div>
+        </details>
+      </header>
+
+      <section class="home-chat-panel" aria-labelledby="home-title">
+        <header class="home-chat-header">
+          <div class="couple-avatars" aria-hidden="true"><span>蔡</span><span>刘</span></div>
+          <div class="home-chat-person">
+            <p class="eyebrow">LEO AND EMILY</p>
+            <h1 id="home-title" tabindex="-1">蔡子珊 &amp; 刘平壹</h1>
+            <p id="home-chat-status" role="status" aria-live="polite">我们的聊天，正在慢慢变成回忆。</p>
+          </div>
+          <span class="home-chat-online" id="home-chat-presence"><i aria-hidden="true"></i>一起在线</span>
+        </header>
+
+        <div class="home-chat-messages" id="home-chat-list" role="log" aria-live="polite" aria-relevant="additions text">
+          <article class="home-message home-message-them">
+            <span class="message-avatar" aria-hidden="true">蔡</span>
+            <div><p>今天也要想我一点点哦 ♡</p><time datetime="2026-08-03">刚刚</time></div>
+          </article>
+          <article class="home-message home-message-me">
+            <div><p>一直都在想你。下次见面快一点来吧！</p><time datetime="2026-08-03">刚刚</time></div>
+            <span class="message-avatar" aria-hidden="true">刘</span>
+          </article>
+        </div>
+
+        <form class="home-chat-composer" id="home-chat-form" aria-label="发送消息">
+          <label class="chat-attach-button" id="home-media-button" for="home-media-input" title="发送照片或视频">
+            <span aria-hidden="true">＋</span><span class="sr-only">发送照片或视频</span>
+          </label>
+          <input id="home-media-input" class="sr-only" type="file" accept="image/*,video/*" multiple>
+          <div class="home-chat-media-preview" id="home-chat-media-preview" hidden aria-live="polite"></div>
+          <label class="sr-only" for="home-chat-input">写一条消息</label>
+          <input id="home-chat-input" type="text" maxlength="500" autocomplete="off" placeholder="想对她说点什么？">
+          <button class="home-chat-send" id="home-chat-send" type="submit" aria-label="发送消息">发送</button>
+        </form>
+      </section>
+
+      <nav class="home-quick-actions" aria-label="快捷入口">
+        <button class="home-quick-action home-plan" id="home-quick-date-plan" type="button"><span aria-hidden="true">♥</span><strong>发起约会</strong><small>安排下一次见面</small></button>
+        <button class="home-quick-action library-open" id="home-quick-memory" type="button"><span aria-hidden="true">▧</span><strong>回忆录</strong><small>看看我们的照片</small></button>
+        <button class="home-quick-action shared-open" id="home-quick-shared" type="button" aria-haspopup="dialog"><span aria-hidden="true">↔</span><strong>双人空间</strong><small>同步我们的故事</small></button>
+      </nav>
+
+      <section class="next-date-card home-reminder-card" aria-labelledby="next-date-title">
+        <div class="home-reminder-heading"><span aria-hidden="true">✦</span><div><p id="next-date-title">约会提醒</p><strong>让手机也记得我们下一次见面</strong></div></div>
         <div class="reminder-settings" aria-labelledby="reminder-title">
           <div class="reminder-heading">
             <div><b id="reminder-title">每日约会提醒</b><small>每天 00:00 提醒下一次约会计划</small></div>
@@ -506,11 +561,76 @@
     </section>
   </main>
 
+  <dialog class="interactions-dialog" id="interactions-dialog" aria-modal="true" aria-labelledby="interactions-title">
+    <button class="interactions-close" id="interactions-close" type="button" aria-label="关闭互动小屋">×</button>
+    <header class="interactions-header">
+      <p class="eyebrow">JUST THE TWO OF US</p>
+      <h2 id="interactions-title">互动小屋</h2>
+      <p>把一起发生的小瞬间，变成能保存、能等对方打开的小礼物。</p>
+    </header>
+
+    <section class="interaction-section polaroid-section" aria-labelledby="polaroid-title">
+      <div class="interaction-section-heading"><span aria-hidden="true">▧</span><div><h3 id="polaroid-title">双人拍立得</h3><p>你先放一张，她补上另一张，拼成同一张回忆。</p></div></div>
+      <div class="interaction-form-row polaroid-controls">
+        <label class="interaction-file-button" for="polaroid-photo-input">选照片</label>
+        <input id="polaroid-photo-input" type="file" accept="image/*">
+        <label class="sr-only" for="polaroid-caption">给照片写一句话</label>
+        <input id="polaroid-caption" type="text" maxlength="120" placeholder="给这一张写句话（可选）">
+        <button class="primary-button coral-button" id="polaroid-add" type="button">放进拍立得</button>
+      </div>
+      <div class="polaroid-list" id="polaroid-list" aria-live="polite"></div>
+    </section>
+
+    <section class="interaction-section voice-section" aria-labelledby="voice-title">
+      <div class="interaction-section-heading"><span aria-hidden="true">◖</span><div><h3 id="voice-title">声音明信片</h3><p>录一句只有她能听见的“我想你”。</p></div></div>
+      <div class="voice-actions"><button class="primary-button coral-button" id="voice-record" type="button">开始录音</button><button class="secondary-button" id="voice-stop" type="button" disabled>结束并寄出</button></div>
+      <div class="voice-postcard-list" id="voice-postcard-list" aria-live="polite"></div>
+    </section>
+
+    <section class="interaction-section mind-section" aria-labelledby="mind-title">
+      <div class="interaction-section-heading"><span aria-hidden="true">✦</span><div><h3 id="mind-title">心有灵犀</h3><p>必须双方同时在线、都点准备好，才会开始。</p></div></div>
+      <label class="sr-only" for="mind-prompt">心有灵犀题目</label>
+      <input id="mind-prompt" type="text" maxlength="160" placeholder="写一个问题，或直接让系统随机出题">
+      <div class="mind-actions"><button class="secondary-button" id="mind-create" type="button">出这一题</button><button class="primary-button coral-button" id="mind-ready" type="button" disabled aria-pressed="false">我准备好了</button></div>
+      <label class="sr-only" for="mind-answer">你的答案</label>
+      <input id="mind-answer" type="text" maxlength="160" placeholder="双方准备好后，在这里写答案" disabled>
+      <button class="primary-button coral-button" id="mind-submit" type="button" disabled>锁定我的答案</button>
+      <p class="mind-status" id="mind-status" role="status" aria-live="polite"></p>
+      <article class="mind-result" id="mind-result" aria-live="polite" hidden></article>
+    </section>
+
+    <section class="interaction-section wall-section" aria-labelledby="wall-title">
+      <div class="interaction-section-heading"><span aria-hidden="true">♡</span><div><h3 id="wall-title">共享留言墙</h3><p>写下的小纸条，会一直留在你们的空间里。</p></div></div>
+      <label class="sr-only" for="wall-message">发布一条留言</label>
+      <textarea id="wall-message" maxlength="500" rows="3" placeholder="想对她说的话，就贴在这里吧…"></textarea>
+      <button class="primary-button coral-button" id="wall-send" type="button">贴上留言</button>
+      <div class="wall-list" id="wall-list" aria-live="polite"></div>
+    </section>
+  </dialog>
+
   <dialog class="shared-dialog" id="shared-dialog" aria-modal="true" aria-labelledby="shared-title">
     <button class="shared-close" id="shared-close" type="button" aria-label="关闭双人共享">×</button>
     <p class="eyebrow">TOGETHER ONLINE</p>
     <h2 id="shared-title">双人共享房间</h2>
-    <p class="shared-intro">创建一次共享房间，之后双方打开这个链接就能看到彼此保存的约会计划、照片、纪念日和小纸条。</p>
+    <p class="shared-intro">这是你们加密保存的共同空间。第一次把邀请链接发给她打开，之后双方只要进网站就会自动同步，不需要同一 Wi‑Fi，也不用再输房间码。</p>
+
+    <section class="cloud-sync-card" id="cloud-sync-card" aria-labelledby="cloud-sync-title">
+      <div class="cloud-sync-card-top">
+        <span class="cloud-sync-orb" aria-hidden="true">☁</span>
+        <div>
+          <p class="eyebrow">PRIVATE CLOUD</p>
+          <h3 id="cloud-sync-title">你们的云端共同空间</h3>
+        </div>
+        <span class="cloud-sync-lock" aria-label="内容已加密保存">🔒</span>
+      </div>
+      <p class="cloud-sync-status-card" id="cloud-sync-status" role="status" aria-live="polite">正在准备云端空间…</p>
+      <p class="cloud-sync-detail" id="cloud-sync-detail">首次只要把邀请链接发给她一次。</p>
+      <div class="cloud-sync-actions">
+        <button class="secondary-button" id="cloud-copy-link" type="button">复制邀请链接</button>
+        <button class="primary-button coral-button" id="cloud-share-link" type="button">邀请她加入</button>
+      </div>
+      <p class="cloud-sync-note">链接含有只属于你们的加密钥匙，请只发给她；两边保存后，以后打开即自动连接。</p>
+    </section>
 
     <section class="shared-join-panel" id="shared-join-panel" aria-label="创建或加入房间">
       <label for="shared-room-input">房间码</label>
@@ -557,7 +677,7 @@
       </div>
       <p class="shared-backup-status" id="backup-status" role="status" aria-live="polite">每次保存都会自动备份到本机，最近保留 30 份</p>
     </section>
-    <p class="shared-footnote">已连接后，约会计划、回忆照片、纪念日、和好小屋和小纸条会自动同步到双方手机；暂时没网时仍保存在本机。请不要填写账号、密码等敏感信息。</p>
+    <p class="shared-footnote">约会计划、回忆照片、纪念日、和好小屋、聊天和互动内容都会先存本机、再加密同步到双方手机；暂时没网也不会丢，联网后自动补传。</p>
   </dialog>
 
   <dialog class="roulette-dialog" id="roulette-dialog" aria-labelledby="roulette-title">
@@ -572,9 +692,14 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   <div class="sr-only" id="movement-status" aria-live="polite"></div>
-  <script src="backup.js?v=20260803-daily-reminder"></script>
-  <script src="app.js?v=20260803-daily-reminder"></script>
-  <script src="shared-sync.js?v=20260803-daily-reminder"></script>
+  <script src="https://static.cloudbase.net/cloudbase-js-sdk/3.7.0/cloudbase.full.js"></script>
+  <script src="cloud-config.js?v=20260803-cloud-sync-v2"></script>
+  <script src="backup.js?v=20260803-cloud-sync-v3"></script>
+  <script src="app.js?v=20260803-cloud-sync-v2"></script>
+  <script src="shared-sync.js?v=20260803-cloud-sync-v3"></script>
+  <script src="shared-interactions.js?v=20260803-cloud-sync-v2"></script>
+  <script src="home-chat.js?v=20260803-cloud-sync-v3"></script>
+  <script src="cloud-sync.js?v=20260803-cloud-sync-v4"></script>
   <script src="pwa.js?v=20260803-pwa-update"></script>
 </body>
 </html>

@@ -9,6 +9,12 @@
   const ROOM_KEY = "cute-date-invite-shared-room-v1";
   const META_KEY = "cute-date-invite-shared-meta-v1";
   const CHAT_KEY = "cute-date-invite-shared-messages-v1";
+  const INTERACTION_KEYS = [
+    "cute-date-invite-polaroids-v1",
+    "cute-date-invite-voice-postcards-v1",
+    "cute-date-invite-mind-matches-v1",
+    "cute-date-invite-message-wall-v1",
+  ];
   const META_ROOM_KEY = `${META_KEY}-room`;
   const CHAT_ROOM_KEY = `${CHAT_KEY}-room`;
   const SYNC_KEYS = [
@@ -20,8 +26,14 @@
     "cute-date-invite-future-letters-v1",
     "cute-date-invite-repair-v1",
     CHAT_KEY,
+    ...INTERACTION_KEYS,
   ];
   const SYNC_KEY_SET = new Set(SYNC_KEYS);
+  // CloudBase is the primary source for saved couple data. Keeping the old
+  // peer-to-peer storage observer active at the same time can resend a cloud
+  // update into an old room (and vice versa), so it is reserved for live game
+  // packets only when cloud sync has been configured.
+  const CLOUD_PRIMARY = Boolean(window.LEO_EMILY_CLOUD_CONFIG?.environmentId);
   const PEER_SOURCES = [
     "https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js",
     "https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js",
@@ -35,6 +47,12 @@
   const MAX_SNAPSHOT_VALUE_CHARS = 2400000;
   const MAX_SNAPSHOT_TOTAL_CHARS = 7000000;
   const MAX_SYNC_PHOTO_CHARS = 900000;
+  const MAX_CHAT_ATTACHMENT_CHARS = 1600000;
+  const MAX_PACKET_CHARS = 64000;
+  const MAX_PACKET_CHUNKS = 180;
+  const MAX_PENDING_PACKET_AGE = 45000;
+  const ROOM_EVENT = "date-invite-room-changed";
+  const CHAT_EVENT = "date-invite-chat-changed";
 
   const dialog = document.querySelector("#shared-dialog");
   const openButtons = [...document.querySelectorAll(".shared-open")];
@@ -69,6 +87,9 @@
   // 每次关闭/重建 Peer 都递增。防止网络抖动时，旧的异步连接回调覆盖新连接。
   let connectionGeneration = 0;
   let hostUnavailableAttempts = 0;
+  let lastStatus = { message: "还没有共享房间", kind: "offline" };
+  const packetListeners = new Set();
+  const pendingPackets = new Map();
 
   function safeGet(key) {
     try { return window.localStorage.getItem(key); } catch (error) { return null; }
@@ -149,6 +170,7 @@
   }
 
   function patchStorage() {
+    if (CLOUD_PRIMARY) return;
     if (window.__dateInviteSharedStoragePatched) return;
     if (!window.Storage || !Storage.prototype) return;
     const originalSetItem = Storage.prototype.setItem;
@@ -214,6 +236,25 @@
       : makeHostId(code);
   }
 
+  function readInviteFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const code = normalizeCode(params.get("room"));
+    if (code.length < 6) return null;
+    return { code, hostId: normalizeHostId(params.get("host"), code) };
+  }
+
+  function clearInviteFromUrl() {
+    try {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has("room") && !url.searchParams.has("host")) return;
+      url.searchParams.delete("room");
+      url.searchParams.delete("host");
+      window.history?.replaceState?.(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    } catch (error) {
+      // 旧版或受限 WebView 不支持 History API 时，退出房间仍然只清本机恢复状态。
+    }
+  }
+
   function loadRoom() {
     try {
       const saved = JSON.parse(safeGet(ROOM_KEY) || "null");
@@ -234,7 +275,22 @@
     else safeRemove(ROOM_KEY);
   }
 
+  function getPublicRoomState() {
+    return {
+      room: activeRoom ? { code: activeRoom.code, role: activeRoom.role, hostId: activeRoom.hostId } : null,
+      role: myRole,
+      online: Boolean(activeRoom && connection?.open),
+      message: lastStatus.message,
+      kind: lastStatus.kind,
+    };
+  }
+
+  function announceRoomState() {
+    window.dispatchEvent(new CustomEvent(ROOM_EVENT, { detail: getPublicRoomState() }));
+  }
+
   function setStatus(message, kind = "waiting") {
+    lastStatus = { message: String(message || ""), kind };
     if (sharedStatus) sharedStatus.textContent = message;
     if (connectionPill) {
       connectionPill.className = `shared-connection-pill is-${kind}`;
@@ -245,6 +301,7 @@
         ? (kind === "online" ? `房间 ${activeRoom.code} 已连接，消息会实时同步` : `房间 ${activeRoom.code} 等待另一部手机加入`)
         : "创建房间，把消息和保存的内容同步给彼此";
     }
+    announceRoomState();
   }
 
   function renderRoomUI() {
@@ -259,15 +316,19 @@
 
   function openSharedDialog() {
     roomWasOpened = true;
-    const incomingCode = normalizeCode(new URLSearchParams(window.location.search).get("room"));
+    const invite = readInviteFromUrl();
     renderRoomUI();
-    if (!activeRoom && incomingCode) setStatus("这是一个共享邀请，输入后点击“加入”即可。", "waiting");
+    if (!activeRoom && invite) setStatus("这是一个共享邀请，正在为你打开房间。", "waiting");
     if (typeof dialog.showModal === "function") {
       if (!dialog.open) dialog.showModal();
     } else {
       dialog.setAttribute("open", "");
     }
-    if (activeRoom && (!peer || peer.destroyed || peer.disconnected || !connection?.open)) connectSavedRoom();
+    // 主机在等待对方加入时没有 DataConnection 也属于正常状态；不要因为再次打开弹窗
+    // 就销毁已监听的主机 Peer。访客则只在尚未创建连接时重连。
+    const peerUnavailable = !peer || peer.destroyed || peer.disconnected;
+    const guestNeedsConnection = activeRoom?.role === "guest" && !connection;
+    if (!CLOUD_PRIMARY && activeRoom && (peerUnavailable || guestNeedsConnection)) connectSavedRoom();
   }
 
   function closeSharedDialog() {
@@ -371,24 +432,18 @@
       nextPeer.on("error", (error) => {
         if (generation !== connectionGeneration || peer !== nextPeer) return;
         if (error?.type === "unavailable-id") {
-          if (hostUnavailableAttempts < 3) {
-            hostUnavailableAttempts += 1;
-            const retryDelay = 500 * hostUnavailableAttempts;
-            setStatus("房间正在恢复连接，请稍等…", "waiting");
-            setTimeout(() => {
-              if (generation === connectionGeneration && activeRoom === room) connectHost();
-            }, retryDelay);
-            return;
-          }
-          hostUnavailableAttempts = 0;
-          setStatus("这个房间码刚好被占用，正在换一个新的…", "offline");
-          const replacementCode = randomCode();
-          scopeRoomData(replacementCode);
-          activeRoom = { code: replacementCode, role: "host", hostId: "", updatedAt: Date.now() };
-          activeRoom.hostId = makeHostId(activeRoom.code);
-          saveRoom();
-          renderRoomUI();
-          setTimeout(connectHost, 120);
+          // 恢复已有房间时不能擅自换房间码：另一台手机保存的链接仍指向旧房间。
+          // PeerJS 通常会在旧连接释放后允许同一个 ID 再次注册，因此保留稳定 ID 并退避重试。
+          hostUnavailableAttempts = Math.min(hostUnavailableAttempts + 1, 8);
+          const retryDelay = Math.min(700 * (2 ** (hostUnavailableAttempts - 1)), 8000);
+          setStatus("房间正在恢复连接，请稍等…", "waiting");
+          try { nextPeer.destroy(); } catch (destroyError) { /* ignore */ }
+          if (peer === nextPeer) peer = null;
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            if (generation === connectionGeneration && activeRoom === room) connectHost();
+          }, retryDelay);
           return;
         }
         setStatus("共享服务暂时连接不上，请检查网络后重试。", "offline");
@@ -472,7 +527,51 @@
 
   function sendPacket(packet) {
     if (!connection || !connection.open) return false;
-    try { connection.send(packet); return true; } catch (error) { return false; }
+    try {
+      const raw = JSON.stringify(packet);
+      if (raw.length <= MAX_PACKET_CHARS) {
+        connection.send(packet);
+        return true;
+      }
+      const count = Math.ceil(raw.length / MAX_PACKET_CHARS);
+      if (count > MAX_PACKET_CHUNKS) return false;
+      const id = `packet-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      for (let index = 0; index < count; index += 1) {
+        connection.send({
+          type: "packet-chunk",
+          id,
+          index,
+          count,
+          data: raw.slice(index * MAX_PACKET_CHARS, (index + 1) * MAX_PACKET_CHARS),
+        });
+      }
+      return true;
+    } catch (error) { return false; }
+  }
+
+  function clearExpiredPackets() {
+    const cutoff = Date.now() - MAX_PENDING_PACKET_AGE;
+    pendingPackets.forEach((entry, id) => {
+      if (entry.createdAt < cutoff) pendingPackets.delete(id);
+    });
+  }
+
+  function receivePacketChunk(packet) {
+    if (!packet || typeof packet.id !== "string" || !Number.isInteger(packet.index) || !Number.isInteger(packet.count)
+      || packet.count < 1 || packet.count > MAX_PACKET_CHUNKS || packet.index < 0 || packet.index >= packet.count || typeof packet.data !== "string") return;
+    clearExpiredPackets();
+    let entry = pendingPackets.get(packet.id);
+    if (!entry) {
+      entry = { createdAt: Date.now(), count: packet.count, parts: new Array(packet.count), received: 0 };
+      pendingPackets.set(packet.id, entry);
+    }
+    if (entry.count !== packet.count || entry.parts[packet.index] !== undefined) return;
+    entry.parts[packet.index] = packet.data;
+    entry.received += 1;
+    if (entry.received !== entry.count) return;
+    pendingPackets.delete(packet.id);
+    const complete = parseJSON(entry.parts.join(""), null);
+    if (complete && typeof complete === "object") handlePacket(complete);
   }
 
   function parseJSON(raw, fallback = null) {
@@ -510,6 +609,20 @@
     return JSON.stringify(output);
   }
 
+  function compactChat(messages) {
+    if (!Array.isArray(messages)) return "[]";
+    const newestFirst = messages.slice(-100).reverse();
+    const kept = [];
+    for (const raw of newestFirst) {
+      const message = normalizeMessage(raw);
+      if (!message) continue;
+      const candidate = JSON.stringify([message, ...kept]);
+      if (candidate.length > MAX_SNAPSHOT_VALUE_CHARS) break;
+      kept.unshift(message);
+    }
+    return JSON.stringify(kept);
+  }
+
   function snapshotValue(key) {
     const raw = safeGet(key);
     if (raw == null) return null;
@@ -519,6 +632,7 @@
     const parsed = parseJSON(raw, undefined);
     if (parsed === undefined) return null;
     if (key === "cute-date-invite-archive-v1" && Array.isArray(parsed)) return compactArchive(parsed);
+    if (key === CHAT_KEY && Array.isArray(parsed)) return compactChat(parsed);
     if (Array.isArray(parsed)) return compactArray(parsed);
     if (typeof parsed === "string") return JSON.stringify(parsed.slice(0, MAX_SNAPSHOT_VALUE_CHARS - 2));
     if (parsed && typeof parsed === "object") {
@@ -664,6 +778,16 @@
 
   function handlePacket(packet) {
     if (!packet || typeof packet !== "object") return;
+    if (packet.type === "packet-chunk") {
+      receivePacketChunk(packet);
+      return;
+    }
+    if (packet.type === "shared-interactions/mind-match") {
+      packetListeners.forEach((listener) => {
+        try { listener(packet); } catch (error) { /* 单个订阅者失败不影响连接 */ }
+      });
+      return;
+    }
     if (packet.type === "hello") {
       const changed = applySnapshot(packet.snapshot);
       sendPacket({ type: "snapshot", snapshot: collectSnapshot() });
@@ -688,7 +812,11 @@
         renderMessages();
         sendPacket({ type: "chat-ack", id: packet.message.id });
       }
+      return;
     }
+    packetListeners.forEach((listener) => {
+      try { listener(packet); } catch (error) { /* 单个订阅者失败不影响连接 */ }
+    });
   }
 
   function announceSnapshotApplied() {
@@ -699,7 +827,39 @@
   function loadMessages() {
     const parsed = parseJSON(safeGet(CHAT_KEY) || "[]", []);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((message) => message && typeof message.id === "string" && typeof message.text === "string").slice(-100);
+    return parsed.map(normalizeMessage).filter(Boolean).sort((a, b) => a.createdAt - b.createdAt).slice(-100);
+  }
+
+  function normalizeAttachment(value) {
+    if (!value || typeof value !== "object") return null;
+    const kind = ["image", "video", "audio"].includes(value.kind) ? value.kind : "";
+    const data = typeof value.data === "string" ? value.data : "";
+    const prefixes = {
+      image: /^data:image\/(?:jpeg|png|webp|gif);base64,/i,
+      video: /^data:video\/[a-z0-9.+-]+;base64,/i,
+      audio: /^data:audio\/[a-z0-9.+-]+;base64,/i,
+    };
+    if (!kind || !prefixes[kind].test(data) || data.length > MAX_CHAT_ATTACHMENT_CHARS) return null;
+    return {
+      kind,
+      data,
+      name: String(value.name || "").replace(/[<>]/g, "").slice(0, 90),
+      mime: String(value.mime || "").slice(0, 80),
+    };
+  }
+
+  function normalizeMessage(item) {
+    if (!item || typeof item !== "object") return null;
+    const text = String(item.text || "").trim().slice(0, 500);
+    const attachment = normalizeAttachment(item.attachment);
+    if (!text && !attachment) return null;
+    return {
+      id: String(item.id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`).slice(0, 100),
+      author: item.author === "guest" ? "guest" : "host",
+      text,
+      attachment,
+      createdAt: Number(item.createdAt) || Date.now(),
+    };
   }
 
   function mergeMessages(incoming) {
@@ -707,13 +867,8 @@
     const map = new Map(current.map((item) => [item.id, item]));
     let changed = false;
     incoming.forEach((item) => {
-      const message = {
-        id: String(item.id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`),
-        author: item.author === "guest" ? "guest" : "host",
-        text: String(item.text || "").slice(0, 240),
-        createdAt: Number(item.createdAt) || Date.now(),
-      };
-      if (!message.text || map.has(message.id)) return;
+      const message = normalizeMessage(item);
+      if (!message || map.has(message.id)) return;
       map.set(message.id, message);
       changed = true;
     });
@@ -724,7 +879,27 @@
     safeSet(CHAT_KEY, JSON.stringify(merged));
     applyingRemote = false;
     touchKey(CHAT_KEY);
+    window.dispatchEvent(new CustomEvent(CHAT_EVENT, { detail: { messages: merged } }));
     return true;
+  }
+
+  function appendAttachment(container, attachment) {
+    if (!attachment) return;
+    if (attachment.kind === "image") {
+      const image = document.createElement("img");
+      image.className = "shared-message-media shared-message-image";
+      image.src = attachment.data;
+      image.alt = attachment.name || "对方分享的照片";
+      container.append(image);
+      return;
+    }
+    const media = document.createElement(attachment.kind === "video" ? "video" : "audio");
+    media.className = `shared-message-media shared-message-${attachment.kind}`;
+    media.src = attachment.data;
+    media.controls = true;
+    media.preload = "metadata";
+    if (attachment.kind === "video") media.playsInline = true;
+    container.append(media);
   }
 
   function renderMessages() {
@@ -739,9 +914,15 @@
       return;
     }
     messages.forEach((message) => {
-      const item = document.createElement("p");
+      const item = document.createElement("article");
       item.className = `shared-message ${message.author === myRole ? "is-me" : "is-them"}`;
-      item.textContent = message.text;
+      if (message.text) {
+        const content = document.createElement("span");
+        content.className = "shared-message-text";
+        content.textContent = message.text;
+        item.append(content);
+      }
+      appendAttachment(item, message.attachment);
       const meta = document.createElement("span");
       meta.className = "shared-message-meta";
       meta.textContent = `${message.author === myRole ? "我" : "对方"} · ${formatMessageTime(message.createdAt)}`;
@@ -749,6 +930,7 @@
       messagesView.append(item);
     });
     messagesView.scrollTop = messagesView.scrollHeight;
+    window.dispatchEvent(new CustomEvent(CHAT_EVENT, { detail: { messages } }));
   }
 
   function formatMessageTime(timestamp) {
@@ -757,22 +939,34 @@
     return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
   }
 
+  function sendSharedMessage(input = {}) {
+    if (!activeRoom) return { ok: false, error: "先创建或加入一个房间，再发送消息。" };
+    const message = normalizeMessage({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      author: myRole,
+      text: input.text,
+      attachment: input.attachment,
+      createdAt: Date.now(),
+    });
+    if (!message) return { ok: false, error: "写一点话，或选择一张照片、视频、语音。" };
+    mergeMessages([message]);
+    renderMessages();
+    const delivered = sendPacket({ type: "chat", message });
+    if (!delivered) setStatus("消息已保存在本机，等对方上线后会补发。", "waiting");
+    return { ok: true, delivered, message };
+  }
+
   function sendMessage(event) {
     event.preventDefault();
     const text = String(messageInput.value || "").trim().slice(0, 240);
     if (!text) { messageInput.focus(); return; }
-    if (!activeRoom) {
-      setStatus("先创建或加入一个房间，再发送小纸条。", "offline");
-      return;
-    }
-    const message = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, author: myRole, text, createdAt: Date.now() };
-    mergeMessages([message]);
-    renderMessages();
-    if (!sendPacket({ type: "chat", message })) setStatus("纸条已保存在本机，等对方上线后会补发。", "waiting");
+    const result = sendSharedMessage({ text });
+    if (!result.ok) { setStatus(result.error, "offline"); return; }
     messageInput.value = "";
   }
 
   function scheduleSnapshotBroadcast() {
+    if (CLOUD_PRIMARY) return;
     if (!activeRoom || !connection?.open || storageBroadcastTimer) return;
     storageBroadcastTimer = setTimeout(() => {
       storageBroadcastTimer = null;
@@ -814,7 +1008,11 @@
   function leaveRoom() {
     closePeer();
     activeRoom = null;
+    roomWasOpened = false;
+    hostUnavailableAttempts = 0;
     saveRoom();
+    clearInviteFromUrl();
+    if (roomInput) roomInput.value = "";
     myRole = "host";
     renderRoomUI();
     setStatus("已退出房间，本机内容不会被删除。", "offline");
@@ -831,28 +1029,34 @@
   }
 
   function initFromUrl() {
-    const params = new URLSearchParams(window.location.search);
-    const incomingCode = normalizeCode(params.get("room"));
-    if (incomingCode) {
-      if (activeRoom && activeRoom.code !== incomingCode) {
-        closePeer();
-        activeRoom = null;
-        saveRoom();
-        myRole = "host";
-        renderRoomUI();
-      }
-      roomInput.value = incomingCode;
-      setStatus("正在打开共享邀请，稍等一下就会自动加入。", "waiting");
-      setTimeout(() => {
-        openSharedDialog();
-        // 邀请链接自带房间码和主机 ID；收到链接的一方无需再手动复制房间码。
-        if (!activeRoom && params.get("host")) joinRoom();
-      }, 120);
+    const invite = readInviteFromUrl();
+    if (!invite) return false;
+
+    // URL 邀请优先于上次保存的其他房间；同一个房间则保留本机的 host/guest 身份，
+    // 避免主机自己重开分享链接时误把自己切换成访客。
+    if (!activeRoom || activeRoom.code !== invite.code) {
+      closePeer();
+      scopeRoomData(invite.code);
+      activeRoom = { code: invite.code, role: "guest", hostId: invite.hostId, updatedAt: Date.now() };
+      myRole = "guest";
+      hostUnavailableAttempts = 0;
+      saveRoom();
+    } else {
+      scopeRoomData(activeRoom.code, true);
+      myRole = activeRoom.role === "guest" ? "guest" : "host";
     }
+
+    roomWasOpened = true;
+    roomInput.value = invite.code;
+    renderRoomUI();
+    setStatus("正在打开共享邀请，稍等一下就会自动加入。", "waiting");
+    // 弹窗打开后会根据当前 host/guest 状态创建一次连接，不要求再次输入房间码。
+    openSharedDialog();
+    return true;
   }
 
   function init() {
-    patchStorage();
+    if (!CLOUD_PRIMARY) patchStorage();
     openButtons.forEach((button) => button.addEventListener("click", openSharedDialog));
     closeButton?.addEventListener("click", closeSharedDialog);
     createButton.addEventListener("click", makeRoom);
@@ -863,8 +1067,9 @@
     leaveButton?.addEventListener("click", leaveRoom);
     messageForm?.addEventListener("submit", sendMessage);
     dialog.addEventListener("cancel", closeSharedDialog);
-    renderRoomUI();
-    if (activeRoom) {
+    const openedFromInvite = CLOUD_PRIMARY ? false : initFromUrl();
+    if (!openedFromInvite) renderRoomUI();
+    if (!CLOUD_PRIMARY && !openedFromInvite && activeRoom) {
       // 已保存的房间代表用户主动配置过共享；页面重开后也应能自动恢复断线重连。
       roomWasOpened = true;
       scopeRoomData(activeRoom.code, true);
@@ -873,8 +1078,40 @@
       // 只在曾经主动创建/加入过房间时加载外部实时连接库。
       connectSavedRoom();
     }
-    initFromUrl();
   }
+
+  function subscribePackets(listener) {
+    if (typeof listener !== "function") return () => {};
+    packetListeners.add(listener);
+    return () => packetListeners.delete(listener);
+  }
+
+  function sendRealtimePacket(packet) {
+    if (!activeRoom || !connection?.open) return false;
+    return sendPacket(packet);
+  }
+
+  // 首页聊天和双人小游戏通过这一层读取房间状态；不暴露 PeerJS 对象，避免其他模块误关连接。
+  window.DateInviteShared = {
+    CHAT_KEY,
+    INTERACTION_KEYS: [...INTERACTION_KEYS],
+    ROOM_EVENT,
+    CHAT_EVENT,
+    getRoom: () => getPublicRoomState(),
+    isBothOnline: () => Boolean(activeRoom && connection?.open),
+    getMessages: () => loadMessages(),
+    sendMessage: sendSharedMessage,
+    sendRealtimePacket,
+    subscribe: subscribePackets,
+    openRoom: openSharedDialog,
+    shareInvite,
+    getInviteUrl: inviteUrl,
+    syncNow: () => {
+      if (CLOUD_PRIMARY) return false;
+      if (!activeRoom) return false;
+      return sendPacket({ type: "snapshot", snapshot: collectSnapshot() });
+    },
+  };
 
   // 让应用脚本先完成初始化，再挂载共享房间；同时兼容脚本被延后加载的情况。
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, { once: true });

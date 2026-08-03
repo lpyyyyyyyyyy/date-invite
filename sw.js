@@ -1,4 +1,4 @@
-const CACHE_NAME = "leo-emily-runtime-v14";
+const CACHE_NAME = "leo-emily-runtime-v20-cloud-sync";
 const REMINDER_DB = "leo-emily-reminders-v1";
 const REMINDER_STORE = "settings";
 const OFFLINE_ASSETS = [
@@ -6,10 +6,24 @@ const OFFLINE_ASSETS = [
   "./index.html",
   "./styles.css",
   "./backup.js",
-  "./backup.js?v=20260803-daily-reminder",
+  "./backup.js?v=20260803-cloud-sync-v2",
+  "./backup.js?v=20260803-cloud-sync-v3",
   "./app.js",
-  "./app.js?v=20260803-daily-reminder",
-  "./shared-sync.js?v=20260803-daily-reminder",
+  "./app.js?v=20260803-cloud-sync-v2",
+  "./shared-sync.js",
+  "./shared-sync.js?v=20260803-cloud-sync-v2",
+  "./shared-sync.js?v=20260803-cloud-sync-v3",
+  "./shared-interactions.js",
+  "./shared-interactions.js?v=20260803-cloud-sync-v2",
+  "./home-chat.js",
+  "./home-chat.js?v=20260803-cloud-sync-v2",
+  "./home-chat.js?v=20260803-cloud-sync-v3",
+  "./cloud-config.js",
+  "./cloud-config.js?v=20260803-cloud-sync-v2",
+  "./cloud-sync.js",
+  "./cloud-sync.js?v=20260803-cloud-sync-v2",
+  "./cloud-sync.js?v=20260803-cloud-sync-v3",
+  "./cloud-sync.js?v=20260803-cloud-sync-v4",
   "./pwa.js",
   "./pwa.js?v=20260803-pwa-update",
   "./manifest.webmanifest",
