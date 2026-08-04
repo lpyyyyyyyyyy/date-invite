@@ -11,9 +11,12 @@
   const STATE_KEY = "leo-emily-cloud-sync-state-v2";
   const DEVICE_KEY = "leo-emily-cloud-device-v1";
   const PAIRING_KEY = "leo-emily-cloud-pairing-v2";
+  // ===== 身份固定：昵称属于设备，角色属于首次配对 =====
+  const IDENTITY_KEY = "leo-emily-cloud-identity-v1";
   const CLOUD_EVENT = "date-invite-cloud-status";
   const CLOUD_APPLIED_EVENT = "date-invite-cloud-sync-applied";
   const CHAT_EVENT = "date-invite-chat-changed";
+  const IDENTITY_EVENT = "date-invite-identity-changed";
   const INLINE_LIMIT = 155000;
   const POLL_INTERVAL = 7000;
   const PRESENCE_INTERVAL = 24000;
@@ -144,7 +147,14 @@
   function ensurePairing() {
     const invited = incomingPairing();
     const existing = readPairing();
-    if (invited && (!existing || existing.roomId === invited.roomId)) {
+    // Reopening the same invitation on the host phone must not rewrite the
+    // saved host role into guest. A role is assigned only when joining a room.
+    if (invited && existing && existing.roomId === invited.roomId) {
+      pairing = existing;
+      removePairingHash();
+      return pairing;
+    }
+    if (invited && !existing) {
       pairing = writePairing(invited) || invited;
       removePairingHash();
       return pairing;
@@ -215,9 +225,17 @@
   let retryTimer = null;
   let recoveryEventsBound = false;
   let presence = [];
+  let identity = null;
+  let identityControlsBound = false;
+  const roomProfiles = { host: null, guest: null };
   let lastCloudContactAt = 0;
   let controlsBound = false;
   const pendingKeys = new Set();
+  // 实时心有灵犀只在内存/短暂云文档中传输，不进入可合并的共享快照。
+  const realtimeListeners = new Set();
+  const realtimeSeen = new Set();
+  const REALTIME_PACKET_MAX = 12000;
+  const REALTIME_PACKET_TTL = 120000;
   let currentStatus = {
     ready: false,
     online: false,
@@ -232,6 +250,180 @@
 
   function currentRole() {
     return pairing?.role === "guest" ? "guest" : "host";
+  }
+
+  function cleanDisplayName(value) {
+    return String(value == null ? "" : value)
+      .replace(/[\u0000-\u001f\u007f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 18);
+  }
+
+  function normalizeIdentity(value) {
+    if (!value || typeof value !== "object") return null;
+    const roomId = String(value.roomId || "");
+    const ownerDeviceId = String(value.deviceId || "").replace(/[^a-z0-9_-]/gi, "").slice(0, 80);
+    if (!/^[A-Za-z0-9_-]{16,96}$/.test(roomId) || ownerDeviceId.length < 12) return null;
+    return {
+      version: 1,
+      roomId,
+      deviceId: ownerDeviceId,
+      role: value.role === "guest" ? "guest" : "host",
+      name: cleanDisplayName(value.name),
+      createdAt: Number(value.createdAt) || now(),
+      updatedAt: Number(value.updatedAt) || now()
+    };
+  }
+
+  function readIdentity() {
+    return normalizeIdentity(parseJSON(safeGet(IDENTITY_KEY) || "null", null));
+  }
+
+  function persistIdentity(next) {
+    const normalized = normalizeIdentity(next);
+    if (!normalized || !safeSet(IDENTITY_KEY, JSON.stringify(normalized))) return null;
+    identity = normalized;
+    return identity;
+  }
+
+  // A device keeps its nickname when it deliberately joins another room,
+  // but the host/guest side always comes from the saved pairing.
+  function ensureIdentity() {
+    const room = pairing || ensurePairing();
+    if (!room) return null;
+    if (roomProfiles.host?.roomId !== room.roomId) roomProfiles.host = null;
+    if (roomProfiles.guest?.roomId !== room.roomId) roomProfiles.guest = null;
+    const saved = identity || readIdentity();
+    const sameBinding = saved
+      && saved.deviceId === deviceId
+      && saved.roomId === room.roomId
+      && saved.role === currentRole();
+    if (sameBinding) {
+      identity = saved;
+      return identity;
+    }
+    return persistIdentity({
+      version: 1,
+      roomId: room.roomId,
+      deviceId,
+      role: currentRole(),
+      name: saved?.deviceId === deviceId ? saved.name : "",
+      createdAt: saved?.deviceId === deviceId ? saved.createdAt : now(),
+      updatedAt: now()
+    });
+  }
+
+  function publicIdentity(profile) {
+    const safe = normalizeIdentity(profile);
+    if (!safe) return null;
+    return {
+      roomId: safe.roomId,
+      deviceId: safe.deviceId,
+      role: safe.role,
+      name: safe.name,
+      createdAt: safe.createdAt,
+      updatedAt: safe.updatedAt
+    };
+  }
+
+  function identitySnapshot() {
+    const mine = ensureIdentity();
+    return {
+      me: publicIdentity(mine),
+      profiles: {
+        host: publicIdentity(roomProfiles.host),
+        guest: publicIdentity(roomProfiles.guest)
+      }
+    };
+  }
+
+  function emitIdentityChange() {
+    window.dispatchEvent(new CustomEvent(IDENTITY_EVENT, { detail: clone(identitySnapshot()) }));
+  }
+
+  function displayNameForRole(role) {
+    const side = role === "guest" ? "guest" : "host";
+    const mine = ensureIdentity();
+    if (mine?.role === side && mine.name) return mine.name;
+    const profile = roomProfiles[side];
+    if (profile?.name) return profile.name;
+    return mine?.role === side ? "我" : "对方";
+  }
+
+  function identityDocumentId(role = currentRole()) {
+    const room = pairing || ensurePairing();
+    return `profile_${String(room?.roomId || "unknown").slice(0, 96)}_${role === "guest" ? "guest" : "host"}`;
+  }
+
+  function identityConflict(profile) {
+    const other = roomProfiles[profile?.role === "guest" ? "guest" : "host"];
+    return Boolean(other && other.deviceId && other.deviceId !== deviceId && other.roomId === profile.roomId);
+  }
+
+  async function publishIdentity() {
+    const mine = ensureIdentity();
+    if (!mine?.name || !ready || !collection || !navigator.onLine) return { ok: false, pending: true };
+    if (identityConflict(mine)) return { ok: false, conflict: true };
+    try {
+      const payload = await encryptText(JSON.stringify(publicIdentity(mine)));
+      resultData(await collection.doc(identityDocumentId(mine.role)).set({
+        roomId: mine.roomId,
+        type: "identity",
+        role: mine.role,
+        deviceId,
+        createdAt: mine.createdAt,
+        updatedAt: mine.updatedAt,
+        payload,
+        encrypted: true,
+        schemaVersion: CONFIG?.version || 2
+      }), "身份保存失败");
+      roomProfiles[mine.role] = publicIdentity(mine);
+      emitIdentityChange();
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error?.message || "身份暂时没有同步到云端" };
+    }
+  }
+
+  async function saveDisplayName(value) {
+    const name = cleanDisplayName(value);
+    if (!name) return { ok: false, error: "请先写下你的名字" };
+    const mine = ensureIdentity();
+    if (!mine) return { ok: false, error: "正在准备你的双人空间，请稍后再试" };
+    const saved = persistIdentity({ ...mine, name, updatedAt: now() });
+    if (!saved) return { ok: false, error: "这台设备暂时无法保存名字" };
+    const roleConflict = identityConflict(saved);
+    if (!roleConflict) roomProfiles[saved.role] = publicIdentity(saved);
+    emitIdentityChange();
+    const published = roleConflict ? { ok: false, conflict: true } : await publishIdentity();
+    return { ok: true, pending: !published.ok && !published.conflict, conflict: Boolean(published.conflict), identity: publicIdentity(saved) };
+  }
+
+  // 仅供旧版本曾把 host/guest 写反时使用。不会创建新房间，也不会清除任何
+  // 共同资料；只是重新把这台手机绑定回正确的一侧。
+  async function rebindIdentityRole(value) {
+    const role = value === "guest" ? "guest" : "host";
+    const room = pairing || ensurePairing();
+    if (!room) return { ok: false, error: "共同空间还没有准备好，请稍后再试。" };
+    if (ready && navigator.onLine) await pullRemote();
+    const occupied = roomProfiles[role];
+    if (occupied?.deviceId && occupied.deviceId !== deviceId) {
+      return { ok: false, error: "这个身份正在被另一台手机使用，请在另一台手机选择正确身份。" };
+    }
+    const updated = writePairing({ ...room, role });
+    if (!updated) return { ok: false, error: "这台手机暂时无法重新绑定身份。" };
+    pairing = updated;
+    encryptionKey = null;
+    identity = null;
+    roomProfiles.host = null;
+    roomProfiles.guest = null;
+    const rebound = ensureIdentity();
+    if (!rebound) return { ok: false, error: "身份重新绑定失败，请再试一次。" };
+    emitIdentityChange();
+    const published = await publishIdentity();
+    await writePresence();
+    return { ok: true, pending: !published.ok, identity: publicIdentity(rebound) };
   }
 
   function updateStatus(message, kind) {
@@ -478,6 +670,58 @@
     return decoder.decode(decrypted);
   }
 
+  // ─── 实时心有灵犀包（云端配对模式）────────────────────────────────────
+  function subscribeRealtime(listener) {
+    if (typeof listener !== "function") return () => {};
+    realtimeListeners.add(listener);
+    return () => realtimeListeners.delete(listener);
+  }
+
+  function emitRealtime(packet) {
+    realtimeListeners.forEach((listener) => {
+      try { listener(packet); } catch (error) { /* 一个页面监听器出错不影响另一端收包。 */ }
+    });
+  }
+
+  function sendRealtimePacket(packet) {
+    if (!ready || !collection || !navigator.onLine || !pairing || !packet || typeof packet !== "object") return false;
+    let serialized = "";
+    try { serialized = JSON.stringify(packet); } catch (error) { return false; }
+    if (!serialized || serialized.length > REALTIME_PACKET_MAX) return false;
+    const packetId = `live_${deviceId}_${now()}_${randomId(8)}`;
+    // API 保持同步返回，上传在后台进行；心有灵犀的本地状态不会等待网络而卡住按钮。
+    Promise.resolve(encryptText(serialized))
+      .then(async (payload) => resultData(await collection.doc(packetId).set({
+        roomId: pairing.roomId,
+        type: "realtime",
+        packetId,
+        deviceId,
+        role: currentRole(),
+        createdAt: now(),
+        payload,
+        encrypted: true,
+        schemaVersion: CONFIG?.version || 2
+      }), "实时互动暂时无法发送"))
+      .then(() => window.setTimeout(() => {
+        try {
+          const removal = collection?.doc(packetId)?.remove?.();
+          Promise.resolve(removal).catch(() => undefined);
+        } catch (error) { /* 过期包清理失败不影响游戏。 */ }
+      }, REALTIME_PACKET_TTL))
+      .catch(() => undefined);
+    return true;
+  }
+
+  async function applyRealtimeRecord(record) {
+    const createdAt = Number(record?.createdAt || 0);
+    if (!createdAt || now() - createdAt > REALTIME_PACKET_TTL || typeof record?.payload !== "string") return false;
+    const raw = record.encrypted === false ? record.payload : await decryptText(record.payload);
+    const packet = parseJSON(raw, null);
+    if (!packet || typeof packet !== "object") return false;
+    emitRealtime(packet);
+    return true;
+  }
+
   async function valueForCloud(key, raw) {
     if (raw == null) return { deleted: true, payloadMode: "none", payload: "", size: 0, encrypted: true };
     const encrypted = await encryptText(raw);
@@ -637,7 +881,7 @@
   }
 
   function senderPushName() {
-    return currentRole() === "guest" ? "蔡子珊" : "刘平壹";
+    return displayNameForRole(currentRole());
   }
 
   async function registerPushSubscription(subscription) {
@@ -900,11 +1144,53 @@
     return shouldWrite || tombstonesChanged;
   }
 
+  async function refreshRoomProfiles(records) {
+    const room = pairing || ensurePairing();
+    if (!room || !Array.isArray(records)) return false;
+    let changed = false;
+    const latest = { host: roomProfiles.host, guest: roomProfiles.guest };
+    const identityRows = records
+      .filter((record) => record && record.type === "identity" && record.roomId === room.roomId)
+      .sort((left, right) => Number(left.updatedAt || 0) - Number(right.updatedAt || 0));
+
+    for (const record of identityRows) {
+      const side = record.role === "guest" ? "guest" : "host";
+      try {
+        const raw = record.encrypted === false ? String(record.payload || "") : await decryptText(String(record.payload || ""));
+        const profile = normalizeIdentity(parseJSON(raw, null));
+        if (!profile || profile.roomId !== room.roomId || profile.role !== side) continue;
+        const previous = latest[side];
+        const newer = !previous
+          || Number(profile.updatedAt || 0) > Number(previous.updatedAt || 0)
+          || (Number(profile.updatedAt || 0) === Number(previous.updatedAt || 0) && profile.deviceId === deviceId);
+        if (newer) latest[side] = profile;
+      } catch (error) {
+        // A malformed profile must not stop memories or messages from syncing.
+      }
+    }
+
+    ["host", "guest"].forEach((side) => {
+      const previous = roomProfiles[side];
+      const next = latest[side] || null;
+      if (JSON.stringify(previous) !== JSON.stringify(next)) {
+        roomProfiles[side] = next;
+        changed = true;
+      }
+    });
+    if (changed) emitIdentityChange();
+    return changed;
+  }
+
   function updatePresence(records) {
     const room = pairing || ensurePairing();
     presence = records
       .filter((item) => item && item.type === "presence" && item.roomId === room.roomId)
-      .map((item) => ({ deviceId: String(item.deviceId || ""), role: item.role === "guest" ? "guest" : "host", updatedAt: Number(item.updatedAt) || 0 }))
+      .map((item) => ({
+        deviceId: String(item.deviceId || ""),
+        role: item.role === "guest" ? "guest" : "host",
+        name: cleanDisplayName(item.name),
+        updatedAt: Number(item.updatedAt) || 0
+      }))
       .filter((item) => item.deviceId);
   }
 
@@ -912,6 +1198,7 @@
     if (!ready || pulling || !navigator.onLine) return false;
     pulling = true;
     let changed = false;
+    let profilesChanged = false;
     let skippedRecords = 0;
     try {
       const room = pairing || ensurePairing();
@@ -919,6 +1206,21 @@
       const rows = Array.isArray(records) ? records : [];
       lastCloudContactAt = now();
       updatePresence(rows);
+      profilesChanged = await refreshRoomProfiles(rows);
+      // 实时心有灵犀包不写入 localStorage 快照，只在短轮询窗口内解密并转给互动模块。
+      const realtimeRows = rows
+        .filter((record) => record && record.type === "realtime" && record.deviceId !== deviceId)
+        .sort((left, right) => Number(left.createdAt || 0) - Number(right.createdAt || 0));
+      for (const record of realtimeRows) {
+        const packetId = String(record.packetId || record._id || "").slice(0, 160);
+        if (!packetId || realtimeSeen.has(packetId)) continue;
+        if (now() - Number(record.createdAt || 0) > REALTIME_PACKET_TTL) { realtimeSeen.add(packetId); continue; }
+        try {
+          await applyRealtimeRecord(record);
+          realtimeSeen.add(packetId);
+          if (realtimeSeen.size > 300) realtimeSeen.clear();
+        } catch (error) { /* 解密/网络暂时失败时不标记，下次轮询可恢复。 */ }
+      }
       const states = rows.filter((record) => record && record.type === "state" && record.deviceId !== deviceId)
         .sort((left, right) => Number(left.updatedAt || 0) - Number(right.updatedAt || 0));
       for (const record of states) {
@@ -945,7 +1247,7 @@
       updateStatus(
         skippedRecords
           ? "大部分资料已同步，少量旧附件会在下次连接时自动重试。"
-          : changed ? "云端内容已合并到这台手机。" : "云端已连接，资料会自动同步。",
+          : changed ? "云端内容已合并到这台手机。" : profilesChanged ? "你们的名字已准备好，资料会自动同步。" : "云端已连接，资料会自动同步。",
         skippedRecords ? "waiting" : "synced"
       );
       return changed;
@@ -966,6 +1268,7 @@
         type: "presence",
         deviceId,
         role: currentRole(),
+        name: cleanDisplayName(ensureIdentity()?.name),
         updatedAt: now(),
         schemaVersion: CONFIG?.version || 2
       }), "在线状态保存失败");
@@ -1009,6 +1312,109 @@
     window.setTimeout(() => { toast.hidden = true; }, 3200);
   }
 
+  function identityDialogOpen(dialog) {
+    return Boolean(dialog?.open || dialog?.hasAttribute("open"));
+  }
+
+  function openIdentityDialog(dialog) {
+    if (!dialog || identityDialogOpen(dialog)) return;
+    try {
+      if (typeof dialog.showModal === "function") dialog.showModal();
+      else dialog.setAttribute("open", "");
+    } catch (error) { dialog.setAttribute("open", ""); }
+  }
+
+  function closeIdentityDialog(dialog) {
+    if (!dialog || !identityDialogOpen(dialog)) return;
+    try {
+      if (typeof dialog.close === "function") dialog.close();
+      else dialog.removeAttribute("open");
+    } catch (error) { dialog.removeAttribute("open"); }
+  }
+
+  function openIdentitySetupIfNeeded() {
+    const mine = ensureIdentity();
+    if (!mine || mine.name) return;
+    const dialog = document.querySelector("#identity-dialog");
+    const input = document.querySelector("#identity-name-input");
+    const error = document.querySelector("#identity-name-error");
+    if (error) { error.textContent = ""; error.hidden = true; }
+    if (input) input.value = "";
+    openIdentityDialog(dialog);
+    window.setTimeout(() => input?.focus(), 50);
+  }
+
+  function bindIdentitySetup() {
+    if (identityControlsBound) return;
+    identityControlsBound = true;
+    const dialog = document.querySelector("#identity-dialog");
+    const form = document.querySelector("#identity-form");
+    const input = document.querySelector("#identity-name-input");
+    const error = document.querySelector("#identity-name-error");
+    const submit = document.querySelector("#identity-save");
+    const repairToggle = document.querySelector("#identity-role-repair-toggle");
+    const repairPanel = document.querySelector("#identity-role-repair");
+    if (!dialog || !form || !input) return;
+
+    const setRepairOpen = (open) => {
+      if (repairPanel) repairPanel.hidden = !open;
+      repairToggle?.setAttribute("aria-expanded", String(Boolean(open)));
+    };
+    repairToggle?.addEventListener("click", () => setRepairOpen(Boolean(repairPanel?.hidden)));
+    repairPanel?.querySelectorAll("[data-identity-role]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const buttons = repairPanel.querySelectorAll("button");
+        buttons.forEach((item) => { item.disabled = true; });
+        const result = await rebindIdentityRole(button.dataset.identityRole);
+        buttons.forEach((item) => { item.disabled = false; });
+        if (!result.ok) {
+          if (error) { error.textContent = result.error || "身份暂时无法重新绑定，请再试一次。"; error.hidden = false; }
+          return;
+        }
+        setRepairOpen(false);
+        if (result.identity?.name) {
+          closeIdentityDialog(dialog);
+          notify(result.pending ? "身份已重新绑定，联网后会同步给对方。" : "身份已重新绑定，不会再显示反了。");
+        } else {
+          if (error) { error.textContent = "身份已重新绑定，现在写下名字就好。"; error.hidden = false; }
+          input.focus();
+        }
+      });
+    });
+
+    dialog.addEventListener("cancel", (event) => {
+      if (!ensureIdentity()?.name) event.preventDefault();
+    });
+    dialog.addEventListener("close", () => {
+      if (!ensureIdentity()?.name) window.setTimeout(openIdentitySetupIfNeeded, 0);
+    });
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const name = cleanDisplayName(input.value);
+      if (!name) {
+        if (error) { error.textContent = "请写下你的名字，再一起开始吧。"; error.hidden = false; }
+        input.focus();
+        return;
+      }
+      if (error) { error.textContent = ""; error.hidden = true; }
+      if (submit) { submit.disabled = true; submit.textContent = "正在记住…"; }
+      const result = await saveDisplayName(name);
+      if (submit) { submit.disabled = false; submit.textContent = "记住我的名字"; }
+      if (!result.ok) {
+        if (error) { error.textContent = result.error || "名字暂时没有保存成功，请再试一次。"; error.hidden = false; }
+        return;
+      }
+      if (result.conflict) {
+        if (error) { error.textContent = "这台手机的身份和对方重了。展开下面的选项，重新选择发起者或加入者即可修复。"; error.hidden = false; }
+        setRepairOpen(true);
+        return;
+      }
+      closeIdentityDialog(dialog);
+      notify(result.pending ? `已经记住你叫${name}，联网后会同步给对方。` : `已经记住你叫${name}，以后不会弄混啦。`);
+      writePresence();
+    });
+  }
+
   function bindControls() {
     if (controlsBound) return;
     controlsBound = true;
@@ -1034,6 +1440,10 @@
 
   async function initialize() {
     pairing = ensurePairing();
+    // ===== 身份固定：每台设备首次取名，角色只由首次配对决定 =====
+    ensureIdentity();
+    bindIdentitySetup();
+    openIdentitySetupIfNeeded();
     installStorageObserver();
     bindControls();
     bindRecoveryEvents();
@@ -1063,6 +1473,7 @@
       ready = true;
       seedExistingData();
       await pullRemote();
+      await publishIdentity();
       const presenceSaved = await writePresence();
       const hadPendingChanges = pendingKeys.size > 0;
       const pendingSaved = await flushPending();
@@ -1085,17 +1496,25 @@
   window.DateInviteCloud = {
     CLOUD_EVENT,
     CLOUD_APPLIED_EVENT,
+    IDENTITY_EVENT,
     SYNC_KEYS: [...SYNC_KEYS],
     isReady: () => ready,
     isPaired: () => Boolean(pairing),
     isBothOnline: () => presence.some((item) => item.deviceId !== deviceId && now() - Number(item.updatedAt || 0) < PRESENCE_WINDOW),
     getRole: currentRole,
+    getIdentity: () => identitySnapshot(),
+    getDisplayName: displayNameForRole,
+    setDisplayName: saveDisplayName,
+    isIdentityReady: () => Boolean(ensureIdentity()?.name),
     getStatus: () => clone(currentStatus),
     getInviteLink: invitationLink,
     getMessages: cloudMessages,
     sendMessage: sendCloudMessage,
     sendMediaMessage: sendCloudMediaMessage,
     downloadAttachment: downloadCloudAttachment,
+    sendRealtimePacket,
+    subscribe: subscribeRealtime,
+    subscribeRealtime,
     registerPushSubscription,
     queueKey: (key) => {
       if (!SYNC_KEY_SET.has(String(key))) return false;

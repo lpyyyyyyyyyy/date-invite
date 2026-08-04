@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" href="apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20260804-identity-mind-voice-v1">
 </head>
 <body>
   <div class="ambient" aria-hidden="true">
@@ -590,7 +590,14 @@
 
     <section class="interaction-section voice-section" aria-labelledby="voice-title">
       <div class="interaction-section-heading"><span aria-hidden="true">◖</span><div><h3 id="voice-title">声音明信片</h3><p>录一句只有她能听见的“我想你”。</p></div></div>
-      <div class="voice-actions"><button class="primary-button coral-button" id="voice-record" type="button">开始录音</button><button class="secondary-button" id="voice-stop" type="button" disabled>结束并寄出</button></div>
+      <div class="voice-actions"><button class="primary-button coral-button" id="voice-record" type="button" aria-describedby="voice-recording-status">开始录音</button><button class="secondary-button" id="voice-stop" type="button" disabled>结束并寄出</button></div>
+      <div class="voice-recording-state" id="voice-recording-state" role="status" aria-live="polite" hidden>
+        <span class="voice-recording-dot" aria-hidden="true"></span>
+        <strong id="voice-recording-label">正在录音</strong>
+        <time id="voice-recording-timer" datetime="PT0S">0:00</time>
+        <span class="voice-recording-limit">最长 0:30</span>
+      </div>
+      <p class="voice-recording-status" id="voice-recording-status" aria-live="polite">点“开始录音”后，点击“结束并寄出”就会发送给对方。</p>
       <div class="voice-postcard-list" id="voice-postcard-list" aria-live="polite"></div>
     </section>
 
@@ -749,16 +756,39 @@
     <button class="secondary-button roulette-choose" id="roulette-choose" type="button" disabled>就选这个</button>
   </dialog>
 
+  <!-- 身份固定：每台手机第一次打开时只取一次自己的名字。 -->
+  <dialog class="identity-dialog" id="identity-dialog" aria-modal="true" aria-labelledby="identity-title" aria-describedby="identity-copy">
+    <div class="identity-dialog-icon" aria-hidden="true">♡</div>
+    <p class="eyebrow">JUST YOU</p>
+    <h2 id="identity-title">先告诉我怎么叫你</h2>
+    <p class="identity-dialog-copy" id="identity-copy">这个名字会固定在这台手机上。聊天、互动和通知都会认准你，不会再把你们弄反。</p>
+    <form id="identity-form" novalidate>
+      <label for="identity-name-input">你的名字</label>
+      <input id="identity-name-input" name="identity-name" type="text" maxlength="18" autocomplete="nickname" autocapitalize="words" enterkeyhint="done" placeholder="例如：刘平壹" required>
+      <p class="identity-name-error" id="identity-name-error" role="alert" hidden></p>
+      <button class="primary-button coral-button" id="identity-save" type="submit">记住我的名字</button>
+    </form>
+    <button class="identity-role-repair-toggle" id="identity-role-repair-toggle" type="button" aria-expanded="false" aria-controls="identity-role-repair">名字或身份显示反了？</button>
+    <section class="identity-role-repair" id="identity-role-repair" hidden aria-label="重新绑定这台手机的身份">
+      <p>只有旧版本显示反了才需要操作：发出邀请链接的人选“发起者”，收到链接加入的人选“加入者”。</p>
+      <div>
+        <button class="secondary-button" type="button" data-identity-role="host">我是发起者</button>
+        <button class="secondary-button" type="button" data-identity-role="guest">我是加入者</button>
+      </div>
+    </section>
+    <p class="identity-dialog-note">以后换页面或重新打开，身份都会保持不变。</p>
+  </dialog>
+
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   <div class="sr-only" id="movement-status" aria-live="polite"></div>
   <script src="https://static.cloudbase.net/cloudbase-js-sdk/3.7.0/cloudbase.full.js"></script>
-  <script src="cloud-config.js?v=20260803-message-push-v1"></script>
-  <script src="backup.js?v=20260803-cloud-sync-v3"></script>
-  <script src="app.js?v=20260803-photo-library-v2"></script>
-  <script src="shared-sync.js?v=20260803-cloud-sync-v3"></script>
-  <script src="shared-interactions.js?v=20260803-photo-library-v2"></script>
-  <script src="home-chat.js?v=20260803-original-media-v2"></script>
-  <script src="cloud-sync.js?v=20260803-message-push-v2"></script>
-  <script src="pwa.js?v=20260803-message-push-v2"></script>
+  <script src="cloud-config.js?v=20260804-identity-mind-voice-v1"></script>
+  <script src="backup.js?v=20260804-identity-mind-voice-v1"></script>
+  <script src="app.js?v=20260804-identity-mind-voice-v1"></script>
+  <script src="shared-sync.js?v=20260804-identity-mind-voice-v1"></script>
+  <script src="shared-interactions.js?v=20260804-identity-mind-voice-v1"></script>
+  <script src="home-chat.js?v=20260804-identity-mind-voice-v1"></script>
+  <script src="cloud-sync.js?v=20260804-identity-mind-voice-v1"></script>
+  <script src="pwa.js?v=20260804-identity-mind-voice-v1"></script>
 </body>
 </html>

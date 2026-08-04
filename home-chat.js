@@ -22,7 +22,13 @@
   let voiceRecorder = null;
   let voiceStartedAt = 0;
   let voiceStopTimer = null;
+  let voiceTickTimer = null;
+  let voiceStopping = false;
+  let voiceDiscarded = false;
   let activeMindId = "";
+  // 实时心有灵犀：云端与旧版点对点房间都可作为运输层。
+  let mindTransportCleanup = null;
+  let mindTransportSource = null;
   const attachmentSources = new Map();
 
   const byId = (id) => document.querySelector(`#${id}`);
@@ -60,8 +66,35 @@
     else shared()?.syncNow?.();
   }
 
+  function mindTransport() {
+    return cloudIsActive() ? cloud() : shared();
+  }
+
+  function isMindBothOnline() {
+    return Boolean(mindTransport()?.isBothOnline?.());
+  }
+
+  function connectMindTransport() {
+    const data = interactions();
+    const transport = mindTransport();
+    if (!data || !transport?.isBothOnline || !transport?.sendRealtimePacket || !transport?.subscribe) return false;
+    if (mindTransportSource === transport) {
+      data.setMindRoomPresence?.(Boolean(transport.isBothOnline()));
+      return true;
+    }
+    try { mindTransportCleanup?.(); } catch (error) { /* A stale listener cannot block a new room. */ }
+    mindTransportCleanup = data.configureMindMatchTransport({
+      isBothOnline: () => Boolean(transport.isBothOnline?.()),
+      send: (packet) => transport.sendRealtimePacket(packet),
+      subscribe: (listener) => transport.subscribe(listener)
+    });
+    mindTransportSource = transport;
+    data.setMindRoomPresence?.(Boolean(transport.isBothOnline()));
+    return true;
+  }
+
   function displayName(role) {
-    return role === "guest" ? "Emily" : "Leo";
+    return cloud()?.getDisplayName?.(role) || (role === "guest" ? "对方" : "我");
   }
 
   function formatTime(timestamp) {
@@ -354,6 +387,7 @@
   }
 
   function closeInteractions() {
+    if (voiceRecorder || voiceStopping || voiceTickTimer) cancelVoiceRecording();
     const dialog = byId("interactions-dialog");
     if (!dialog) return;
     if (typeof dialog.close === "function" && dialog.open) dialog.close();
@@ -388,7 +422,8 @@
       }
       appendMedia(card, message.attachment);
       const meta = document.createElement("small");
-      meta.textContent = `${message.author === mine ? "我" : "对方"} · ${formatTime(message.createdAt)}`;
+      // 名字由首次取名后的固定身份映射得出；不会再因页面重开而交换“谁是谁”。
+      meta.textContent = `${displayName(message.author)} · ${formatTime(message.createdAt)}`;
       card.append(meta);
       list.append(card);
     });
@@ -723,7 +758,7 @@
     });
   }
 
-  async function startVoiceRecording() {
+  async function legacyStartVoiceRecording() {
     if (!roomState().room) { shared()?.openRoom?.(); notice("先连接你们的空间，才可以把声音寄给她"); return; }
     if (voiceRecorder?.state === "recording") return;
     try {
@@ -748,13 +783,13 @@
     }
   }
 
-  function stopVoiceRecording() {
+  function legacyStopVoiceRecording() {
     if (voiceStopTimer) clearTimeout(voiceStopTimer);
     voiceStopTimer = null;
     voiceRecorder?.stop();
   }
 
-  function saveVoicePostcard(result) {
+  function legacySaveVoicePostcard(result) {
     byId("voice-record")?.removeAttribute("disabled");
     byId("voice-stop")?.setAttribute("disabled", "");
     voiceRecorder = null;
@@ -767,6 +802,173 @@
       renderVoicePostcards();
       notice("声音明信片已经寄出啦");
     } catch (error) { notice(error?.message || "声音明信片保存失败"); }
+  }
+
+  // 录音状态：明确展示请求麦克风、录音计时、结束整理和发送结果。
+  function formatVoiceDuration(milliseconds) {
+    const seconds = Math.max(0, Math.min(30, Math.floor((Number(milliseconds) || 0) / 1000)));
+    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+  }
+
+  function clearVoiceTick() {
+    if (!voiceTickTimer) return;
+    clearInterval(voiceTickTimer);
+    voiceTickTimer = null;
+  }
+
+  function updateVoiceTimer() {
+    const timer = byId("voice-recording-timer");
+    if (!timer || !voiceStartedAt) return;
+    const elapsed = Math.max(0, Math.min(30000, Date.now() - voiceStartedAt));
+    timer.textContent = formatVoiceDuration(elapsed);
+    timer.dateTime = `PT${Math.floor(elapsed / 1000)}S`;
+  }
+
+  function setVoiceRecordingUi(state = "idle", message = "") {
+    const record = byId("voice-record");
+    const stop = byId("voice-stop");
+    const panel = byId("voice-recording-state");
+    const label = byId("voice-recording-label");
+    const status = byId("voice-recording-status");
+    const section = record?.closest?.(".voice-section");
+    const isStarting = state === "starting";
+    const isRecording = state === "recording";
+    const isStopping = state === "stopping";
+    const active = isStarting || isRecording || isStopping;
+    section?.classList.toggle("is-recording", active);
+    record?.classList.toggle("is-recording", active);
+    stop?.classList.toggle("is-recording", isRecording);
+    if (record) {
+      record.disabled = active;
+      record.textContent = isStarting ? "正在准备…" : isRecording ? "正在录音…" : isStopping ? "正在保存…" : "开始录音";
+      record.setAttribute("aria-pressed", String(isRecording));
+    }
+    if (stop) {
+      stop.disabled = !isRecording;
+      stop.textContent = isStopping ? "正在保存…" : "结束并寄出";
+    }
+    if (panel) panel.hidden = !active;
+    if (label) label.textContent = isStarting ? "正在打开麦克风" : isStopping ? "正在整理声音" : "正在录音";
+    if (state === "idle") {
+      clearVoiceTick();
+      const timer = byId("voice-recording-timer");
+      if (timer) { timer.textContent = "0:00"; timer.dateTime = "PT0S"; }
+    }
+    if (status && message) status.textContent = message;
+  }
+
+  function cancelVoiceRecording(message = "录音已取消，没有发送") {
+    const recorder = voiceRecorder;
+    voiceDiscarded = true;
+    voiceStopping = false;
+    if (voiceStopTimer) clearTimeout(voiceStopTimer);
+    voiceStopTimer = null;
+    clearVoiceTick();
+    voiceRecorder = null;
+    try { recorder?.cancel?.(); } catch (error) { /* Stop failures are handled by the reset below. */ }
+    setVoiceRecordingUi("idle", message);
+  }
+
+  async function startVoiceRecording() {
+    if (!roomState().room) {
+      shared()?.openRoom?.();
+      setVoiceRecordingUi("idle", "先连接你们的双人空间，才可以把声音寄给对方。");
+      notice("先连接你们的空间，才可以把声音寄给她");
+      return;
+    }
+    if (voiceRecorder?.state === "recording" || voiceStopping) return;
+    voiceDiscarded = false;
+    voiceStopping = false;
+    setVoiceRecordingUi("starting", "正在请求麦克风权限…允许后就会开始录音。");
+    try {
+      const recorder = interactions()?.createVoiceRecorder?.({
+        handlers: {
+          onStart() {
+            if (voiceRecorder !== recorder) return;
+            voiceStartedAt = Date.now();
+            setVoiceRecordingUi("recording", "正在录音，说完请点击“结束并寄出”。");
+            updateVoiceTimer();
+            clearVoiceTick();
+            voiceTickTimer = setInterval(updateVoiceTimer, 250);
+            notice("正在录音，最长 30 秒");
+          },
+          onStop(result) {
+            if (voiceRecorder !== recorder && !voiceDiscarded) return;
+            saveVoicePostcard(result);
+          },
+          onError() {
+            if (voiceRecorder !== recorder) return;
+            cancelVoiceRecording("麦克风暂时无法使用，请检查浏览器的麦克风权限。");
+            notice("麦克风暂时无法使用，请检查权限");
+          }
+        }
+      });
+      if (!recorder) throw new Error("这台设备暂时不支持录音");
+      voiceRecorder = recorder;
+      const started = await recorder.start();
+      // 权限弹窗期间可能已被关闭／取消；此时不再安排自动停止计时。
+      if (!started || voiceRecorder !== recorder || recorder.state !== "recording") return;
+      voiceStopTimer = setTimeout(() => stopVoiceRecording(true), 30000);
+    } catch (error) {
+      voiceRecorder = null;
+      voiceStopping = false;
+      clearVoiceTick();
+      setVoiceRecordingUi("idle", error?.message || "麦克风权限没有打开，请允许后再试。");
+      notice(error?.message || "麦克风权限没有打开");
+    }
+  }
+
+  async function stopVoiceRecording(autoStopped = false) {
+    const recorder = voiceRecorder;
+    if (!recorder || recorder.state !== "recording" || voiceStopping) return;
+    voiceStopping = true;
+    if (voiceStopTimer) clearTimeout(voiceStopTimer);
+    voiceStopTimer = null;
+    clearVoiceTick();
+    updateVoiceTimer();
+    setVoiceRecordingUi("stopping", autoStopped ? "已录满 30 秒，正在整理并寄出…" : "正在整理声音，马上寄出…");
+    try {
+      await recorder.stop();
+    } catch (error) {
+      if (voiceRecorder === recorder) cancelVoiceRecording(error?.message || "录音没有保存成功，请再试一次。");
+    }
+  }
+
+  function saveVoicePostcard(result) {
+    const duration = Math.max(1, Math.round((Date.now() - voiceStartedAt) / 1000));
+    if (voiceStopTimer) clearTimeout(voiceStopTimer);
+    voiceStopTimer = null;
+    clearVoiceTick();
+    voiceStopping = false;
+    voiceRecorder = null;
+    if (voiceDiscarded) {
+      voiceDiscarded = false;
+      setVoiceRecordingUi("idle", "录音已取消，没有发送。");
+      return;
+    }
+    if (!result?.audioData) {
+      setVoiceRecordingUi("idle", "录音没有保存成功，请再试一次。");
+      notice("录音没有保存成功");
+      return;
+    }
+    if (result.audioData.length > MAX_AUDIO_CHARS) {
+      setVoiceRecordingUi("idle", "这段录音有点长，请控制在 30 秒以内再试。");
+      notice("这段录音有点长，请控制在 30 秒以内再试");
+      return;
+    }
+    try {
+      const role = roomState().role;
+      interactions()?.addVoicePostcard?.({ audioData: result.audioData, duration, author: displayName(role) });
+      syncCurrent();
+      renderVoicePostcards();
+      setVoiceRecordingUi("idle", `声音明信片已寄出 · ${formatVoiceDuration(duration * 1000)}`);
+      notice("声音明信片已经寄出啦");
+    } catch (error) {
+      setVoiceRecordingUi("idle", error?.message || "声音明信片保存失败，请再试一次。");
+      notice(error?.message || "声音明信片保存失败");
+    } finally {
+      voiceStartedAt = 0;
+    }
   }
 
   function renderWall() {
@@ -819,10 +1021,10 @@
     const answer = byId("mind-answer");
     const submit = byId("mind-submit");
     const create = byId("mind-create");
-    const online = Boolean(shared()?.isBothOnline?.());
+    const online = isMindBothOnline();
     if (!session) {
       if (status) status.textContent = online ? "双方都在线啦，出一个题目开始吧。" : "需要双方同时在线，才能开始心有灵犀。";
-      if (create) create.disabled = !online;
+      if (create) { create.disabled = !online; create.textContent = "出这一题"; }
       if (ready) ready.disabled = true;
       if (answer) { answer.disabled = true; answer.value = ""; }
       if (submit) submit.disabled = true;
@@ -830,7 +1032,11 @@
       return;
     }
     if (prompt) prompt.value = session.prompt;
-    if (create) create.disabled = true;
+    if (create) {
+      const canStartNext = session.status === "revealed" && online;
+      create.disabled = !canStartNext;
+      create.textContent = canStartNext ? "再来一题" : "题目进行中";
+    }
     if (ready) {
       ready.disabled = !online || session.localSubmitted || session.status === "revealed";
       ready.textContent = session.localReady ? "我已准备好" : "我准备好了";
@@ -861,7 +1067,7 @@
   }
 
   function createMindMatch() {
-    if (!shared()?.isBothOnline?.()) { notice("要等你们两个都在线才能开始"); return; }
+    if (!isMindBothOnline()) { notice("要等你们两个都在线才能开始"); return; }
     const input = byId("mind-prompt");
     const question = String(input?.value || "").trim() || MIND_PROMPTS[Math.floor(Math.random() * MIND_PROMPTS.length)];
     try {
@@ -936,19 +1142,24 @@
     });
     if (!data) return;
     if (sync) {
-      data.configureMindMatchTransport({
-        isBothOnline: () => sync.isBothOnline(),
-        send: (packet) => sync.sendRealtimePacket(packet),
-        subscribe: (listener) => sync.subscribe(listener),
-      });
+      connectMindTransport();
       window.addEventListener(sync.ROOM_EVENT, () => {
-        data.setMindRoomPresence(sync.isBothOnline());
+        connectMindTransport();
+        data.setMindRoomPresence(isMindBothOnline());
         renderChatStatus();
         renderMind();
       });
       window.addEventListener(sync.CHAT_EVENT, renderHomeChat);
     }
     window.addEventListener("date-invite-cloud-status", () => {
+      // 云端脚本在本脚本之后初始化；收到状态后切换实时心有灵犀运输层。
+      connectMindTransport();
+      data.setMindRoomPresence(isMindBothOnline());
+      renderChatStatus();
+      renderHomeChat();
+      renderMind();
+    });
+    window.addEventListener("date-invite-identity-changed", () => {
       renderChatStatus();
       renderHomeChat();
     });

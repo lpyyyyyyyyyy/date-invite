@@ -28,6 +28,7 @@
   const MIND_EVENT_NAME = "shared-interactions-mind-match";
   const mindSessions = new Map();
   let mindTransport = null;
+  let mindTransportUnsubscribe = null;
   let mindPresenceOverride = null;
 
   function uid(prefix) {
@@ -148,33 +149,59 @@
     let recorder = null;
     let stream = null;
     let chunks = [];
+    let cancelled = false;
     const handlers = options.handlers || {};
+    const stopTracks = () => stream?.getTracks().forEach((track) => track.stop());
     return {
       get state() { return recorder?.state || "inactive"; },
       async start() {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (cancelled) return false;
+        const acquiredStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // 用户可能在浏览器权限弹窗仍打开时关闭了互动小屋。此时立刻释放
+        // 刚取得的麦克风，避免出现看不见却仍在录音的状态。
+        if (cancelled) {
+          acquiredStream.getTracks().forEach((track) => track.stop());
+          return false;
+        }
+        stream = acquiredStream;
         chunks = [];
-        recorder = new MediaRecorder(stream, options.mediaRecorderOptions);
-        recorder.ondataavailable = (event) => { if (event.data?.size) chunks.push(event.data); };
-        recorder.onstart = () => handlers.onStart?.();
-        recorder.onerror = (event) => handlers.onError?.(event.error || event);
-        recorder.start();
+        try {
+          recorder = new MediaRecorder(stream, options.mediaRecorderOptions);
+          recorder.ondataavailable = (event) => { if (event.data?.size) chunks.push(event.data); };
+          recorder.onstart = () => handlers.onStart?.();
+          recorder.onerror = (event) => handlers.onError?.(event.error || event);
+          recorder.start();
+        } catch (error) {
+          stopTracks();
+          recorder = null;
+          throw error;
+        }
+        return true;
       },
       stop() {
         if (!recorder || recorder.state === "inactive") return Promise.resolve(null);
         return new Promise((resolve) => {
           recorder.onstop = async () => {
-            stream?.getTracks().forEach((track) => track.stop());
+            stopTracks();
             const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
             const reader = new FileReader();
             reader.onload = () => { const result = { blob, audioData: reader.result, duration: options.duration || 0 }; handlers.onStop?.(result); resolve(result); };
-            reader.onerror = () => resolve(null);
+            reader.onerror = () => {
+              // 通知界面层收尾，避免录音卡在“正在整理声音”。
+              handlers.onStop?.(null);
+              resolve(null);
+            };
             reader.readAsDataURL(blob);
           };
           recorder.stop();
         });
       },
-      cancel() { if (recorder && recorder.state !== "inactive") recorder.stop(); stream?.getTracks().forEach((track) => track.stop()); chunks = []; }
+      cancel() {
+        cancelled = true;
+        if (recorder && recorder.state !== "inactive") recorder.stop();
+        stopTracks();
+        chunks = [];
+      }
     };
   }
 
@@ -285,11 +312,17 @@
   }
   function configureMindMatchTransport(adapter) {
     if (!adapter || typeof adapter.isBothOnline !== "function" || typeof adapter.send !== "function") throw new Error("需要 isBothOnline() 和 send(packet) 以接入共享房间");
+    try { mindTransportUnsubscribe?.(); } catch (error) { /* 切换房间时旧监听器可能已失效。 */ }
     mindTransport = adapter;
     mindPresenceOverride = null;
-    if (typeof adapter.subscribe === "function") adapter.subscribe(handleMindMatchPacket);
+    mindTransportUnsubscribe = typeof adapter.subscribe === "function" ? adapter.subscribe(handleMindMatchPacket) : null;
     mindSessions.forEach((session) => refreshMindSession(session, mindOnline() ? "resumed" : "paused"));
-    return () => { if (mindTransport === adapter) mindTransport = null; };
+    return () => {
+      if (mindTransport !== adapter) return;
+      try { mindTransportUnsubscribe?.(); } catch (error) { /* noop */ }
+      mindTransportUnsubscribe = null;
+      mindTransport = null;
+    };
   }
 
   // ─── 回忆录照片库 ────────────────────────────────────────────────────────

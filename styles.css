@@ -2196,6 +2196,17 @@ body {
 .polaroid-join { width: 100%; min-height: 37px; margin: 8px 0 0; color: #a64c69; border-color: #edc8d3; font-size: 11px; }
 .voice-actions, .mind-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
 .voice-actions button, .mind-actions button, .mind-section > #mind-submit, .wall-section > #wall-send { width: 100%; min-height: 40px; margin: 0; font-size: 12px; }
+.voice-section.is-recording { border-color: rgba(180, 126, 205, .55); box-shadow: 0 8px 24px rgba(143, 91, 174, .13); }
+.voice-actions #voice-record.is-recording { color: #fff; background: linear-gradient(135deg, #ad78cc, #8d58ae); box-shadow: 0 5px 12px rgba(125, 70, 157, .28); }
+.voice-actions #voice-stop.is-recording { border-color: #ba7fce; color: #fff; background: linear-gradient(135deg, #bf83cf, #a361bd); box-shadow: 0 5px 12px rgba(125, 70, 157, .2); }
+.voice-recording-state { display: flex; align-items: center; gap: 7px; min-height: 38px; margin-top: 10px; padding: 8px 10px; border: 1px solid #e3cfef; border-radius: 12px; color: #78588a; background: linear-gradient(135deg, #fbf6ff, #f7effc); font-size: 11px; }
+.voice-recording-state[hidden] { display: none; }
+.voice-recording-dot { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%; background: #e76581; box-shadow: 0 0 0 0 rgba(231, 101, 129, .42); animation: voice-recording-pulse 1.25s ease-out infinite; }
+.voice-recording-state strong { min-width: 0; color: #78588a; font-size: 11px; font-weight: 900; }
+.voice-recording-state time { margin-left: auto; color: #6e4d81; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 900; }
+.voice-recording-limit { color: #a18aa8; font-size: 10px; font-weight: 800; white-space: nowrap; }
+.voice-recording-status { min-height: 17px; margin: 8px 1px 0; color: #9c819e; font-size: 10px; font-weight: 700; line-height: 1.45; }
+@keyframes voice-recording-pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 101, 129, .4); transform: scale(1); } 70% { box-shadow: 0 0 0 7px rgba(231, 101, 129, 0); transform: scale(1.06); } 100% { box-shadow: 0 0 0 0 rgba(231, 101, 129, 0); transform: scale(1); } }
 .voice-postcard { display: grid; gap: 6px; padding: 10px; border: 1px solid #e8daef; border-radius: 13px; background: #fdfaff; }
 .voice-postcard p { margin: 0; color: #765b88; font-size: 11px; font-weight: 900; }
 .voice-postcard audio { width: 100%; height: 35px; }
@@ -2323,4 +2334,58 @@ body {
   .photo-library-ask-dialog[open],
   .photo-library-lightbox[open] { animation: none; }
   .photo-library-photo:hover { transform: none; }
+}
+
+/* iOS Safari 会在聚焦字号小于 16px 的输入控件时自动放大页面。
+   手机端统一使用 16px，聊天和各个小屋的输入都不会再突然缩放。 */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* ===== 身份固定：首次取名弹窗 ===== */
+.identity-dialog {
+  width: min(calc(100% - 32px), 392px);
+  max-height: min(calc(100dvh - 32px), 560px);
+  margin: auto;
+  padding: 28px 22px 22px;
+  border: 1px solid rgba(239, 197, 209, .96);
+  border-radius: 24px;
+  color: #57353f;
+  background: linear-gradient(145deg, #fffdfd 0%, #fff7fa 55%, #fffdf8 100%);
+  box-shadow: 0 28px 72px rgba(71, 37, 50, .28);
+  text-align: center;
+}
+.identity-dialog:not([open]) { display: none; }
+.identity-dialog::backdrop { background: rgba(69, 39, 51, .48); backdrop-filter: blur(6px); }
+.identity-dialog[open] { animation: identity-dialog-in 220ms ease both; }
+@keyframes identity-dialog-in { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.identity-dialog-icon { display: grid; width: 52px; height: 52px; margin: 0 auto 11px; place-items: center; border-radius: 18px; color: #fff; background: linear-gradient(135deg, #f58ca5, #e95d7a); box-shadow: 0 9px 18px rgba(222, 77, 108, .22); font-size: 30px; line-height: 1; }
+.identity-dialog .eyebrow { margin: 0; color: #bd617d; font-size: 10px; letter-spacing: .16em; }
+.identity-dialog h2 { margin: 5px 0 0; color: #4d2e39; font-size: 25px; line-height: 1.25; }
+.identity-dialog-copy { margin: 9px 0 18px; color: #97737d; font-size: 12px; font-weight: 700; line-height: 1.65; }
+.identity-dialog form { display: grid; gap: 7px; text-align: left; }
+.identity-dialog label { color: #79505d; font-size: 12px; font-weight: 900; }
+.identity-dialog input { width: 100%; min-height: 48px; box-sizing: border-box; padding: 10px 12px; border: 2px solid #efd0d8; border-radius: 13px; color: #57353f; background: #fff; font: inherit; font-size: 16px; }
+.identity-dialog input:focus { border-color: #ec91a7; outline: 3px solid rgba(244, 95, 118, .16); outline-offset: 1px; }
+.identity-dialog .primary-button { width: 100%; min-height: 46px; margin-top: 6px; }
+.identity-name-error { min-height: 17px; margin: 0; color: #bf4664; font-size: 11px; font-weight: 800; line-height: 1.45; }
+.identity-name-error[hidden] { display: block; visibility: hidden; }
+.identity-role-repair-toggle { margin: 13px auto 0; padding: 3px 0; border: 0; color: #aa7182; background: transparent; cursor: pointer; font: inherit; font-size: 11px; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
+.identity-role-repair { margin-top: 9px; padding: 10px; border: 1px dashed #e8c9d3; border-radius: 13px; color: #916878; background: #fffafb; text-align: left; }
+.identity-role-repair[hidden] { display: none; }
+.identity-role-repair p { margin: 0; font-size: 11px; font-weight: 700; line-height: 1.5; }
+.identity-role-repair > div { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 9px; }
+.identity-role-repair .secondary-button { min-height: 38px; margin: 0; padding: 6px; border-color: #edced7; color: #96556a; font-size: 11px; }
+.identity-role-repair-toggle:focus-visible, .identity-role-repair .secondary-button:focus-visible { outline: 3px solid rgba(244, 95, 118, .28); outline-offset: 2px; }
+.identity-dialog-note { margin: 13px 0 0; color: #b28e98; font-size: 10px; font-weight: 700; line-height: 1.5; }
+@media (max-width: 460px) {
+  .identity-dialog { width: calc(100% - 20px); max-height: calc(100dvh - 20px); padding: 24px 16px calc(18px + env(safe-area-inset-bottom)); border-radius: 21px; }
+  .identity-dialog h2 { font-size: 23px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .identity-dialog[open] { animation: none; }
 }
