@@ -614,8 +614,9 @@
       menuTransitionTimer = null;
     }
 
-    // The pet theme can be omitted from the HTML without leaving a dead route.
-    if (screenNumber === 17 && !catMascot) screenNumber = 0;
+    // Keep the lightweight web pet route available even though the old desktop
+    // mascot renderer is intentionally not loaded in the browser.
+    if (screenNumber === 17 && !catMascot && !document.querySelector("#lp-pet-theme")) screenNumber = 0;
 
     currentScreen = screenNumber;
     screens.forEach((screen) => {
@@ -628,7 +629,7 @@
       dot.classList.toggle("is-current", Number(dot.dataset.progress) === screenNumber);
     });
     document.querySelector(".progress").hidden = screenNumber === 0 || screenNumber > 6;
-    document.body.classList.toggle("is-pet-screen", screenNumber === 17 && Boolean(catFloat));
+    document.body.classList.toggle("is-pet-screen", screenNumber === 17 && Boolean(document.querySelector("#lp-pet-theme")));
     if (catFloat) catFloat.hidden = screenNumber !== 17;
 
     if (screenNumber === 0) {

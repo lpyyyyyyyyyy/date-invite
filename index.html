@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" href="apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=20260804-identity-mind-voice-v1">
+  <link rel="stylesheet" href="styles.css?v=20260808-lp-pet-v1">
 </head>
 <body>
   <div class="ambient" aria-hidden="true">
@@ -98,6 +98,9 @@
               <p id="theme-new-interaction-title">新的互动</p>
               <button class="home-card theme-launch interactions-open" id="theme-interactions" type="button">
                 <span class="home-card-icon pink-icon" aria-hidden="true">♡</span><span><strong>互动小屋</strong><small>拍立得、声音明信片、心有灵犀和留言墙</small></span><b aria-hidden="true">→</b>
+              </button>
+              <button class="home-card theme-launch pet-open" id="theme-lp-pet" type="button">
+                <span class="home-card-icon coral-icon" aria-hidden="true">🐾</span><span><strong>刘平壹的专属宠物</strong><small>和子珊打招呼、喂她、聊天，还可以拖着她走</small></span><b aria-hidden="true">→</b>
               </button>
             </section>
           </div>
@@ -527,6 +530,56 @@
       <div class="keepsake-list future-letter-list" id="future-letter-list" aria-live="polite"></div>
     </section>
 
+    <section class="screen pet-theme-screen" id="lp-pet-theme" data-screen="17" aria-labelledby="lp-pet-title" hidden>
+      <button class="back-button" type="button" data-back="0" aria-label="返回空间首页"><span aria-hidden="true">←</span></button>
+      <header class="lp-pet-header">
+        <div>
+          <p class="eyebrow">FOR LIU PINGYI</p>
+          <h1 id="lp-pet-title" tabindex="-1">刘平壹的专属宠物</h1>
+          <p>她会像电脑桌面上一样陪着你。轻触会回应，按住可以拖动。</p>
+        </div>
+        <button class="lp-pet-more" id="lp-pet-more" type="button" aria-label="打开宠物菜单" aria-expanded="false">⋯</button>
+      </header>
+
+      <div class="lp-pet-stage" id="lp-pet-stage" tabindex="0" role="application" aria-label="刘平壹的专属宠物互动区域">
+        <span class="lp-pet-orbit orbit-one" aria-hidden="true"></span>
+        <span class="lp-pet-orbit orbit-two" aria-hidden="true"></span>
+        <div class="lp-pet-bubble" id="lp-pet-bubble" role="status" aria-live="polite">子珊正在这里陪着你。</div>
+        <div class="lp-pet-actor" id="lp-pet-actor" tabindex="0" role="button" aria-label="点击和刘平壹的专属宠物互动，按住拖动">
+          <img id="lp-pet-sprite" src="pet-assets/idle-01.png" alt="子珊，刘平壹的专属宠物" draggable="false">
+          <span class="lp-pet-ground-shadow" aria-hidden="true"></span>
+        </div>
+        <p class="lp-pet-drag-hint" id="lp-pet-drag-hint">按住她拖动 · 松开会贴到最近的边</p>
+      </div>
+
+      <section class="lp-pet-stats" aria-label="宠物状态">
+        <div><span>好感度</span><strong id="lp-pet-affection">0</strong></div>
+        <div><span>心情</span><strong id="lp-pet-mood">80</strong></div>
+        <div><span>今日互动</span><strong id="lp-pet-today">0</strong></div>
+        <div><span>陪伴时长</span><strong><b id="lp-pet-minutes">0</b><small> 分钟</small></strong></div>
+      </section>
+
+      <div class="lp-pet-actions" role="group" aria-label="宠物互动动作">
+        <button type="button" data-lp-pet-action="pet-head"><span aria-hidden="true">🫳</span><b>摸摸头</b></button>
+        <button type="button" data-lp-pet-action="feed-snack"><span aria-hidden="true">🍪</span><b>喂点心</b></button>
+        <button type="button" data-lp-pet-action="chat-talk"><span aria-hidden="true">💬</span><b>和她聊天</b></button>
+        <button type="button" data-lp-pet-action="sleep-time"><span aria-hidden="true">😴</span><b>让她休息</b></button>
+      </div>
+
+      <form class="lp-pet-talk" id="lp-pet-talk-form" aria-label="和宠物聊天">
+        <label for="lp-pet-talk-input">和子珊说句话</label>
+        <div><input id="lp-pet-talk-input" type="text" maxlength="80" autocomplete="off" placeholder="比如：下次约会想吃什么？"><button class="primary-button coral-button" type="submit">发送</button></div>
+      </form>
+
+      <nav class="lp-pet-context-menu" id="lp-pet-context-menu" hidden aria-label="宠物菜单">
+        <button type="button" data-lp-pet-menu="reminder">⏰ 添加提醒</button>
+        <button type="button" data-lp-pet-menu="dashboard">🏠 刘平壹的小屋</button>
+        <button type="button" data-lp-pet-menu="snap">📌 贴到最近的边</button>
+        <button type="button" data-lp-pet-menu="click-through">🖱️ <span>开启鼠标穿透</span></button>
+        <button type="button" data-lp-pet-menu="hide">🙈 隐藏宠物</button>
+      </nav>
+    </section>
+
     <section class="screen reconcile-screen" data-screen="18" aria-labelledby="step-18-title" hidden>
       <button class="back-button" type="button" data-back="0" aria-label="返回空间首页"><span aria-hidden="true">←</span></button>
       <p class="eyebrow">MAKE UP ROOM</p>
@@ -567,6 +620,48 @@
       </fieldset>
     </section>
   </main>
+
+  <dialog class="lp-pet-dialog" id="lp-pet-dashboard" aria-labelledby="lp-pet-dashboard-title">
+    <button class="lp-pet-dialog-close" type="button" data-lp-pet-close="dashboard" aria-label="关闭刘平壹的小屋">×</button>
+    <p class="eyebrow">PRIVATE COMPANION</p>
+    <h2 id="lp-pet-dashboard-title">刘平壹的小屋</h2>
+    <p class="lp-pet-dialog-copy">和电脑桌宠一样，这里可以看状态、做互动和调整显示方式。</p>
+    <div class="lp-pet-dashboard-stats">
+      <div><span>好感度</span><strong id="lp-pet-dash-affection">0</strong></div>
+      <div><span>心情</span><strong id="lp-pet-dash-mood">80</strong></div>
+      <div><span>今日互动</span><strong id="lp-pet-dash-today">0</strong></div>
+      <div><span>陪伴时长</span><strong><b id="lp-pet-dash-minutes">0</b><small> 分钟</small></strong></div>
+    </div>
+    <h3>互动</h3>
+    <div class="lp-pet-dashboard-actions" id="lp-pet-dashboard-actions"></div>
+    <h3>设置</h3>
+    <div class="lp-pet-settings">
+      <button type="button" class="lp-pet-setting-row" role="switch" aria-checked="true" id="lp-pet-always-on-top"><span><b>置顶显示</b><small>打开主题时保持在最上层</small></span><i aria-hidden="true"></i></button>
+      <button type="button" class="lp-pet-setting-row" role="switch" aria-checked="false" id="lp-pet-click-through"><span><b>鼠标穿透</b><small>网页里开启后暂时不响应宠物点击</small></span><i aria-hidden="true"></i></button>
+    </div>
+    <div class="lp-pet-size-row" role="group" aria-label="宠物大小">
+      <span>子珊大小</span>
+      <button type="button" data-lp-pet-scale="0.65">小</button><button type="button" data-lp-pet-scale="0.8" aria-pressed="true">标准</button><button type="button" data-lp-pet-scale="1">大</button><button type="button" data-lp-pet-scale="1.2">超大</button>
+    </div>
+    <div class="lp-pet-dashboard-reminders">
+      <div><h3>提醒</h3><button type="button" class="secondary-button" data-lp-pet-menu="reminder">添加提醒</button></div>
+      <div id="lp-pet-reminder-list" aria-live="polite"></div>
+    </div>
+  </dialog>
+
+  <dialog class="lp-pet-dialog lp-pet-reminder-dialog" id="lp-pet-reminder" aria-labelledby="lp-pet-reminder-title">
+    <button class="lp-pet-dialog-close" type="button" data-lp-pet-close="reminder" aria-label="关闭提醒">×</button>
+    <p class="eyebrow">A LITTLE REMINDER</p>
+    <h2 id="lp-pet-reminder-title">给子珊加个提醒</h2>
+    <form id="lp-pet-reminder-form">
+      <label for="lp-pet-reminder-text">提醒内容</label>
+      <input id="lp-pet-reminder-text" type="text" maxlength="100" placeholder="例如：提醒我给她发晚安" required>
+      <label for="lp-pet-reminder-time">提醒时间</label>
+      <input id="lp-pet-reminder-time" type="datetime-local" required>
+      <div class="lp-pet-reminder-actions"><button type="button" class="secondary-button" data-lp-pet-close="reminder">取消</button><button type="submit" class="primary-button coral-button">保存提醒</button></div>
+    </form>
+    <p id="lp-pet-reminder-status" class="lp-pet-status" role="status" aria-live="polite"></p>
+  </dialog>
 
   <dialog class="interactions-dialog" id="interactions-dialog" aria-modal="true" aria-labelledby="interactions-title">
     <button class="interactions-close" id="interactions-close" type="button" aria-label="关闭互动小屋">×</button>
@@ -784,7 +879,8 @@
   <script src="https://static.cloudbase.net/cloudbase-js-sdk/3.7.0/cloudbase.full.js"></script>
   <script src="cloud-config.js?v=20260804-identity-mind-voice-v1"></script>
   <script src="backup.js?v=20260804-identity-mind-voice-v1"></script>
-  <script src="app.js?v=20260804-identity-mind-voice-v1"></script>
+  <script src="app.js?v=20260808-lp-pet-v1"></script>
+  <script src="pet-theme.js?v=20260808-lp-pet-v1"></script>
   <script src="shared-sync.js?v=20260804-identity-mind-voice-v1"></script>
   <script src="shared-interactions.js?v=20260804-identity-mind-voice-v1"></script>
   <script src="home-chat.js?v=20260804-identity-mind-voice-v1"></script>
