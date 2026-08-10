@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" href="apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=20260810-home-six-v1">
+  <link rel="stylesheet" href="styles.css?v=20260810-final-tabs-v3">
 </head>
 <body>
   <div class="ambient" aria-hidden="true">
@@ -39,69 +39,6 @@
           <strong id="home-countdown" role="status" aria-live="polite">还没有下一次约会计划</strong>
         </section>
 
-        <details class="theme-menu" id="theme-menu">
-          <summary id="theme-toggle" aria-label="打开主题入口">
-            <span class="theme-menu-icon" aria-hidden="true">✦</span>
-            <span>主题</span>
-          </summary>
-          <div class="theme-menu-panel" id="theme-menu-panel" aria-label="主题入口">
-            <div class="theme-menu-heading">
-              <div>
-                <p class="eyebrow">OUR LITTLE WORLD</p>
-                <strong>想做什么？</strong>
-              </div>
-              <button class="theme-menu-close" id="theme-close" type="button" aria-label="关闭主题入口">×</button>
-            </div>
-
-            <section class="theme-cluster" aria-labelledby="theme-memory-title">
-              <p id="theme-memory-title">回忆与珍藏</p>
-              <button class="home-card theme-launch library-open" id="theme-memory-book" type="button">
-                <span class="home-card-icon mint-icon" aria-hidden="true">✦</span><span><strong>回忆录</strong><small>照片、地点和每一次见面的心情</small></span><b aria-hidden="true">→</b>
-              </button>
-            </section>
-
-            <section class="theme-cluster" aria-labelledby="theme-us-title">
-              <p id="theme-us-title">我们的小宇宙</p>
-              <button class="home-card theme-launch anniversary-open" id="theme-anniversary" type="button">
-                <span class="home-card-icon yellow-icon" aria-hidden="true">♥</span><span><strong>我们的小日子</strong><small>纪念日、在一起多久和特别倒计时</small></span><b aria-hidden="true">→</b>
-              </button>
-              <button class="home-card theme-launch things-open" id="theme-things" type="button">
-                <span class="home-card-icon blue-icon" aria-hidden="true">100</span><span><strong>一起做的 100 件事</strong><small>把想完成的小事慢慢打上勾</small></span><b aria-hidden="true">→</b>
-              </button>
-            </section>
-
-            <section class="theme-cluster" aria-labelledby="theme-play-title">
-              <p id="theme-play-title">一起玩，也一起好好说话</p>
-              <button class="home-card theme-launch game-open" id="theme-games" type="button">
-                <span class="home-card-icon purple-icon" aria-hidden="true">?</span><span><strong>双人小游戏</strong><small>真心话转盘和大话骰子都在这里</small></span><b aria-hidden="true">→</b>
-              </button>
-              <button class="home-card theme-launch repair-open" id="theme-repair" type="button">
-                <span class="home-card-icon coral-icon" aria-hidden="true">♡</span><span><strong>和好小屋</strong><small>有情绪时，先把想说的话好好说完</small></span><b aria-hidden="true">→</b>
-              </button>
-            </section>
-
-            <section class="theme-cluster theme-sync-cluster" aria-labelledby="theme-sync-title">
-              <p id="theme-sync-title">双人连接</p>
-              <button class="home-card theme-launch shared-open" id="theme-shared-room" type="button" aria-haspopup="dialog">
-                <span class="home-card-icon shared-icon" aria-hidden="true">↔</span><span><strong>我们的共享空间</strong><small id="shared-home-status">打开后自动连接彼此的共同回忆</small></span><b aria-hidden="true">→</b>
-              </button>
-              <div class="theme-push-control">
-                <button class="theme-push-button" id="message-push-button" type="button" aria-describedby="message-push-status"><span aria-hidden="true">♢</span>开启消息提醒</button>
-                <p id="message-push-status" role="status" aria-live="polite">有新消息时，提醒会在这里准备好。</p>
-              </div>
-            </section>
-
-            <section class="theme-cluster theme-new-interaction-cluster" aria-labelledby="theme-new-interaction-title">
-              <p id="theme-new-interaction-title">新的互动</p>
-              <button class="home-card theme-launch interactions-open" id="theme-interactions" type="button">
-                <span class="home-card-icon pink-icon" aria-hidden="true">♡</span><span><strong>互动小屋</strong><small>拍立得、声音明信片、心有灵犀和留言墙</small></span><b aria-hidden="true">→</b>
-              </button>
-              <button class="home-card theme-launch pet-open" id="theme-lp-pet" type="button">
-                <span class="home-card-icon coral-icon" aria-hidden="true">🐾</span><span><strong>刘平壹的专属宠物</strong><small>和子珊打招呼、喂她、聊天，还可以拖着她走</small></span><b aria-hidden="true">→</b>
-              </button>
-            </section>
-          </div>
-        </details>
       </header>
 
       <div class="home-tab-panel home-dashboard is-home-tab-active" data-home-tab-panel="today">
@@ -139,15 +76,8 @@
         </section>
 
         <section class="next-date-card home-reminder-card" aria-labelledby="next-date-title">
-          <div class="home-reminder-heading"><span aria-hidden="true">✦</span><div><p id="next-date-title">约会提醒</p><strong>让手机也记得我们下一次见面</strong></div></div>
-          <div class="reminder-settings" aria-labelledby="reminder-title">
-            <div class="reminder-heading">
-              <div><b id="reminder-title">每日约会提醒</b><small>每天 00:00 提醒下一次约会计划</small></div>
-              <label class="reminder-switch" for="reminder-toggle"><input id="reminder-toggle" type="checkbox" role="switch" aria-describedby="reminder-status"><span aria-hidden="true"></span><em>开启</em></label>
-            </div>
-            <p id="reminder-status" role="status" aria-live="polite"></p>
-            <button class="reminder-permission-button" id="reminder-permission-button" type="button">允许系统通知</button>
-          </div>
+          <div class="home-reminder-heading"><span aria-hidden="true">✦</span><div><p id="next-date-title">下一次约会计划</p><strong id="next-date-summary">还没有计划，点这里一起定下来</strong></div></div>
+          <button class="home-next-plan-button home-plan" type="button" data-next="1">发起 / 修改约会计划</button>
         </section>
       </div>
 
@@ -189,7 +119,6 @@
             <h2 id="world-title">我们的世界</h2>
             <p>只与你分享的生活碎片。</p>
           </div>
-          <button class="world-photo-button" id="world-photo-button" type="button" aria-controls="world-photo-input">＋</button>
         </header>
         <form class="world-compose" id="world-post-form" aria-label="发布我们的世界">
           <textarea id="world-post-text" maxlength="280" placeholder="记录今天的一点甜、一次想念或一张照片…"></textarea>
@@ -197,6 +126,7 @@
           <div class="world-compose-preview" id="world-compose-preview" hidden></div>
           <div>
             <span id="world-compose-status" role="status" aria-live="polite">会同步到你们的共同空间</span>
+            <button class="world-photo-button" id="world-photo-button" type="button" aria-label="添加照片" aria-controls="world-photo-input">＋</button>
             <button class="primary-button coral-button" type="submit">发布</button>
           </div>
         </form>
@@ -206,29 +136,24 @@
       <section class="home-tab-panel home-feature-panel" data-home-tab-panel="theme" aria-labelledby="home-list-title" hidden>
         <div class="home-feature-hero home-list-hero">
           <p class="eyebrow">TOGETHER LIST</p>
-          <h2 id="home-list-title">小主题</h2>
-          <p>把相似的功能收在一起，看起来更清爽。</p>
+          <h2 id="home-list-title">目标</h2>
+          <p>蔡子珊和刘平壹要一起完成的一百件小事。</p>
         </div>
         <div class="home-feature-grid">
-          <button class="home-feature-card things-open" type="button"><span aria-hidden="true">✓</span><strong>100 件事</strong><small>想完成的小事慢慢打勾</small></button>
-          <button class="home-feature-card anniversary-open" type="button"><span aria-hidden="true">♡</span><strong>小日子</strong><small>纪念日和倒计时都在这里</small></button>
-          <button class="home-feature-card library-open" type="button"><span aria-hidden="true">▧</span><strong>回忆录</strong><small>照片、地点和每一次见面</small></button>
-          <button class="home-feature-card repair-open" type="button"><span aria-hidden="true">☾</span><strong>和好小屋</strong><small>有情绪时，把话好好说完</small></button>
-          <button class="home-feature-card interactions-open" type="button"><span aria-hidden="true">◇</span><strong>互动小屋</strong><small>拍立得、明信片、心有灵犀</small></button>
-          <button class="home-feature-card home-plan" type="button" data-next="1"><span aria-hidden="true">♥</span><strong>发起约会</strong><small>生成下一次约会计划卡</small></button>
+          <button class="home-feature-card things-open goal-main-card" type="button"><span aria-hidden="true">100</span><strong>一起做的一百件小事</strong><small>完成一件就一起打勾，双方都会同步</small></button>
         </div>
       </section>
 
       <section class="home-tab-panel home-feature-panel" data-home-tab-panel="game" aria-labelledby="home-game-title" hidden>
         <div class="home-feature-hero home-game-hero">
           <p class="eyebrow">PLAY ROOM</p>
-          <h2 id="home-game-title">游戏</h2>
+          <h2 id="home-game-title">小游戏</h2>
           <p>真心话、大话骰子和宠物都放在这里。</p>
         </div>
         <div class="home-feature-grid">
           <button class="home-feature-card truth-open" type="button"><span aria-hidden="true">?</span><strong>真心话</strong><small>转盘随机抽一个问题</small></button>
           <button class="home-feature-card dice-open" type="button"><span aria-hidden="true">⚄</span><strong>大话骰子</strong><small>摇骰、开盅、重新开局</small></button>
-          <button class="home-feature-card pet-open" type="button"><span aria-hidden="true">🐾</span><strong>宠物</strong><small>乔巴陪你们打招呼和聊天</small></button>
+          <button class="home-feature-card pet-open" type="button"><span aria-hidden="true">🐾</span><strong>宠物</strong><small>18🈲</small></button>
         </div>
       </section>
 
@@ -240,10 +165,8 @@
           <p>正在共享同一个秘密花园。</p>
         </header>
         <div class="us-module-list">
-          <button class="us-module shared-open" type="button"><span aria-hidden="true">☁</span><strong>双人共享空间</strong><small id="shared-home-status-panel">照片、聊天、清单和纪念日都会同步</small><b>›</b></button>
-          <button class="us-module anniversary-open" type="button"><span aria-hidden="true">♡</span><strong>恋爱日期设置</strong><small>在首页设置后，双方都会同步看到</small><b>›</b></button>
-          <button class="us-module library-open" type="button"><span aria-hidden="true">▧</span><strong>回忆与照片</strong><small>查看约会回忆和照片库</small><b>›</b></button>
-          <button class="us-module interactions-open" type="button"><span aria-hidden="true">◇</span><strong>双人互动</strong><small>拍立得、声音明信片、心有灵犀、留言墙</small><b>›</b></button>
+          <button class="us-module anniversary-open" type="button"><span aria-hidden="true">♡</span><strong>纪念日</strong><small>在一起多久、还有多久到重要日子</small><b>›</b></button>
+          <button class="us-module library-open" type="button"><span aria-hidden="true">▧</span><strong>恋爱相册</strong><small>创建文件夹，收藏关于我们的照片</small><b>›</b></button>
         </div>
       </section>
 
@@ -251,8 +174,8 @@
         <button type="button" data-home-tab="today" aria-pressed="true"><span aria-hidden="true">⌂</span><b>今日</b></button>
         <button type="button" data-home-tab="chat" aria-pressed="false"><span aria-hidden="true">✎</span><b>聊天</b></button>
         <button type="button" data-home-tab="world" aria-pressed="false"><span aria-hidden="true">♡</span><b>我们的世界</b></button>
-        <button type="button" data-home-tab="theme" aria-pressed="false"><span aria-hidden="true">▦</span><b>主题</b></button>
-        <button type="button" data-home-tab="game" aria-pressed="false"><span aria-hidden="true">⚄</span><b>游戏</b></button>
+        <button type="button" data-home-tab="theme" aria-pressed="false"><span aria-hidden="true">▦</span><b>目标</b></button>
+        <button type="button" data-home-tab="game" aria-pressed="false"><span aria-hidden="true">⚄</span><b>小游戏</b></button>
         <button type="button" data-home-tab="us" aria-pressed="false"><span aria-hidden="true">☻</span><b>我们</b></button>
       </nav>
     </section>
@@ -473,7 +396,7 @@
       <h1 id="step-7-title" tabindex="-1">回忆录</h1>
       <p class="supporting-copy compact-copy">地点、照片和每一次认真见面的心情。</p>
       <div class="archive-toolbar" aria-label="回忆录工具">
-        <button class="secondary-button photo-library-open" id="photo-library-open" type="button"><span aria-hidden="true">▧</span> 照片库</button>
+        <button class="secondary-button photo-library-open" id="photo-library-open" type="button"><span aria-hidden="true">▧</span> 恋爱相册</button>
         <button class="secondary-button archive-create-button" id="archive-create-button" type="button">＋ 补一份以前的约会</button>
       </div>
       <form class="archive-create-form" id="archive-create-form" hidden>
@@ -500,7 +423,7 @@
       <form id="memory-form" class="memory-form">
         <label for="memory-photo">留几张照片</label>
         <input id="memory-photo" type="file" accept="image/*" multiple>
-        <p class="memory-photo-hint">照片添加后，可以选择收进你们的照片库。</p>
+        <p class="memory-photo-hint">照片添加后，可以选择收进你们的恋爱相册。</p>
         <div class="memory-photos" id="memory-photos" aria-live="polite"></div>
         <label for="memory-text">写下一点回忆</label>
         <textarea id="memory-text" maxlength="300" placeholder="今天最喜欢的瞬间是…"></textarea>
@@ -690,7 +613,7 @@
           <option>给她一点空间</option>
         </select>
         <label for="repair-extra">想补充的话（可选）</label>
-        <textarea id="repair-extra" maxlength="180" rows="3" placeholder="写下具体发生的事，乔巴会帮你放进话里"></textarea>
+        <textarea id="repair-extra" maxlength="180" rows="3" placeholder="写下具体发生的事，子珊会帮你放进话里"></textarea>
         <button class="primary-button coral-button" type="submit">生成哄人话</button>
       </form>
       <article class="repair-result-card" aria-labelledby="repair-result-title">
@@ -879,26 +802,30 @@
     <p class="shared-footnote">约会计划、回忆照片、纪念日、和好小屋、聊天和互动内容都会先存本机、再加密同步到双方手机；暂时没网也不会丢，联网后自动补传。</p>
   </dialog>
 
-  <dialog class="photo-library-dialog" id="photo-library-dialog" aria-labelledby="photo-library-title" aria-describedby="photo-library-intro">
-    <button class="photo-library-close" id="photo-library-close" type="button" aria-label="关闭照片库">×</button>
+  <dialog class="photo-library-dialog love-album-dialog" id="photo-library-dialog" aria-labelledby="photo-library-title" aria-describedby="photo-library-intro">
+    <button class="photo-library-close" id="photo-library-close" type="button" aria-label="关闭恋爱相册">×</button>
     <header class="photo-library-header">
-      <p class="eyebrow">OUR PHOTO BOX</p>
-      <h2 id="photo-library-title">我们的照片库</h2>
-      <p id="photo-library-intro">把每一次见面的小瞬间，放进只属于你们的分类里。</p>
+      <p class="eyebrow">LOVE ALBUM</p>
+      <h2 id="photo-library-title">恋爱相册</h2>
+      <p id="photo-library-intro">像小相册一样整理关于我们的照片，双方都可以创建文件夹和添加照片。</p>
     </header>
     <div class="photo-library-tools">
-      <p class="photo-library-summary" id="photo-library-summary" role="status" aria-live="polite">正在整理照片库…</p>
-      <button class="photo-library-add-category" id="photo-library-add-category" type="button">＋ 新建分类</button>
+      <p class="photo-library-summary" id="photo-library-summary" role="status" aria-live="polite">正在整理恋爱相册…</p>
+      <div class="photo-library-tool-actions">
+        <button class="photo-library-add-category" id="photo-library-add-category" type="button">＋ 新建文件夹</button>
+        <button class="photo-library-add-category photo-library-upload" id="photo-library-upload" type="button">＋ 添加照片</button>
+      </div>
     </div>
+    <input id="photo-library-upload-input" class="sr-only" type="file" accept="image/*" multiple>
     <form class="photo-library-category-form" id="photo-library-category-form" hidden>
-      <label for="photo-library-category-name">分类名称</label>
+      <label for="photo-library-category-name">文件夹名称</label>
       <div>
         <input id="photo-library-category-name" type="text" maxlength="24" autocomplete="off" placeholder="例如：第一次旅行" required>
         <button type="submit">收好</button>
       </div>
       <button class="photo-library-category-cancel" id="photo-library-category-cancel" type="button">暂时不建了</button>
     </form>
-    <div class="photo-library-categories" id="photo-library-categories" aria-label="照片分类"></div>
+    <div class="photo-library-categories" id="photo-library-categories" aria-label="相册文件夹"></div>
     <p class="photo-library-status" id="photo-library-status" role="status" aria-live="polite"></p>
     <div class="photo-library-grid" id="photo-library-grid" aria-live="polite"></div>
   </dialog>
@@ -906,28 +833,28 @@
   <dialog class="photo-library-ask-dialog" id="photo-library-ask-dialog" aria-labelledby="photo-library-ask-title">
     <div class="photo-library-ask-icon" aria-hidden="true">♡</div>
     <p class="eyebrow">A LITTLE KEEPSAKE</p>
-    <h2 id="photo-library-ask-title">也收进照片库吗？</h2>
-    <p id="photo-library-ask-copy">这几张照片会和对方同步，随时都能在回忆录里翻出来。</p>
+    <h2 id="photo-library-ask-title">也收进恋爱相册吗？</h2>
+    <p id="photo-library-ask-copy">这几张照片会和对方同步，随时都能在恋爱相册里翻出来。</p>
     <form id="photo-library-ask-form">
-      <label for="photo-library-ask-category">放进哪个分类</label>
+      <label for="photo-library-ask-category">放进哪个文件夹</label>
       <select id="photo-library-ask-category"></select>
       <div class="photo-library-ask-actions">
-        <button class="photo-library-skip" id="photo-library-skip" type="button">放进混合照片</button>
-        <button class="photo-library-confirm" type="submit">收进照片库</button>
+        <button class="photo-library-skip" id="photo-library-skip" type="button">放进拍照</button>
+        <button class="photo-library-confirm" type="submit">收进相册</button>
       </div>
     </form>
   </dialog>
 
   <dialog class="photo-library-lightbox" id="photo-library-lightbox" aria-labelledby="photo-library-lightbox-title">
     <button class="photo-library-lightbox-close" id="photo-library-lightbox-close" type="button" aria-label="关闭照片预览">×</button>
-    <img id="photo-library-lightbox-image" alt="照片库预览">
+    <img id="photo-library-lightbox-image" alt="恋爱相册预览">
     <div class="photo-library-lightbox-meta">
       <h2 id="photo-library-lightbox-title">照片回忆</h2>
       <p id="photo-library-lightbox-copy"></p>
     </div>
     <div class="photo-library-lightbox-actions">
       <button class="photo-library-download" id="photo-library-download" type="button">下载照片</button>
-      <button class="photo-library-delete-photo" id="photo-library-delete-photo" type="button">从照片库删除</button>
+      <button class="photo-library-delete-photo" id="photo-library-delete-photo" type="button">从相册删除</button>
     </div>
   </dialog>
 
@@ -969,12 +896,12 @@
   <script src="https://static.cloudbase.net/cloudbase-js-sdk/3.7.0/cloudbase.full.js"></script>
   <script src="cloud-config.js?v=20260804-identity-mind-voice-v1"></script>
   <script src="backup.js?v=20260804-identity-mind-voice-v1"></script>
-  <script src="app.js?v=20260810-home-six-v1"></script>
-  <script src="pet-theme.js?v=20260810-home-six-v1"></script>
-  <script src="shared-sync.js?v=20260810-home-six-v1"></script>
-  <script src="shared-interactions.js?v=20260810-home-six-v1"></script>
-  <script src="home-chat.js?v=20260810-home-six-v1"></script>
-  <script src="cloud-sync.js?v=20260810-home-six-v1"></script>
-  <script src="pwa.js?v=20260810-home-six-v1"></script>
+  <script src="app.js?v=20260810-final-tabs-v3"></script>
+  <script src="pet-theme.js?v=20260810-final-tabs-v3"></script>
+  <script src="shared-sync.js?v=20260810-final-tabs-v3"></script>
+  <script src="shared-interactions.js?v=20260810-final-tabs-v3"></script>
+  <script src="home-chat.js?v=20260810-final-tabs-v3"></script>
+  <script src="cloud-sync.js?v=20260810-final-tabs-v3"></script>
+  <script src="pwa.js?v=20260810-final-tabs-v3"></script>
 </body>
 </html>

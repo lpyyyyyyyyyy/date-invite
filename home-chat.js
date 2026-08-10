@@ -4,6 +4,7 @@
   const MAX_VIDEO_BYTES = 1024 * 1024;
   const MAX_AUDIO_CHARS = 940000;
   const HOME_SETTINGS_KEY = "cute-date-invite-home-settings-v1";
+  const LOCAL_USER_KEY = "cute-date-invite-local-user-v1";
   const CHAT_KEY = "cute-date-invite-shared-messages-v1";
   const CHAT_EVENT = "date-invite-chat-changed";
   const DATE_PLAN_CHAT_EVENT = "date-invite-plan-card-created";
@@ -105,7 +106,7 @@
   }
 
   function readHomeSettings() {
-    const fallbackDate = "2023-02-13";
+    const fallbackDate = "2026-06-23";
     const saved = safeReadObject(HOME_SETTINGS_KEY, {});
     return {
       loveStartDate: /^\d{4}-\d{2}-\d{2}$/.test(String(saved.loveStartDate || "")) ? saved.loveStartDate : fallbackDate,
@@ -159,7 +160,7 @@
     }
     if (!list) return;
     list.replaceChildren();
-    festivals.forEach((item) => {
+    festivals.slice(0, 2).forEach((item) => {
       const row = document.createElement("article");
       row.className = "festival-item";
       const date = document.createElement("span");
@@ -596,6 +597,95 @@
     return name || "我们";
   }
 
+  function localUserId() {
+    try {
+      let saved = localStorage.getItem(LOCAL_USER_KEY);
+      if (!saved) {
+        saved = `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        localStorage.setItem(LOCAL_USER_KEY, saved);
+      }
+      return saved;
+    } catch (error) { return "local-private"; }
+  }
+
+  function currentWorldUser() {
+    const identity = cloud()?.getIdentity?.()?.me;
+    const role = roomState().role || "host";
+    return {
+      id: identity?.deviceId ? `cloud-${identity.deviceId}` : `${role}-${localUserId()}`,
+      name: worldPostAuthor(identity?.name || displayName(role))
+    };
+  }
+
+  function backupWorld(action) {
+    try { window.DateInviteBackups?.capture?.(`我们的世界-${action}`); } catch (error) { /* 备份失败不影响发布 */ }
+  }
+
+  function openImagePreview(source, title = "原图预览") {
+    if (!source) return;
+    let dialog = byId("world-image-lightbox");
+    if (!dialog) {
+      dialog = document.createElement("dialog");
+      dialog.id = "world-image-lightbox";
+      dialog.className = "world-image-lightbox";
+      dialog.innerHTML = `<button type="button" aria-label="关闭原图预览">×</button><img alt="原图预览"><a download="leo-emily-photo.jpg">下载原图</a>`;
+      document.body.append(dialog);
+      dialog.querySelector("button")?.addEventListener("click", () => dialog.close?.());
+      dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close?.(); });
+    }
+    const image = dialog.querySelector("img");
+    const link = dialog.querySelector("a");
+    if (image) { image.src = source; image.alt = title; }
+    if (link) link.href = source;
+    try { dialog.showModal(); } catch (error) { dialog.setAttribute("open", ""); }
+  }
+
+  function worldLikeCount(post) {
+    const likedByCount = Array.isArray(post?.likedBy) ? post.likedBy.length : 0;
+    return Math.max(likedByCount, Math.max(0, Number(post?.likes) || 0));
+  }
+
+  function toggleWorldLike(post) {
+    const user = currentWorldUser();
+    const likedBy = Array.isArray(post.likedBy) ? [...post.likedBy] : [];
+    if (likedBy.includes(user.id)) { notice("这条你已经点过喜欢啦"); return; }
+    likedBy.push(user.id);
+    backupWorld("点赞前");
+    interactions()?.updateWorldPost?.(post.id, { likedBy, likes: Math.max(worldLikeCount(post) + 1, likedBy.length) });
+    syncCurrent();
+    renderWorldPosts();
+  }
+
+  function addWorldComment(post, parentComment = null) {
+    const user = currentWorldUser();
+    const prefix = parentComment ? `回复 ${worldPostAuthor(parentComment.author)}：` : "写一条评论：";
+    const message = String(window.prompt(prefix, "") || "").trim().slice(0, 180);
+    if (!message) return;
+    const comments = Array.isArray(post.comments) ? [...post.comments] : [];
+    comments.push({
+      id: `world-comment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      author: user.name,
+      message,
+      parentId: parentComment?.id || "",
+      replyToAuthor: parentComment ? worldPostAuthor(parentComment.author) : "",
+      createdAt: Date.now()
+    });
+    backupWorld("评论前");
+    interactions()?.updateWorldPost?.(post.id, { comments });
+    syncCurrent();
+    renderWorldPosts();
+  }
+
+  function removeWorldPost(post) {
+    if (!post?.id) return;
+    if (!window.confirm("确定删除这条动态吗？双方手机里都会一起删除。")) return;
+    backupWorld("删除动态前");
+    interactions()?.removeWorldPost?.(post.id);
+    syncCurrent();
+    renderWorldPosts();
+    notice("这条动态已删除");
+  }
+
   function renderWorldPreview() {
     const preview = byId("world-compose-preview");
     if (!preview) return;
@@ -663,7 +753,13 @@
       time.dateTime = new Date(post.createdAt).toISOString();
       time.textContent = formatTime(post.createdAt);
       meta.append(name, time);
-      head.append(avatar, meta);
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "world-post-delete";
+      deleteButton.textContent = "删除";
+      deleteButton.setAttribute("aria-label", "删除这条动态");
+      deleteButton.addEventListener("click", () => removeWorldPost(post));
+      head.append(avatar, meta, deleteButton);
       item.append(head);
       if (post.message) {
         const text = document.createElement("p");
@@ -678,24 +774,51 @@
           const image = document.createElement("img");
           image.src = source;
           image.alt = `我们的世界照片 ${index + 1}`;
-          grid.append(image);
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "world-photo-view";
+          button.setAttribute("aria-label", `查看第 ${index + 1} 张原图`);
+          button.append(image);
+          button.addEventListener("click", () => openImagePreview(source, `我们的世界照片 ${index + 1}`));
+          grid.append(button);
         });
         item.append(grid);
       }
       const actions = document.createElement("footer");
       const like = document.createElement("button");
       like.type = "button";
-      like.innerHTML = `<span aria-hidden="true">♥</span> ${post.likes || 0}`;
+      const user = currentWorldUser();
+      const liked = Array.isArray(post.likedBy) && post.likedBy.includes(user.id);
+      like.className = liked ? "is-liked" : "";
+      like.setAttribute("aria-pressed", String(liked));
+      like.innerHTML = `<span aria-hidden="true">♥</span> ${worldLikeCount(post)}`;
       like.setAttribute("aria-label", "喜欢这条动态");
-      like.addEventListener("click", () => {
-        interactions()?.updateWorldPost?.(post.id, { likes: (Number(post.likes) || 0) + 1 });
-        syncCurrent();
-        renderWorldPosts();
-      });
-      const comments = document.createElement("span");
-      comments.textContent = `☰ ${post.comments?.length || 0}`;
-      actions.append(like, comments);
+      like.addEventListener("click", () => toggleWorldLike(post));
+      const commentButton = document.createElement("button");
+      commentButton.type = "button";
+      commentButton.innerHTML = `<span aria-hidden="true">☰</span> ${post.comments?.length || 0} 评论`;
+      commentButton.addEventListener("click", () => addWorldComment(post));
+      actions.append(like, commentButton);
       item.append(actions);
+      if (post.comments?.length) {
+        const commentList = document.createElement("div");
+        commentList.className = "world-comments";
+        post.comments.forEach((comment) => {
+          const row = document.createElement("article");
+          row.className = comment.parentId ? "world-comment is-reply" : "world-comment";
+          const body = document.createElement("p");
+          const author = document.createElement("strong");
+          author.textContent = worldPostAuthor(comment.author);
+          body.append(author, document.createTextNode(`：${comment.replyToAuthor ? `回复 ${comment.replyToAuthor} · ` : ""}${comment.message}`));
+          const reply = document.createElement("button");
+          reply.type = "button";
+          reply.textContent = "回复";
+          reply.addEventListener("click", () => addWorldComment(post, comment));
+          row.append(body, reply);
+          commentList.append(row);
+        });
+        item.append(commentList);
+      }
       feed.append(item);
     });
   }
@@ -710,7 +833,9 @@
       return;
     }
     try {
-      interactions()?.addWorldPost?.({ message, photos: selectedWorldPhotos, author: displayName(roomState().role) });
+      const user = currentWorldUser();
+      backupWorld("发布前");
+      interactions()?.addWorldPost?.({ message, photos: selectedWorldPhotos, author: user.name, likedBy: [], likes: 0 });
       if (input) input.value = "";
       selectedWorldPhotos = [];
       renderWorldPreview();
@@ -1462,6 +1587,7 @@
     window.addEventListener("date-invite-identity-changed", () => {
       renderChatStatus();
       renderHomeChat();
+      renderWorldPosts();
     });
     window.addEventListener("date-invite-cloud-sync-applied", () => {
       renderChatStatus(); renderHomeChat(); renderPolaroids(); renderVoicePostcards(); renderWall(); renderWorldPosts(); renderLoveDays(); renderFestivalCalendar();

@@ -1,4 +1,4 @@
-(() => {
+﻿(() => {
   "use strict";
 
   const STORAGE_KEY = "cute-date-invite-v1";
@@ -286,7 +286,7 @@
   }
 
   function persistArchive() {
-    backupBeforeSave("回忆与照片");
+    backupBeforeSave("恋爱相册");
     try {
       // 照片库复用同一份可同步档案，但不会作为“约会记录”展示出来。
       localStorage.setItem(ARCHIVE_KEY, JSON.stringify([...archiveRecords, ...readPhotoLibraryEntries()]));
@@ -458,14 +458,14 @@
 
     bindHomeTabs();
     document.querySelectorAll(".home-plan").forEach((button) => button.addEventListener("click", () => showScreen(1)));
-    document.querySelector(".anniversary-open").addEventListener("click", () => showScreen(9));
-    document.querySelector(".things-open").addEventListener("click", () => showScreen(10));
-    document.querySelector(".game-open").addEventListener("click", () => showScreen(11));
-    document.querySelector(".keepsakes-open")?.addEventListener("click", () => showScreen(14));
-    document.querySelector(".couple-book-open")?.addEventListener("click", () => showScreen(15));
-    document.querySelector(".future-letter-open")?.addEventListener("click", () => showScreen(16));
-    document.querySelector(".pet-open")?.addEventListener("click", () => showScreen(17));
-    document.querySelector(".repair-open")?.addEventListener("click", () => showScreen(18));
+    document.querySelectorAll(".anniversary-open").forEach((button) => button.addEventListener("click", () => showScreen(9)));
+    document.querySelectorAll(".things-open").forEach((button) => button.addEventListener("click", () => showScreen(10)));
+    document.querySelectorAll(".game-open").forEach((button) => button.addEventListener("click", () => showScreen(11)));
+    document.querySelectorAll(".keepsakes-open").forEach((button) => button.addEventListener("click", () => showScreen(14)));
+    document.querySelectorAll(".couple-book-open").forEach((button) => button.addEventListener("click", () => showScreen(15)));
+    document.querySelectorAll(".future-letter-open").forEach((button) => button.addEventListener("click", () => showScreen(16)));
+    document.querySelectorAll(".pet-open").forEach((button) => button.addEventListener("click", () => showScreen(17)));
+    document.querySelectorAll(".repair-open").forEach((button) => button.addEventListener("click", () => showScreen(18)));
     catMascot?.addEventListener("click", (event) => {
       if (catMascot.dataset.dragged === "true") {
         catMascot.dataset.dragged = "";
@@ -497,8 +497,8 @@
     repairCopy?.addEventListener("click", () => copyRepairMessage());
     repairShare?.addEventListener("click", () => shareRepairMessage());
     catNameForm?.addEventListener("submit", saveCatName);
-    document.querySelector(".truth-open").addEventListener("click", () => showScreen(12));
-    document.querySelector(".dice-open").addEventListener("click", () => showScreen(13));
+    document.querySelectorAll(".truth-open").forEach((button) => button.addEventListener("click", () => showScreen(12)));
+    document.querySelectorAll(".dice-open").forEach((button) => button.addEventListener("click", () => showScreen(13)));
     yesButton.addEventListener("click", () => {
       state.activeRecordId = "";
       persistState();
@@ -1942,10 +1942,16 @@
   function updateHomeCountdown() {
     const next = getNextPlan();
     homeCountdown.textContent = next ? `${getCountdownText(next)} · ${formatDateForDisplay(next.date)}` : "还没有下一次约会计划";
+    const summary = document.querySelector("#next-date-summary");
+    if (summary) {
+      summary.textContent = next
+        ? `${formatDateForDisplay(next.date)} ${next.time || ""} · ${next.activity || "一起约会"} · ${next.menu || "吃点好吃的"}`
+        : "还没有计划，点这里一起定下来";
+    }
   }
 
   function getCatName() {
-    return "乔巴";
+    return "子珊";
   }
 
   function openCatConversation() {
@@ -1955,10 +1961,10 @@
 
   function petActionMessage(action) {
     return {
-      greet: "乔巴举起小手和你打招呼：今天也要一起开心呀！",
-      cross: "乔巴双手抱胸认真点头：我会把你们的约会计划记好的！",
-      happy: "乔巴开心地举起双手：耶！下一次见面一定会很棒！",
-    }[action] || "乔巴眨眨眼，安静地陪着你。";
+      greet: "子珊举起小手和你打招呼：今天也要一起开心呀！",
+      cross: "子珊双手抱胸认真点头：我会把你们的约会计划记好的！",
+      happy: "子珊开心地举起双手：耶！下一次见面一定会很棒！",
+    }[action] || "子珊眨眨眼，安静地陪着你。";
   }
 
   function triggerPetAction(action = "greet", message = "") {
@@ -1986,13 +1992,13 @@
   function getChopperReply(message) {
     const text = String(message || "").trim();
     const next = archiveRecords.filter((record) => formatRecordTime(record) > Date.now()).sort((a, b) => formatRecordTime(a) - formatRecordTime(b))[0];
-    if (/你好|嗨|哈喽|乔巴/.test(text)) return { action: "greet", text: "你好呀！乔巴已经听见你啦，今天也要记得开心。" };
+    if (/你好|嗨|哈喽|子珊|蔡子珊/.test(text)) return { action: "greet", text: "你好呀！子珊已经听见你啦，今天也要记得开心。" };
     if (/想你|喜欢|爱你|想念/.test(text)) return { action: "happy", text: "我也会把这句话收好，陪你们一直期待下一次见面。" };
     if (/约会|见面|什么时候|倒计时/.test(text) && next) return { action: "greet", text: `我查到啦：${getCountdownText(next)}，${formatDateForDisplay(next.date)}见！` };
     if (/吃|美食|餐|火锅|烤肉/.test(text)) return { action: "happy", text: `下次可以吃${next?.menu || "你们最喜欢的东西"}，我负责在旁边加油！` };
     if (/玩|去哪|活动|电影|散步|游乐园/.test(text)) return { action: "happy", text: `那就安排${next?.activity || "一个让你们都开心的活动"}，听起来就很棒！` };
-    if (/谢谢|辛苦/.test(text)) return { action: "cross", text: "不用谢！乔巴会一直守护你们的小日子。" };
-    return { action: "greet", text: `乔巴听到了：“${text.slice(0, 40)}”。再和我说一点嘛！` };
+    if (/谢谢|辛苦/.test(text)) return { action: "cross", text: "不用谢！子珊会一直守护你们的小日子。" };
+    return { action: "greet", text: `子珊听到了：“${text.slice(0, 40)}”。再和我说一点嘛！` };
   }
 
   function submitPetTalk(event) {
@@ -2350,7 +2356,7 @@
       renderer.domElement.addEventListener("webglcontextlost", (event) => {
         event.preventDefault();
         catMascot.classList.remove("is-3d-ready");
-        catBubble.textContent = "这台设备暂时无法显示 3D 乔巴，但其他功能仍可使用。";
+        catBubble.textContent = "这台设备暂时无法显示子珊宠物，但其他功能仍可使用。";
       });
       catMascot.dataset.petModel = "chopper-rigged-web";
       catMascot.classList.add("is-3d-ready");
@@ -2397,7 +2403,7 @@
       console.warn("Chopper 3D model could not initialize.", error);
       cat3DStage.replaceChildren();
       catMascot.classList.remove("is-3d-ready");
-      catBubble.textContent = "这台设备暂时无法显示 3D 乔巴，但其他功能仍可使用。";
+      catBubble.textContent = "这台设备暂时无法显示子珊宠物，但其他功能仍可使用。";
     }
     return;
   }
@@ -2922,7 +2928,7 @@
     const name = getCatName();
     catMascot.setAttribute("aria-label", `和${name}互动`);
     catMascot.title = `轻触 ${name}，让他随机做一个动作`;
-    catGrowthLabel.textContent = "会打招呼、抱胸和开心动作的乔巴";
+    catGrowthLabel.textContent = "会打招呼、抱胸和开心动作的子珊";
     catBubble.textContent = getCatMessage();
   }
 

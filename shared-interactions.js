@@ -78,11 +78,16 @@
       ...base,
       message: text(value.message, 500),
       photos: Array.isArray(value.photos) ? value.photos.map((photo) => text(photo, MAX_IMAGE_CHARS)).filter(Boolean).slice(0, 3) : [],
+      likedBy: Array.isArray(value.likedBy)
+        ? [...new Set(value.likedBy.map((id) => text(id, 80)).filter(Boolean))].slice(0, 20)
+        : [],
       likes: Math.max(0, Math.min(9999, Number(value.likes) || 0)),
       comments: Array.isArray(value.comments) ? value.comments.map((comment) => ({
         id: text(comment?.id, 100) || uid("world-comment"),
         author: text(comment?.author, 32) || "我",
         message: text(comment?.message, 180),
+        parentId: text(comment?.parentId, 100),
+        replyToAuthor: text(comment?.replyToAuthor, 32),
         createdAt: Number(comment?.createdAt) || now()
       })).filter((comment) => comment.message).slice(0, 20) : []
     };
@@ -347,7 +352,7 @@
     return Boolean(value && typeof value === "object" && value[PHOTO_LIBRARY_MARKER] === true && (value.libraryType === "category" || value.libraryType === "photo"));
   }
   function photoLibraryRawRows() { return safeRead(PHOTO_LIBRARY_ARCHIVE_KEY, []); }
-  function mixedPhotoCategory() { return { id: PHOTO_LIBRARY_MIXED_ID, name: "混合照片", fixed: true, createdAt: 0, updatedAt: 0 }; }
+  function mixedPhotoCategory() { return { id: PHOTO_LIBRARY_MIXED_ID, name: "拍照", fixed: true, createdAt: 0, updatedAt: 0 }; }
 
   function normalizeLibraryCategory(value) {
     if (!value || value.libraryType !== "category") return null;
@@ -441,11 +446,11 @@
       .map(libraryEntryForPhoto);
     const archiveRows = photoLibraryRawRows();
     const normalArchiveRows = archiveRows.filter((entry) => !isPhotoLibraryEntry(entry));
-    try { window.DateInviteBackups?.capture?.("照片库保存前"); } catch (error) { /* 备份不可用时不阻塞保存。 */ }
+    try { window.DateInviteBackups?.capture?.("恋爱相册保存前"); } catch (error) { /* 备份不可用时不阻塞保存。 */ }
     try {
       localStorage.setItem(PHOTO_LIBRARY_ARCHIVE_KEY, JSON.stringify([...normalArchiveRows, ...categoryItems, ...photoItems]));
     } catch (error) {
-      throw new Error("本机存储空间不足，照片库暂时没有保存成功");
+      throw new Error("本机存储空间不足，恋爱相册暂时没有保存成功");
     }
     const detail = { action: libraryText(action, 40), item: item ? clone(item) : null, library: readPhotoLibrary() };
     emit("photoLibrary", detail.action, detail.item);
@@ -456,10 +461,10 @@
   function addPhotoLibraryCategory(name) {
     const state = readPhotoLibrary();
     const safeName = libraryText(name, 24);
-    if (!safeName) throw new Error("先给这个分类起个名字吧");
+    if (!safeName) throw new Error("先给这个文件夹起个名字吧");
     const existing = state.categories.find((category) => category.name.toLocaleLowerCase() === safeName.toLocaleLowerCase());
     if (existing) return clone(existing);
-    if (state.categories.filter((category) => !category.fixed).length >= MAX_LIBRARY_CATEGORIES) throw new Error(`最多创建 ${MAX_LIBRARY_CATEGORIES} 个自定义分类`);
+    if (state.categories.filter((category) => !category.fixed).length >= MAX_LIBRARY_CATEGORIES) throw new Error(`最多创建 ${MAX_LIBRARY_CATEGORIES} 个自定义文件夹`);
     const stamp = now();
     const category = { id: uid("photo-category"), name: safeName, fixed: false, createdAt: stamp, updatedAt: stamp };
     state.categories.push(category);
@@ -482,7 +487,7 @@
 
   function compactPhotoForLibrary(source) {
     const sourceData = String(source || "").trim();
-    if (!/^data:image\//i.test(sourceData)) return Promise.reject(new Error("这张照片暂时无法收进照片库"));
+    if (!/^data:image\//i.test(sourceData)) return Promise.reject(new Error("这张照片暂时无法收进恋爱相册"));
     return new Promise((resolve, reject) => {
       const image = new Image();
       image.onerror = () => reject(new Error("照片读取失败，请再试一次"));
@@ -505,7 +510,7 @@
             compacted = canvas.toDataURL("image/jpeg", quality);
             if (compacted.length <= MAX_LIBRARY_IMAGE_CHARS) break;
           }
-          if (!compacted || compacted.length > MAX_LIBRARY_IMAGE_CHARS) return reject(new Error("这张照片太大，暂时无法收进照片库"));
+          if (!compacted || compacted.length > MAX_LIBRARY_IMAGE_CHARS) return reject(new Error("这张照片太大，暂时无法收进恋爱相册"));
           resolve(compacted);
         } catch (error) { reject(new Error("照片整理失败，请稍后再试")); }
       };
@@ -526,7 +531,7 @@
     const requested = Array.isArray(input.photos) ? input.photos.filter((source) => /^data:image\//i.test(String(source || ""))) : [];
     if (!requested.length) throw new Error("没有找到可整理的照片");
     const remaining = Math.max(0, MAX_LIBRARY_PHOTOS - state.photos.length);
-    if (!remaining) throw new Error(`照片库最多暂存 ${MAX_LIBRARY_PHOTOS} 张照片，请先整理或删除一些照片`);
+    if (!remaining) throw new Error(`恋爱相册最多暂存 ${MAX_LIBRARY_PHOTOS} 张照片，请先整理或删除一些照片`);
     const categoryId = state.categories.some((category) => category.id === input.categoryId) ? input.categoryId : PHOTO_LIBRARY_MIXED_ID;
     const sources = requested.slice(0, remaining);
     const compacted = await Promise.all(sources.map(compactPhotoForLibrary));
@@ -572,7 +577,7 @@
     try { if (typeof dialog.close === "function") dialog.close(); else dialog.removeAttribute("open"); } catch (error) { dialog.removeAttribute("open"); }
   }
   function photoLibraryCategoryName(id, state = readPhotoLibrary()) {
-    return state.categories.find((category) => category.id === id)?.name || "混合照片";
+    return state.categories.find((category) => category.id === id)?.name || "拍照";
   }
   function notifyPhotoLibrary(message) {
     const status = photoElement("photo-library-status");
@@ -599,15 +604,35 @@
     if (!categoriesNode || !grid) return;
     const state = readPhotoLibrary();
     if (!state.categories.some((category) => category.id === activePhotoLibraryCategory)) activePhotoLibraryCategory = PHOTO_LIBRARY_MIXED_ID;
-    if (summary) summary.textContent = `${state.photos.length} 张照片 · ${state.categories.length} 个分类`;
+    if (summary) summary.textContent = `${state.photos.length} 张照片 · ${state.categories.length} 个文件夹 · 当前：${photoLibraryCategoryName(activePhotoLibraryCategory, state)}`;
     categoriesNode.replaceChildren();
     state.categories.forEach((category) => {
-      const control = document.createElement("span");
-      control.className = "photo-library-category-control";
+      const photosInCategory = state.photos.filter((photo) => photo.categoryId === category.id);
+      const newest = photosInCategory[0];
+      const control = document.createElement("article");
+      control.className = "photo-library-folder-card";
+      control.classList.toggle("is-active", category.id === activePhotoLibraryCategory);
       const filter = document.createElement("button");
       filter.type = "button";
       filter.className = "photo-library-category-filter";
-      filter.textContent = `${category.name} ${state.photos.filter((photo) => photo.categoryId === category.id).length}`;
+      const coverWrap = document.createElement("i");
+      if (newest?.imageData) {
+        const coverImage = document.createElement("img");
+        coverImage.src = newest.imageData;
+        coverImage.alt = "";
+        coverImage.loading = "lazy";
+        coverWrap.append(coverImage);
+      } else {
+        const placeholder = document.createElement("span");
+        placeholder.setAttribute("aria-hidden", "true");
+        placeholder.textContent = "♡";
+        coverWrap.append(placeholder);
+      }
+      const title = document.createElement("strong");
+      title.textContent = category.name;
+      const count = document.createElement("small");
+      count.textContent = `${photosInCategory.length} 张照片`;
+      filter.append(coverWrap, title, count);
       filter.setAttribute("aria-pressed", String(category.id === activePhotoLibraryCategory));
       filter.addEventListener("click", () => { activePhotoLibraryCategory = category.id; renderPhotoLibrary(); });
       control.append(filter);
@@ -616,11 +641,12 @@
         remove.type = "button";
         remove.className = "photo-library-category-delete";
         remove.textContent = "×";
-        remove.setAttribute("aria-label", `删除分类 ${category.name}，照片会移动到混合照片`);
+        remove.setAttribute("aria-label", `删除文件夹 ${category.name}，照片会移动到拍照`);
         remove.addEventListener("click", () => {
+          if (!window.confirm(`删除“${category.name}”文件夹吗？里面的照片会移动到“拍照”。`)) return;
           if (removePhotoLibraryCategory(category.id)) {
             activePhotoLibraryCategory = PHOTO_LIBRARY_MIXED_ID;
-            notifyPhotoLibrary(`“${category.name}”已删除，照片已移到混合照片。`);
+            notifyPhotoLibrary(`“${category.name}”已删除，照片已移到拍照。`);
             renderPhotoLibrary();
           }
         });
@@ -634,7 +660,7 @@
     if (!photos.length) {
       const empty = document.createElement("p");
       empty.className = "photo-library-empty";
-      empty.textContent = activePhotoLibraryCategory === PHOTO_LIBRARY_MIXED_ID ? "这里会收下还没分好类的照片。下次添加回忆照片时，就可以放进来啦。" : "这个分类还没有照片。去回忆录添加一张吧。";
+      empty.textContent = activePhotoLibraryCategory === PHOTO_LIBRARY_MIXED_ID ? "这里是默认的“拍照”文件夹。点上面的“添加照片”，把关于你们的照片放进来。" : "这个文件夹还没有照片。点“添加照片”放进来吧。";
       grid.append(empty);
       return;
     }
@@ -682,6 +708,39 @@
     link.remove();
   }
 
+  function readPhotoFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("照片读取失败，请换一张再试"));
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function addPhotosFromLibraryPicker(event) {
+    const input = event?.target || photoElement("photo-library-upload-input");
+    const files = Array.from(input?.files || []).filter((file) => file.type.startsWith("image/")).slice(0, 12);
+    if (!files.length) return;
+    const uploadButton = photoElement("photo-library-upload");
+    if (uploadButton) { uploadButton.disabled = true; uploadButton.textContent = "整理中…"; }
+    try {
+      const photos = await Promise.all(files.map(readPhotoFileAsDataURL));
+      const result = await addPhotosToLibrary({
+        photos,
+        categoryId: activePhotoLibraryCategory,
+        sourceLabel: "恋爱相册",
+        author: author()
+      });
+      notifyPhotoLibrary(result.skipped ? `已添加 ${result.photos.length} 张，剩下的可以下次再传。` : `已添加 ${result.photos.length} 张，双方都会看到。`);
+      renderPhotoLibrary();
+    } catch (error) {
+      notifyPhotoLibrary(error?.message || "照片暂时没有添加成功");
+    } finally {
+      if (input) input.value = "";
+      if (uploadButton) { uploadButton.disabled = false; uploadButton.textContent = "＋ 添加照片"; }
+    }
+  }
+
   function showPhotoLibraryAsk(detail) {
     const photos = Array.isArray(detail?.photos) ? detail.photos.filter((source) => /^data:image\//i.test(String(source || ""))) : [];
     if (!photos.length) return;
@@ -702,6 +761,8 @@
 
     photoElement("photo-library-open")?.addEventListener("click", () => { renderPhotoLibrary(); openPhotoDialog(libraryDialog); });
     photoElement("photo-library-close")?.addEventListener("click", () => closePhotoDialog(libraryDialog));
+    photoElement("photo-library-upload")?.addEventListener("click", () => photoElement("photo-library-upload-input")?.click());
+    photoElement("photo-library-upload-input")?.addEventListener("change", addPhotosFromLibraryPicker);
     libraryDialog?.addEventListener("close", () => { if (categoryForm) categoryForm.hidden = true; });
     photoElement("photo-library-add-category")?.addEventListener("click", () => {
       if (!categoryForm) return;
@@ -718,7 +779,7 @@
         categoryForm.hidden = true;
         notifyPhotoLibrary(`“${category.name}”已经准备好。`);
         renderPhotoLibrary();
-      } catch (error) { notifyPhotoLibrary(error?.message || "这个分类暂时没有创建成功"); }
+      } catch (error) { notifyPhotoLibrary(error?.message || "这个文件夹暂时没有创建成功"); }
     });
 
     photoElement("photo-library-skip")?.addEventListener("click", async () => {
@@ -734,12 +795,12 @@
         activePhotoLibraryCategory = PHOTO_LIBRARY_MIXED_ID;
         closePhotoDialog(askDialog);
         renderPhotoLibrary();
-        notifyPhotoLibrary(result.skipped ? `已放进混合照片 ${result.photos.length} 张，剩下的可以下次再整理。` : `已放进混合照片 ${result.photos.length} 张，另一边也会看到。`);
+        notifyPhotoLibrary(result.skipped ? `已放进拍照 ${result.photos.length} 张，剩下的可以下次再整理。` : `已放进拍照 ${result.photos.length} 张，另一边也会看到。`);
       } catch (error) {
         const askCopy = photoElement("photo-library-ask-copy");
-        if (askCopy) askCopy.textContent = error?.message || "照片暂时没有收进混合照片，可以稍后再试。";
+        if (askCopy) askCopy.textContent = error?.message || "照片暂时没有收进拍照，可以稍后再试。";
       } finally {
-        if (skip) { skip.disabled = false; skip.textContent = "放进混合照片"; }
+        if (skip) { skip.disabled = false; skip.textContent = "放进拍照"; }
         if (submit) submit.disabled = false;
       }
     });
@@ -760,9 +821,9 @@
         notifyPhotoLibrary(result.skipped ? `已收好 ${result.photos.length} 张，剩下的照片可下次再整理。` : `已收好 ${result.photos.length} 张照片，另一边也会看到。`);
       } catch (error) {
         const askCopy = photoElement("photo-library-ask-copy");
-        if (askCopy) askCopy.textContent = error?.message || "照片暂时没有收进照片库，可以稍后再试。";
+        if (askCopy) askCopy.textContent = error?.message || "照片暂时没有收进恋爱相册，可以稍后再试。";
       } finally {
-        if (submit) { submit.disabled = false; submit.textContent = "收进照片库"; }
+        if (submit) { submit.disabled = false; submit.textContent = "收进相册"; }
       }
     });
 
@@ -771,11 +832,11 @@
     photoElement("photo-library-delete-photo")?.addEventListener("click", () => {
       const photo = readPhotoLibrary().photos.find((entry) => entry.id === activePhotoLibraryPhotoId);
       if (!photo) return closePhotoDialog(lightbox);
-      const approved = typeof window.confirm !== "function" || window.confirm("确定只从照片库删除这张照片吗？原来的约会回忆不会受影响。");
+      const approved = typeof window.confirm !== "function" || window.confirm("确定只从恋爱相册删除这张照片吗？原来的约会回忆不会受影响。");
       if (!approved) return;
       if (removePhotoLibraryPhoto(photo.id)) {
         closePhotoDialog(lightbox);
-        notifyPhotoLibrary("已从照片库删除，原来的回忆照片还在。");
+        notifyPhotoLibrary("已从恋爱相册删除，原来的回忆照片还在。");
         renderPhotoLibrary();
       }
     });
