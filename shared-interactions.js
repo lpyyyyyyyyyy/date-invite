@@ -9,7 +9,7 @@
   const MAX_ITEMS = 120;
   const MAX_TEXT = 3000;
   const MAX_IMAGE_CHARS = 1000000;
-  // 照片库复用已有的回忆录档案键，因此无需新增云端白名单，也能沿用双端加密同步。
+  // 恋爱相册复用已有可同步档案键，因此无需新增云端白名单，也能沿用双端加密同步。
   const PHOTO_LIBRARY_ARCHIVE_KEY = "cute-date-invite-archive-v1";
   const PHOTO_LIBRARY_MARKER = "__leoEmilyPhotoLibrary";
   const PHOTO_LIBRARY_EVENT = "date-invite-photo-library-changed";
@@ -374,7 +374,7 @@
       categoryId: libraryText(value.categoryId, 100) || PHOTO_LIBRARY_MIXED_ID,
       imageData,
       recordId: libraryText(value.recordId, 100),
-      sourceLabel: libraryText(value.sourceLabel, 72) || "回忆录照片",
+      sourceLabel: libraryText(value.sourceLabel, 72) || "恋爱相册",
       createdAt,
       updatedAt: libraryTimestamp(value.updatedAt, createdAt),
       author: libraryText(value.author, 32)
@@ -523,7 +523,7 @@
     const date = libraryText(item.date, 16);
     const place = libraryText(item.location, 40);
     const activity = libraryText(item.activity, 24);
-    return [date, place || activity].filter(Boolean).join(" · ") || "回忆录照片";
+    return libraryText(record?.sourceLabel, 72) || [date, place || activity].filter(Boolean).join(" · ") || "恋爱相册";
   }
 
   async function addPhotosToLibrary(input = {}) {
@@ -536,7 +536,7 @@
     const sources = requested.slice(0, remaining);
     const compacted = await Promise.all(sources.map(compactPhotoForLibrary));
     const stamp = now();
-    const sourceLabel = librarySourceLabel(input.record);
+    const sourceLabel = libraryText(input.sourceLabel, 72) || librarySourceLabel(input.record);
     const photos = compacted.map((imageData, index) => ({
       id: uid("photo-library"),
       categoryId,
@@ -746,7 +746,7 @@
     if (!photos.length) return;
     pendingMemoryPhotos = { photos, recordId: libraryText(detail.recordId, 100), record: detail.record && typeof detail.record === "object" ? detail.record : {} };
     const askCopy = photoElement("photo-library-ask-copy");
-    if (askCopy) askCopy.textContent = `这 ${photos.length} 张照片会和对方同步，随时都能在回忆录里翻出来。`;
+    if (askCopy) askCopy.textContent = `这 ${photos.length} 张照片会和对方同步，随时都能在恋爱相册里翻出来。`;
     populatePhotoCategorySelect(photoElement("photo-library-ask-category"));
     openPhotoDialog(photoElement("photo-library-ask-dialog"));
   }
@@ -759,7 +759,7 @@
     const categoryInput = photoElement("photo-library-category-name");
     const askForm = photoElement("photo-library-ask-form");
 
-    photoElement("photo-library-open")?.addEventListener("click", () => { renderPhotoLibrary(); openPhotoDialog(libraryDialog); });
+    document.querySelectorAll(".photo-library-open, .love-album-open").forEach((button) => button.addEventListener("click", () => { renderPhotoLibrary(); openPhotoDialog(libraryDialog); }));
     photoElement("photo-library-close")?.addEventListener("click", () => closePhotoDialog(libraryDialog));
     photoElement("photo-library-upload")?.addEventListener("click", () => photoElement("photo-library-upload-input")?.click());
     photoElement("photo-library-upload-input")?.addEventListener("change", addPhotosFromLibraryPicker);
@@ -832,11 +832,11 @@
     photoElement("photo-library-delete-photo")?.addEventListener("click", () => {
       const photo = readPhotoLibrary().photos.find((entry) => entry.id === activePhotoLibraryPhotoId);
       if (!photo) return closePhotoDialog(lightbox);
-      const approved = typeof window.confirm !== "function" || window.confirm("确定只从恋爱相册删除这张照片吗？原来的约会回忆不会受影响。");
+      const approved = typeof window.confirm !== "function" || window.confirm("确定从恋爱相册删除这张照片吗？");
       if (!approved) return;
       if (removePhotoLibraryPhoto(photo.id)) {
         closePhotoDialog(lightbox);
-        notifyPhotoLibrary("已从恋爱相册删除，原来的回忆照片还在。");
+        notifyPhotoLibrary("已从恋爱相册删除。");
         renderPhotoLibrary();
       }
     });
