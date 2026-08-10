@@ -456,13 +456,14 @@
     renderRepairState();
     window.setInterval(updateHomeCountdown, 60000);
 
-    document.querySelector(".home-plan").addEventListener("click", () => showScreen(1));
+    bindHomeTabs();
+    document.querySelectorAll(".home-plan").forEach((button) => button.addEventListener("click", () => showScreen(1)));
     document.querySelector(".anniversary-open").addEventListener("click", () => showScreen(9));
     document.querySelector(".things-open").addEventListener("click", () => showScreen(10));
     document.querySelector(".game-open").addEventListener("click", () => showScreen(11));
-    document.querySelector(".keepsakes-open").addEventListener("click", () => showScreen(14));
-    document.querySelector(".couple-book-open").addEventListener("click", () => showScreen(15));
-    document.querySelector(".future-letter-open").addEventListener("click", () => showScreen(16));
+    document.querySelector(".keepsakes-open")?.addEventListener("click", () => showScreen(14));
+    document.querySelector(".couple-book-open")?.addEventListener("click", () => showScreen(15));
+    document.querySelector(".future-letter-open")?.addEventListener("click", () => showScreen(16));
     document.querySelector(".pet-open")?.addEventListener("click", () => showScreen(17));
     document.querySelector(".repair-open")?.addEventListener("click", () => showScreen(18));
     catMascot?.addEventListener("click", (event) => {
@@ -606,6 +607,26 @@
       const observer = new ResizeObserver(scheduleDodgeRecalculation);
       observer.observe(actionZone);
     }
+  }
+
+  function bindHomeTabs() {
+    const panels = [...document.querySelectorAll("[data-home-tab-panel]")];
+    const buttons = [...document.querySelectorAll("[data-home-tab]")];
+    if (!panels.length || !buttons.length) return;
+    const showHomeTab = (tab) => {
+      const selected = ["today", "chat", "world", "theme", "game", "us"].includes(tab) ? tab : "today";
+      document.querySelector(".home-screen")?.setAttribute("data-home-active-tab", selected);
+      document.querySelector("#theme-menu")?.removeAttribute("open");
+      panels.forEach((panel) => {
+        const active = panel.dataset.homeTabPanel === selected;
+        panel.hidden = !active;
+        panel.classList.toggle("is-home-tab-active", active);
+      });
+      buttons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.homeTab === selected)));
+      if (selected === "world") window.DateInviteHomeChat?.renderWorld?.();
+    };
+    buttons.forEach((button) => button.addEventListener("click", () => showHomeTab(button.dataset.homeTab)));
+    showHomeTab("today");
   }
 
   function showScreen(screenNumber) {

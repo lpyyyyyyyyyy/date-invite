@@ -21,7 +21,8 @@
     polaroids: "cute-date-invite-polaroids-v1",
     voicePostcards: "cute-date-invite-voice-postcards-v1",
     mindMatches: "cute-date-invite-mind-matches-v1",
-    messageWall: "cute-date-invite-message-wall-v1"
+    messageWall: "cute-date-invite-message-wall-v1",
+    worldPosts: "cute-date-invite-world-posts-v1"
   });
   const EVENT_NAME = "shared-interactions-changed";
   const AUTHOR_KEY = "cute-date-invite-interactions-author-v1";
@@ -73,6 +74,18 @@
     };
     if (kind === "voicePostcards") return { ...base, audioData: text(value.audioData, MAX_IMAGE_CHARS), transcript: text(value.transcript, 1000), duration: Math.max(0, Math.min(600, Number(value.duration) || 0)) };
     if (kind === "mindMatches") return { ...base, prompt: text(value.prompt, 180), answerA: text(value.answerA, 300), answerB: text(value.answerB, 300), matched: Boolean(value.matched) };
+    if (kind === "worldPosts") return {
+      ...base,
+      message: text(value.message, 500),
+      photos: Array.isArray(value.photos) ? value.photos.map((photo) => text(photo, MAX_IMAGE_CHARS)).filter(Boolean).slice(0, 3) : [],
+      likes: Math.max(0, Math.min(9999, Number(value.likes) || 0)),
+      comments: Array.isArray(value.comments) ? value.comments.map((comment) => ({
+        id: text(comment?.id, 100) || uid("world-comment"),
+        author: text(comment?.author, 32) || "我",
+        message: text(comment?.message, 180),
+        createdAt: Number(comment?.createdAt) || now()
+      })).filter((comment) => comment.message).slice(0, 20) : []
+    };
     return { ...base, message: text(value.message, 500), pinned: Boolean(value.pinned) };
   }
 
@@ -781,6 +794,7 @@
     addVoicePostcard: (input) => add("voicePostcards", input), updateVoicePostcard: (id, patch) => update("voicePostcards", id, patch), removeVoicePostcard: (id) => remove("voicePostcards", id),
     addMindMatch: (input) => add("mindMatches", { ...input, ...evaluateMindMatch(input?.answerA, input?.answerB) }), updateMindMatch: (id, patch) => update("mindMatches", id, patch), removeMindMatch: (id) => remove("mindMatches", id),
     addWallMessage: (input) => add("messageWall", { ...input, message: text(input?.message, 500) }), updateWallMessage: (id, patch) => update("messageWall", id, patch), removeWallMessage: (id) => remove("messageWall", id),
+    addWorldPost: (input) => add("worldPosts", input), updateWorldPost: (id, patch) => update("worldPosts", id, patch), removeWorldPost: (id) => remove("worldPosts", id),
     PHOTO_LIBRARY_ARCHIVE_KEY, PHOTO_LIBRARY_EVENT, PHOTO_LIBRARY_MIXED_ID,
     readPhotoLibrary: () => clone(readPhotoLibrary()),
     addPhotoLibraryCategory, removePhotoLibraryCategory, addPhotosToLibrary, removePhotoLibraryPhoto,

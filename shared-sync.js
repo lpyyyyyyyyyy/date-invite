@@ -14,6 +14,7 @@
     "cute-date-invite-voice-postcards-v1",
     "cute-date-invite-mind-matches-v1",
     "cute-date-invite-message-wall-v1",
+    "cute-date-invite-world-posts-v1",
   ];
   const META_ROOM_KEY = `${META_KEY}-room`;
   const CHAT_ROOM_KEY = `${CHAT_KEY}-room`;
@@ -25,6 +26,7 @@
     "cute-date-invite-couple-notes-v1",
     "cute-date-invite-future-letters-v1",
     "cute-date-invite-repair-v1",
+    "cute-date-invite-home-settings-v1",
     CHAT_KEY,
     ...INTERACTION_KEYS,
   ];

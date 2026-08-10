@@ -31,11 +31,13 @@
     "cute-date-invite-future-letters-v1",
     "cute-date-invite-repair-v1",
     "cute-date-invite-cat-v1",
+    "cute-date-invite-home-settings-v1",
     "cute-date-invite-shared-messages-v1",
     "cute-date-invite-polaroids-v1",
     "cute-date-invite-voice-postcards-v1",
     "cute-date-invite-mind-matches-v1",
-    "cute-date-invite-message-wall-v1"
+    "cute-date-invite-message-wall-v1",
+    "cute-date-invite-world-posts-v1"
   ];
   const SYNC_KEY_SET = new Set(SYNC_KEYS);
   const encoder = typeof TextEncoder === "function" ? new TextEncoder() : null;

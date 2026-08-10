@@ -29,7 +29,6 @@
     idle: { frames: ["idle-01.png", "idle-02.png", "idle-03.png", "idle-04.png"], ms: 900, loop: true },
     blink: { frames: ["blink-01.png", "blink-02.png", "blink-03.png", "blink-04.png", "blink-05.png"], ms: 80 },
     happy: { frames: ["happy-01.png", "happy-02.png", "happy-03.png", "happy-04.png", "happy-05.png"], ms: 260 },
-    "foot-wave": { frames: ["idle-01.png", "happy-01.png", "happy-02.png", "happy-03.png", "happy-02.png", "happy-01.png"], ms: 260, loop: true },
     notify: { frames: ["notify-01.png", "notify-02.png", "notify-03.png", "notify-04.png", "notify-05.png"], ms: 120 },
     peek: { frames: ["peek-01.png", "peek-02.png", "peek-03.png", "peek-04.png", "peek-05.png"], ms: 120 },
     pet: { frames: ["pet-01.png", "pet-02.png", "pet-03.png", "pet-04.png", "pet-05.png"], ms: 150, loop: true },
@@ -45,7 +44,6 @@
     { id: "feed-snack", state: "eat", duration: 2500, gain: 5, mood: 3, label: "喂点心", emoji: "🍪", feedback: ["谢谢刘平壹的点心！", "子珊会好好享用的~", "刘平壹挑的最好吃。"] },
     { id: "chat-talk", state: "chat", duration: 2000, gain: 2, mood: 2, label: "和她聊天", emoji: "💬", feedback: ["刘平壹想聊什么呢？", "子珊在认真听。", "只要刘平壹需要，子珊都在。"] },
     { id: "sleep-time", state: "sleep", duration: 3000, gain: 1, mood: 1, label: "让她休息", emoji: "😴", feedback: ["晚安，刘平壹~", "子珊先休息一会儿，等你回来。", "明天也会准时陪着刘平壹。"] },
-    { id: "show-foot", state: "foot-wave", duration: 5000, gain: 2, mood: 2, label: "看看脚", emoji: "🦶", feedback: ["她有点害羞地抬起脚尖：只看一下下哦。", "她脸红了一下，小声说：不要一直盯着啦。", "她轻轻绷了绷脚尖，又害羞地放回去了。"] },
   ];
 
   const fallbackStats = { affection: 0, mood: 80, todayInteractions: 0, totalCompanionMs: 0, lastInteractionDate: TODAY() };
@@ -71,7 +69,6 @@
   let frameUrls = new Map();
   let blinkTimer = null;
   let bubbleTimer = null;
-  let footActionTimer = null;
   let pointer = null;
   let suppressTapUntil = 0;
   let petPosition = { x: 50, y: 56 };
@@ -205,9 +202,6 @@
     const action = ACTIONS.find((item) => item.id === id);
     if (!action || root.classList.contains("lp-pet-click-through")) return;
     recordInteraction(action);
-    if (footActionTimer) clearTimeout(footActionTimer);
-    actor.classList.toggle("is-foot-wave", action.id === "show-foot");
-    if (action.id === "show-foot") footActionTimer = window.setTimeout(() => actor.classList.remove("is-foot-wave"), action.duration);
     setState(action.state, { duration: action.duration, feedback: customText || randomItem(action.feedback) });
     document.querySelectorAll("[data-lp-pet-action]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.lpPetAction === id)));
     window.setTimeout(() => document.querySelectorAll("[data-lp-pet-action]").forEach((button) => button.setAttribute("aria-pressed", "false")), action.duration);
