@@ -1,0 +1,16 @@
+{
+  "appid": "wxea391524593552fd",
+  "projectname": "Leo%20And%20Emily",
+  "miniprogramRoot": "./",
+  "compileType": "miniprogram",
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "coverView": true
+  },
+  "condition": {},
+  "libVersion": "latest"
+}

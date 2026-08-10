@@ -564,6 +564,7 @@
 
   // 下面是照片库的轻量 UI；数据函数仍可被其它页面或未来模块复用。
   let activePhotoLibraryCategory = PHOTO_LIBRARY_MIXED_ID;
+  let photoLibraryView = "folders";
   let pendingMemoryPhotos = null;
   let activePhotoLibraryPhotoId = "";
 
@@ -584,6 +585,12 @@
     if (status) status.textContent = libraryText(message, 160);
   }
 
+  function setPhotoLibraryView(view, categoryId = activePhotoLibraryCategory) {
+    photoLibraryView = view === "photos" ? "photos" : "folders";
+    activePhotoLibraryCategory = categoryId || PHOTO_LIBRARY_MIXED_ID;
+    renderPhotoLibrary();
+  }
+
   function populatePhotoCategorySelect(select, selectedId = PHOTO_LIBRARY_MIXED_ID) {
     if (!select) return;
     const state = readPhotoLibrary();
@@ -598,13 +605,26 @@
   }
 
   function renderPhotoLibrary() {
+    const dialog = photoElement("photo-library-dialog");
     const categoriesNode = photoElement("photo-library-categories");
     const grid = photoElement("photo-library-grid");
     const summary = photoElement("photo-library-summary");
+    const title = photoElement("photo-library-title");
+    const intro = photoElement("photo-library-intro");
+    const back = photoElement("photo-library-view-back");
+    const upload = photoElement("photo-library-upload");
     if (!categoriesNode || !grid) return;
     const state = readPhotoLibrary();
     if (!state.categories.some((category) => category.id === activePhotoLibraryCategory)) activePhotoLibraryCategory = PHOTO_LIBRARY_MIXED_ID;
-    if (summary) summary.textContent = `${state.photos.length} 张照片 · ${state.categories.length} 个文件夹 · 当前：${photoLibraryCategoryName(activePhotoLibraryCategory, state)}`;
+    const activeName = photoLibraryCategoryName(activePhotoLibraryCategory, state);
+    const inPhotos = photoLibraryView === "photos";
+    dialog?.classList.toggle("is-folder-view", !inPhotos);
+    dialog?.classList.toggle("is-photos-view", inPhotos);
+    if (back) back.hidden = !inPhotos;
+    if (upload) upload.hidden = !inPhotos;
+    if (title) title.textContent = inPhotos ? activeName : "恋爱相册";
+    if (intro) intro.textContent = inPhotos ? "在这个文件夹里添加照片，点照片可以直接看大图。" : "先选择一个文件夹，再往里面放关于我们的照片。";
+    if (summary) summary.textContent = inPhotos ? `${activeName} · ${state.photos.filter((photo) => photo.categoryId === activePhotoLibraryCategory).length} 张照片` : `${state.categories.length} 个文件夹 · ${state.photos.length} 张照片`;
     categoriesNode.replaceChildren();
     state.categories.forEach((category) => {
       const photosInCategory = state.photos.filter((photo) => photo.categoryId === category.id);
@@ -634,7 +654,7 @@
       count.textContent = `${photosInCategory.length} 张照片`;
       filter.append(coverWrap, title, count);
       filter.setAttribute("aria-pressed", String(category.id === activePhotoLibraryCategory));
-      filter.addEventListener("click", () => { activePhotoLibraryCategory = category.id; renderPhotoLibrary(); });
+      filter.addEventListener("click", () => setPhotoLibraryView("photos", category.id));
       control.append(filter);
       if (!category.fixed) {
         const remove = document.createElement("button");
@@ -656,11 +676,14 @@
     });
 
     grid.replaceChildren();
+    categoriesNode.hidden = inPhotos;
+    grid.hidden = !inPhotos;
+    if (!inPhotos) return;
     const photos = state.photos.filter((photo) => photo.categoryId === activePhotoLibraryCategory);
     if (!photos.length) {
       const empty = document.createElement("p");
       empty.className = "photo-library-empty";
-      empty.textContent = activePhotoLibraryCategory === PHOTO_LIBRARY_MIXED_ID ? "这里是默认的“拍照”文件夹。点上面的“添加照片”，把关于你们的照片放进来。" : "这个文件夹还没有照片。点“添加照片”放进来吧。";
+      empty.textContent = activePhotoLibraryCategory === PHOTO_LIBRARY_MIXED_ID ? "这里是默认的“拍照”文件夹。点右上方“添加照片”，把关于你们的照片放进来。" : "这个文件夹还没有照片。点右上方“添加照片”放进来吧。";
       grid.append(empty);
       return;
     }
@@ -759,8 +782,9 @@
     const categoryInput = photoElement("photo-library-category-name");
     const askForm = photoElement("photo-library-ask-form");
 
-    document.querySelectorAll(".photo-library-open, .love-album-open").forEach((button) => button.addEventListener("click", () => { renderPhotoLibrary(); openPhotoDialog(libraryDialog); }));
+    document.querySelectorAll(".photo-library-open, .love-album-open").forEach((button) => button.addEventListener("click", () => { photoLibraryView = "folders"; renderPhotoLibrary(); openPhotoDialog(libraryDialog); }));
     photoElement("photo-library-close")?.addEventListener("click", () => closePhotoDialog(libraryDialog));
+    photoElement("photo-library-view-back")?.addEventListener("click", () => setPhotoLibraryView("folders"));
     photoElement("photo-library-upload")?.addEventListener("click", () => photoElement("photo-library-upload-input")?.click());
     photoElement("photo-library-upload-input")?.addEventListener("change", addPhotosFromLibraryPicker);
     libraryDialog?.addEventListener("close", () => { if (categoryForm) categoryForm.hidden = true; });
@@ -775,6 +799,7 @@
       try {
         const category = addPhotoLibraryCategory(categoryInput?.value || "");
         activePhotoLibraryCategory = category.id;
+        photoLibraryView = "photos";
         if (categoryInput) categoryInput.value = "";
         categoryForm.hidden = true;
         notifyPhotoLibrary(`“${category.name}”已经准备好。`);

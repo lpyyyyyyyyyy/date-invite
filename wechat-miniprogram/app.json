@@ -1,0 +1,13 @@
+{
+  "pages": [
+    "pages/index/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "Leo And Emily",
+    "navigationBarBackgroundColor": "#fff7fa",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#fff7fa"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

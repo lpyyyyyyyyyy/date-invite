@@ -623,15 +623,13 @@
       dialog = document.createElement("dialog");
       dialog.id = "world-image-lightbox";
       dialog.className = "world-image-lightbox";
-      dialog.innerHTML = `<button type="button" aria-label="关闭原图预览">×</button><img alt="原图预览"><a download="leo-emily-photo.jpg">下载原图</a>`;
+      dialog.innerHTML = `<button type="button" aria-label="关闭照片预览">×</button><img alt="照片预览">`;
       document.body.append(dialog);
       dialog.querySelector("button")?.addEventListener("click", () => dialog.close?.());
       dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close?.(); });
     }
     const image = dialog.querySelector("img");
-    const link = dialog.querySelector("a");
     if (image) { image.src = source; image.alt = title; }
-    if (link) link.href = source;
     try { dialog.showModal(); } catch (error) { dialog.setAttribute("open", ""); }
   }
 

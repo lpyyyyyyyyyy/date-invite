@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" href="apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=20260810-moe-polish-v1">
+  <link rel="stylesheet" href="styles.css?v=20260810-album-sync-v1">
 </head>
 <body>
   <div class="ambient" aria-hidden="true">
@@ -792,7 +792,9 @@
   </dialog>
 
   <dialog class="photo-library-dialog love-album-dialog" id="photo-library-dialog" aria-labelledby="photo-library-title" aria-describedby="photo-library-intro">
+    <button class="photo-library-view-back" id="photo-library-view-back" type="button" hidden aria-label="返回相册文件夹">←</button>
     <button class="photo-library-close" id="photo-library-close" type="button" aria-label="关闭恋爱相册">×</button>
+    <button class="photo-library-add-category" id="photo-library-add-category" type="button" aria-label="新建相册文件夹">＋</button>
     <header class="photo-library-header">
       <p class="eyebrow">LOVE ALBUM</p>
       <h2 id="photo-library-title">恋爱相册</h2>
@@ -801,7 +803,6 @@
     <div class="photo-library-tools">
       <p class="photo-library-summary" id="photo-library-summary" role="status" aria-live="polite">正在整理恋爱相册…</p>
       <div class="photo-library-tool-actions">
-        <button class="photo-library-add-category" id="photo-library-add-category" type="button">＋ 新建文件夹</button>
         <button class="photo-library-add-category photo-library-upload" id="photo-library-upload" type="button">＋ 添加照片</button>
       </div>
     </div>
@@ -885,12 +886,12 @@
   <script src="https://static.cloudbase.net/cloudbase-js-sdk/3.7.0/cloudbase.full.js"></script>
   <script src="cloud-config.js?v=20260804-identity-mind-voice-v1"></script>
   <script src="backup.js?v=20260804-identity-mind-voice-v1"></script>
-  <script src="app.js?v=20260810-moe-polish-v1"></script>
-  <script src="pet-theme.js?v=20260810-moe-polish-v1"></script>
-  <script src="shared-sync.js?v=20260810-moe-polish-v1"></script>
-  <script src="shared-interactions.js?v=20260810-moe-polish-v1"></script>
-  <script src="home-chat.js?v=20260810-moe-polish-v1"></script>
-  <script src="cloud-sync.js?v=20260810-moe-polish-v1"></script>
-  <script src="pwa.js?v=20260810-moe-polish-v1"></script>
+  <script src="app.js?v=20260810-album-sync-v1"></script>
+  <script src="pet-theme.js?v=20260810-album-sync-v1"></script>
+  <script src="shared-sync.js?v=20260810-album-sync-v1"></script>
+  <script src="shared-interactions.js?v=20260810-album-sync-v1"></script>
+  <script src="home-chat.js?v=20260810-album-sync-v1"></script>
+  <script src="cloud-sync.js?v=20260810-album-sync-v1"></script>
+  <script src="pwa.js?v=20260810-album-sync-v1"></script>
 </body>
 </html>

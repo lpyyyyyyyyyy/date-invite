@@ -22,6 +22,8 @@
   const PRESENCE_INTERVAL = 24000;
   const PRESENCE_WINDOW = 75000;
   const TOMBSTONE_LIMIT = 500;
+  const PULL_PAGE_SIZE = 100;
+  const PULL_MAX_RECORDS = 1000;
   const SYNC_KEYS = [
     "cute-date-invite-v1",
     "cute-date-invite-archive-v1",
@@ -1196,6 +1198,23 @@
       .filter((item) => item.deviceId);
   }
 
+  async function fetchRoomRecords(room) {
+    const collected = [];
+    let offset = 0;
+    while (offset < PULL_MAX_RECORDS) {
+      const query = collection
+        .where({ roomId: room.roomId })
+        .skip(offset)
+        .limit(PULL_PAGE_SIZE);
+      const page = resultData(await query.get(), "云端读取失败");
+      const rows = Array.isArray(page) ? page : [];
+      collected.push(...rows);
+      if (rows.length < PULL_PAGE_SIZE) break;
+      offset += PULL_PAGE_SIZE;
+    }
+    return collected;
+  }
+
   async function pullRemote() {
     if (!ready || pulling || !navigator.onLine) return false;
     pulling = true;
@@ -1204,8 +1223,13 @@
     let skippedRecords = 0;
     try {
       const room = pairing || ensurePairing();
-      const records = resultData(await collection.where({ roomId: room.roomId }).limit(100).get(), "云端读取失败");
-      const rows = Array.isArray(records) ? records : [];
+      let rows = [];
+      try {
+        rows = await fetchRoomRecords(room);
+      } catch (error) {
+        const records = resultData(await collection.where({ roomId: room.roomId }).limit(PULL_PAGE_SIZE).get(), "云端读取失败");
+        rows = Array.isArray(records) ? records : [];
+      }
       lastCloudContactAt = now();
       updatePresence(rows);
       profilesChanged = await refreshRoomProfiles(rows);
