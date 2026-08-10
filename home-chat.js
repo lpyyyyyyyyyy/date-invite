@@ -4,6 +4,7 @@
   const MAX_VIDEO_BYTES = 1024 * 1024;
   const MAX_AUDIO_CHARS = 940000;
   const HOME_SETTINGS_KEY = "cute-date-invite-home-settings-v1";
+  const LOVE_START_DATE = "2026-06-23";
   const LOCAL_USER_KEY = "cute-date-invite-local-user-v1";
   const CHAT_KEY = "cute-date-invite-shared-messages-v1";
   const CHAT_EVENT = "date-invite-chat-changed";
@@ -116,40 +117,21 @@
   }
 
   function readHomeSettings() {
-    const fallbackDate = "2026-06-23";
-    const saved = safeReadObject(HOME_SETTINGS_KEY, {});
     return {
-      loveStartDate: /^\d{4}-\d{2}-\d{2}$/.test(String(saved.loveStartDate || "")) ? saved.loveStartDate : fallbackDate,
-      updatedAt: Number(saved.updatedAt) || Date.now()
+      loveStartDate: LOVE_START_DATE,
+      updatedAt: Date.now()
     };
   }
 
   function renderLoveDays() {
     const settings = readHomeSettings();
-    const input = byId("love-start-date");
     const count = byId("love-days-count");
     const display = byId("love-start-display");
-    if (input && input.value !== settings.loveStartDate) input.value = settings.loveStartDate;
     if (display) display.textContent = formatLoveStartDisplay(settings.loveStartDate);
     if (!count) return;
     const start = new Date(`${settings.loveStartDate}T00:00:00`);
     const days = Number.isNaN(start.getTime()) ? 1 : Math.max(1, -dayDiff(start) + 1);
     count.textContent = String(days);
-  }
-
-  function saveLoveStart(event) {
-    event.preventDefault();
-    const input = byId("love-start-date");
-    const value = String(input?.value || "");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) { notice("先选一个在一起的日期"); return; }
-    if (!safeWriteObject(HOME_SETTINGS_KEY, { loveStartDate: value, updatedAt: Date.now() })) {
-      notice("本机空间不足，日期暂时没保存");
-      return;
-    }
-    renderLoveDays();
-    byId("love-start-form")?.closest("details")?.removeAttribute("open");
-    syncCurrent();
-    notice("在一起日期已同步保存");
   }
 
   function festivalDate(item, year) {
@@ -1525,7 +1507,6 @@
 
   function bindEvents() {
     byId("home-chat-form")?.addEventListener("submit", submitHomeChat);
-    byId("love-start-form")?.addEventListener("submit", saveLoveStart);
     byId("weather-refresh")?.addEventListener("click", loadWeather);
     document.querySelectorAll("[data-home-tab]").forEach((button) => {
       button.addEventListener("click", () => switchHomeTab(button.dataset.homeTab));

@@ -5039,3 +5039,439 @@ body {
 .home-countdown-lower strong {
   color: #416f66;
 }
+
+/* 2026-08-10 moe polish: soft, cute, app-like, not tacky. */
+:root {
+  --moe-ink: #4c3440;
+  --moe-muted: #9a7b86;
+  --moe-pink: #ff8fa8;
+  --moe-pink-deep: #ef6384;
+  --moe-cream: #fff8eb;
+  --moe-mint: #e9f8ef;
+  --moe-blue: #edf7ff;
+  --moe-lilac: #f3edff;
+  --moe-line: rgba(242, 211, 220, .82);
+  --moe-card: rgba(255, 255, 255, .88);
+  --moe-shadow: 0 16px 36px rgba(96, 58, 72, .10);
+  --moe-soft-shadow: 0 8px 20px rgba(96, 58, 72, .075);
+}
+
+body {
+  color: var(--moe-ink);
+  background:
+    radial-gradient(circle at 9% 8%, rgba(255, 213, 227, .62) 0 78px, transparent 80px),
+    radial-gradient(circle at 91% 12%, rgba(218, 244, 238, .68) 0 86px, transparent 88px),
+    radial-gradient(circle at 15% 92%, rgba(239, 233, 255, .72) 0 96px, transparent 98px),
+    linear-gradient(180deg, #fff9fb 0%, #fffaf0 47%, #f6fbff 100%);
+}
+
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, rgba(255, 145, 168, .18) 0 1.5px, transparent 2px),
+    radial-gradient(circle, rgba(129, 200, 182, .14) 0 1.2px, transparent 1.8px);
+  background-position: 0 0, 16px 20px;
+  background-size: 34px 34px, 42px 42px;
+  opacity: .55;
+  content: "";
+}
+
+.app-shell {
+  filter: saturate(1.02);
+}
+
+.screen:not(.home-screen).is-active,
+.home-screen.is-active {
+  background:
+    radial-gradient(circle at 18% 4%, rgba(255, 229, 236, .78) 0 72px, transparent 74px),
+    radial-gradient(circle at 88% 16%, rgba(232, 248, 239, .78) 0 82px, transparent 84px),
+    linear-gradient(180deg, rgba(255, 252, 253, .96), rgba(255, 250, 241, .92) 58%, rgba(246, 251, 255, .94));
+}
+
+.screen:not(.home-screen):not(.pet-theme-screen) {
+  border: 1px solid rgba(255, 255, 255, .66);
+}
+
+.screen:not(.home-screen):not(.pet-theme-screen)::before {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  width: 52px;
+  height: 52px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 30% 35%, rgba(255, 143, 168, .32) 0 10px, transparent 11px),
+    radial-gradient(circle at 68% 62%, rgba(170, 221, 207, .34) 0 8px, transparent 9px);
+  content: "";
+  opacity: .78;
+}
+
+.home-tab-panel,
+.home-chat-panel,
+.world-compose,
+.world-post,
+.world-empty,
+.weather-card,
+.festival-countdown-card,
+.festival-item,
+.home-countdown-lower,
+.home-feature-card,
+.us-module,
+.game-card,
+.archive-list article,
+.anniversary-item,
+.things-list li,
+.photo-library-photo,
+.photo-library-category-filter,
+.shared-dialog,
+.interactions-dialog,
+.photo-library-dialog,
+.identity-dialog,
+.roulette-dialog {
+  border-color: var(--moe-line) !important;
+  border-radius: 24px !important;
+  box-shadow: var(--moe-soft-shadow) !important;
+}
+
+.home-chat-panel,
+.world-compose,
+.world-post,
+.home-feature-card,
+.us-module,
+.game-card,
+.archive-list article,
+.anniversary-item,
+.things-list li,
+.photo-library-dialog,
+.interactions-dialog,
+.shared-dialog,
+.identity-dialog {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .94), rgba(255, 249, 252, .82)),
+    var(--moe-card) !important;
+  backdrop-filter: blur(12px);
+}
+
+.home-weather-section,
+.couple-calendar-section,
+.home-feature-panel,
+.us-panel,
+.world-panel {
+  gap: 14px;
+}
+
+.home-section-heading h2 {
+  color: #6a4552;
+  font-size: 18px;
+  letter-spacing: -.02em;
+}
+
+.home-section-heading h2::before {
+  margin-right: 6px;
+  color: #ff8fa8;
+  content: "♡";
+}
+
+.home-section-heading button,
+.primary-button,
+.coral-button,
+.save-button,
+.home-chat-send,
+.photo-library-confirm,
+.roulette-spin,
+.truth-spin,
+.dice-roll {
+  border: 0 !important;
+  border-radius: 999px !important;
+  color: #fff !important;
+  background:
+    linear-gradient(135deg, #ff9bb2 0%, #ff7d9b 48%, #ef6384 100%) !important;
+  box-shadow: 0 10px 22px rgba(239, 99, 132, .20) !important;
+}
+
+.secondary-button,
+.photo-library-add-category,
+.photo-library-skip,
+.roulette-choose,
+.dice-next,
+.archive-create-button {
+  border: 1px solid rgba(244, 205, 216, .95) !important;
+  border-radius: 999px !important;
+  color: #a65670 !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, .98), rgba(255, 240, 246, .88)) !important;
+  box-shadow: 0 7px 16px rgba(96, 58, 72, .07) !important;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:not(:disabled) {
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+
+button:not(:disabled):active {
+  transform: translateY(1px) scale(.985);
+}
+
+.love-day-hero {
+  border-radius: 30px !important;
+  box-shadow: 0 18px 44px rgba(95, 58, 72, .16) !important;
+}
+
+.our-day-main h1 > strong {
+  color: #ee7188;
+}
+
+.weather-grid {
+  gap: 10px;
+}
+
+.weather-card {
+  position: relative;
+  overflow: hidden;
+  padding: 15px 13px;
+  background:
+    radial-gradient(circle at 90% 16%, rgba(255, 255, 255, .92) 0 18px, transparent 19px),
+    linear-gradient(145deg, rgba(255, 248, 251, .96), rgba(237, 249, 244, .88)) !important;
+}
+
+.weather-card::after {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  color: rgba(255, 143, 168, .28);
+  content: "☁";
+  font-size: 28px;
+}
+
+.festival-countdown-card {
+  background:
+    linear-gradient(135deg, rgba(255, 242, 247, .96), rgba(255, 249, 228, .9)) !important;
+}
+
+.festival-item {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, .95), rgba(240, 249, 255, .86)) !important;
+}
+
+.home-countdown-lower {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px !important;
+  background:
+    radial-gradient(circle at 92% 24%, rgba(255, 255, 255, .95) 0 24px, transparent 25px),
+    linear-gradient(135deg, #effbf6, #fff8ea 58%, #fff2f6) !important;
+}
+
+.home-countdown-lower::after {
+  position: absolute;
+  right: 14px;
+  top: 12px;
+  color: rgba(255, 143, 168, .32);
+  content: "✦";
+  font-size: 24px;
+}
+
+.home-feature-card,
+.us-module,
+.game-card {
+  overflow: hidden;
+}
+
+.home-feature-card span,
+.us-module span,
+.game-card-icon,
+.home-card-icon {
+  border: 0 !important;
+  border-radius: 18px !important;
+  color: #ef6384 !important;
+  background:
+    linear-gradient(135deg, #ffe6ee, #fff8e7) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .78), 0 7px 14px rgba(239, 99, 132, .12) !important;
+}
+
+.home-feature-card:nth-child(2n) span,
+.us-module:nth-child(2n) span,
+.game-card:nth-child(2n) .game-card-icon {
+  color: #5aa792 !important;
+  background: linear-gradient(135deg, #e6f8f1, #fffbea) !important;
+}
+
+.home-feature-card strong,
+.us-module strong,
+.game-card strong {
+  color: #553744;
+}
+
+.home-feature-card small,
+.us-module small,
+.game-card small {
+  color: var(--moe-muted);
+}
+
+.home-bottom-nav {
+  border: 1px solid rgba(255, 218, 228, .78);
+  border-radius: 26px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, .88), rgba(255, 245, 249, .78)) !important;
+  box-shadow: 0 16px 38px rgba(96, 58, 72, .14) !important;
+  backdrop-filter: blur(18px);
+}
+
+.home-bottom-nav button {
+  border-radius: 20px;
+}
+
+.home-bottom-nav button[aria-pressed="true"] {
+  color: #fff !important;
+  background: linear-gradient(135deg, #ff9bb2, #ef6384) !important;
+  box-shadow: 0 10px 20px rgba(239, 99, 132, .22);
+}
+
+.home-bottom-nav button[aria-pressed="true"] span,
+.home-bottom-nav button[aria-pressed="true"] b {
+  color: #fff !important;
+}
+
+.home-chat-header,
+.world-hero,
+.home-feature-hero,
+.us-hero {
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 92% 16%, rgba(255, 255, 255, .92) 0 22px, transparent 23px),
+    linear-gradient(135deg, rgba(255, 242, 247, .94), rgba(239, 248, 255, .78)) !important;
+  box-shadow: var(--moe-soft-shadow);
+}
+
+.home-chat-messages {
+  background:
+    linear-gradient(180deg, rgba(255, 252, 254, .58), rgba(246, 251, 255, .42));
+  border-radius: 20px;
+}
+
+.home-message > div,
+.home-chat-bubble {
+  border-radius: 19px !important;
+}
+
+.home-message-them > div,
+.home-chat-bubble:not(.is-me) {
+  background: #fff !important;
+}
+
+.home-message-me > div,
+.home-chat-bubble.is-me {
+  color: #fff !important;
+  background: linear-gradient(135deg, #ff9bb2, #ef6384) !important;
+}
+
+.home-chat-composer,
+.world-compose {
+  border-radius: 24px !important;
+}
+
+#home-chat-input,
+.world-compose textarea,
+input,
+textarea,
+select {
+  border-color: rgba(242, 211, 220, .9) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 255, 255, .92) !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: rgba(255, 143, 168, .9) !important;
+  outline: 4px solid rgba(255, 143, 168, .16) !important;
+}
+
+.world-post {
+  position: relative;
+}
+
+.world-post::after {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  color: rgba(255, 143, 168, .18);
+  content: "♡";
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.world-avatar,
+.message-avatar,
+.couple-avatars span {
+  background: linear-gradient(135deg, #ffe2eb, #fff6df) !important;
+  color: #ef6384 !important;
+}
+
+.things-list li {
+  padding: 13px 14px;
+}
+
+.things-list li::before {
+  color: #ff8fa8;
+}
+
+.anniversary-item,
+.archive-list article {
+  border-radius: 22px !important;
+}
+
+.photo-library-category-filter,
+.photo-library-photo {
+  border-radius: 22px !important;
+}
+
+.photo-library-category-filter i {
+  border-radius: 18px !important;
+}
+
+dialog {
+  color: var(--moe-ink);
+}
+
+dialog::backdrop {
+  background: rgba(76, 52, 64, .38) !important;
+  backdrop-filter: blur(8px);
+}
+
+.back-button,
+.archive-button,
+.photo-library-close,
+.photo-library-lightbox-close,
+.interactions-close,
+.shared-close,
+.lp-pet-dialog-close,
+.identity-role-repair-toggle {
+  border-radius: 16px !important;
+}
+
+@media (max-width: 430px) {
+  .screen:not(.home-screen).is-active {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .home-tab-panel {
+    margin-top: 12px;
+  }
+
+  .home-bottom-nav {
+    width: min(calc(100% - 14px), 530px);
+    padding: 7px;
+  }
+}
