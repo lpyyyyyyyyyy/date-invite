@@ -1942,12 +1942,6 @@
   function updateHomeCountdown() {
     const next = getNextPlan();
     homeCountdown.textContent = next ? `${getCountdownText(next)} · ${formatDateForDisplay(next.date)}` : "还没有下一次约会计划";
-    const summary = document.querySelector("#next-date-summary");
-    if (summary) {
-      summary.textContent = next
-        ? `${formatDateForDisplay(next.date)} ${next.time || ""} · ${next.activity || "一起约会"} · ${next.menu || "吃点好吃的"}`
-        : "还没有计划，点这里一起定下来";
-    }
   }
 
   function getCatName() {
