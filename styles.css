@@ -5614,11 +5614,37 @@ dialog::backdrop {
 .photo-library-category-filter {
   min-height: 178px !important;
   border-radius: 26px !important;
+  align-content: end !important;
+  isolation: isolate;
 }
 
 .photo-library-category-filter i {
-  inset: 9px 9px 54px !important;
-  border-radius: 20px !important;
+  inset: 0 !important;
+  z-index: 0;
+  border-radius: inherit !important;
+  background: linear-gradient(135deg, #fff0f5, #fff8e8) !important;
+}
+
+.photo-library-category-filter i::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,239,246,.2) 45%, rgba(82,45,58,.55));
+  content: "";
+}
+
+.photo-library-category-filter i img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+}
+
+.photo-library-category-filter strong,
+.photo-library-category-filter small {
+  position: relative !important;
+  z-index: 2 !important;
+  color: #fff !important;
+  text-shadow: 0 2px 10px rgba(48, 28, 38, .38);
 }
 
 .photo-library-grid {

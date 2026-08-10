@@ -7,7 +7,7 @@
    * 之后两台手机都会记住同一个空间，不必重复输入房间码。
    */
   const CONFIG = window.LEO_EMILY_CLOUD_CONFIG;
-  const SDK = window.cloudbase;
+  let SDK = window.cloudbase || window.tcb || window.Tcb || null;
   const STATE_KEY = "leo-emily-cloud-sync-state-v2";
   const DEVICE_KEY = "leo-emily-cloud-device-v1";
   const PAIRING_KEY = "leo-emily-cloud-pairing-v2";
@@ -123,6 +123,35 @@
     });
   }
 
+  function configuredPairing(role = "host") {
+    const configured = CONFIG?.defaultPairing && typeof CONFIG.defaultPairing === "object" ? CONFIG.defaultPairing : null;
+    if (!configured) return null;
+    return validPairing({
+      version: 2,
+      roomId: configured.roomId,
+      secret: configured.secret,
+      role,
+      createdAt: Number(configured.createdAt) || now()
+    });
+  }
+
+  function samePairingRoom(left, right) {
+    return Boolean(left && right && left.roomId === right.roomId && left.secret === right.secret);
+  }
+
+  function inferRoleFromName(value) {
+    const name = cleanDisplayName(value).toLocaleLowerCase();
+    if (!name) return "";
+    if (/蔡|子珊|emily/.test(name)) return "guest";
+    if (/刘|平壹|leo/.test(name)) return "host";
+    return "";
+  }
+
+  function savedNameForRoleInference() {
+    const saved = parseJSON(safeGet(IDENTITY_KEY) || "null", null);
+    return cleanDisplayName(saved?.name);
+  }
+
   function incomingPairing() {
     try {
       const hash = new URLSearchParams(String(location.hash || "").replace(/^#/, ""));
@@ -172,7 +201,12 @@
       }
       removePairingHash();
     }
-    pairing = existing || writePairing(makePairing("host"));
+    const defaultPairing = configuredPairing(inferRoleFromName(savedNameForRoleInference()) || existing?.role || "host");
+    if (defaultPairing && (CONFIG?.forceDefaultPairing || !existing)) {
+      pairing = samePairingRoom(existing, defaultPairing) ? existing : (writePairing(defaultPairing) || defaultPairing);
+      return pairing;
+    }
+    pairing = existing || writePairing(defaultPairing || makePairing("host"));
     return pairing;
   }
 
@@ -199,6 +233,7 @@
     const candidate = value && typeof value === "object" ? value : {};
     return {
       version: 2,
+      roomId: String(candidate.roomId || ""),
       keys: candidate.keys && typeof candidate.keys === "object" ? candidate.keys : {},
       documents: candidate.documents && typeof candidate.documents === "object" ? candidate.documents : {},
       seen: candidate.seen && typeof candidate.seen === "object" ? candidate.seen : {},
@@ -250,6 +285,21 @@
 
   function persistState() {
     safeSet(STATE_KEY, JSON.stringify(localState));
+  }
+
+  function ensureStateRoom(room) {
+    if (!room?.roomId || localState.roomId === room.roomId) return;
+    localState.roomId = room.roomId;
+    localState.seen = {};
+    const stamp = now();
+    SYNC_KEYS.forEach((key) => {
+      const raw = safeGet(key);
+      if (raw == null) return;
+      localState.keys[key] = { updatedAt: stamp, deleted: false };
+      rememberItemIds(key, raw);
+      pendingKeys.add(key);
+    });
+    persistState();
   }
 
   function currentRole() {
@@ -393,6 +443,14 @@
   async function saveDisplayName(value) {
     const name = cleanDisplayName(value);
     if (!name) return { ok: false, error: "请先写下你的名字" };
+    const inferredRole = inferRoleFromName(name);
+    const defaultPairing = configuredPairing(inferredRole || currentRole());
+    if (defaultPairing && inferredRole && (!samePairingRoom(pairing, defaultPairing) || pairing.role !== inferredRole)) {
+      pairing = writePairing(defaultPairing) || defaultPairing;
+      encryptionKey = null;
+      identity = null;
+      ensureStateRoom(pairing);
+    }
     const mine = ensureIdentity();
     if (!mine) return { ok: false, error: "正在准备你的双人空间，请稍后再试" };
     const saved = persistIdentity({ ...mine, name, updatedAt: now() });
@@ -467,6 +525,23 @@
       retryTimer = null;
       initialize();
     }, Math.max(1800, Number(delay) || 9000));
+  }
+
+  function loadCloudSdk() {
+    SDK = window.cloudbase || window.tcb || window.Tcb || SDK || null;
+    if (SDK || !CONFIG?.sdkUrl) return Promise.resolve(SDK);
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      const done = () => {
+        SDK = window.cloudbase || window.tcb || window.Tcb || null;
+        resolve(SDK);
+      };
+      script.addEventListener("load", done, { once: true });
+      script.addEventListener("error", () => resolve(null), { once: true });
+      script.src = `${CONFIG.sdkUrl}${String(CONFIG.sdkUrl).includes("?") ? "&" : "?"}retry=${now()}`;
+      script.async = false;
+      document.head.append(script);
+    });
   }
 
   function bindRecoveryEvents() {
@@ -1466,6 +1541,7 @@
 
   async function initialize() {
     pairing = ensurePairing();
+    ensureStateRoom(pairing);
     // ===== 身份固定：每台设备首次取名，角色只由首次配对决定 =====
     ensureIdentity();
     bindIdentitySetup();
@@ -1474,8 +1550,14 @@
     bindControls();
     bindRecoveryEvents();
     if (ready || initializing) return;
-    if (!CONFIG?.environmentId || !CONFIG?.publishableKey || !SDK) {
+    if (!CONFIG?.environmentId || !CONFIG?.publishableKey) {
       updateStatus("云端组件暂未加载，本机资料仍会安全保存。", "waiting");
+      return;
+    }
+    SDK = await loadCloudSdk();
+    if (!SDK) {
+      updateStatus("云端组件没有加载成功，请刷新或检查腾讯云域名配置。", "waiting");
+      scheduleReconnect(5000);
       return;
     }
     if (!pairing || !encoder || !decoder || !crypto?.subtle) {
