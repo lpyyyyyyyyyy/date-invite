@@ -105,6 +105,16 @@
     return Math.round((end - start) / 86400000);
   }
 
+  function formatLoveStartDisplay(value) {
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return "2026.06.23 星期二";
+    const weekdays = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}.${month}.${day} ${weekdays[date.getDay()]}`;
+  }
+
   function readHomeSettings() {
     const fallbackDate = "2026-06-23";
     const saved = safeReadObject(HOME_SETTINGS_KEY, {});
@@ -118,11 +128,13 @@
     const settings = readHomeSettings();
     const input = byId("love-start-date");
     const count = byId("love-days-count");
+    const display = byId("love-start-display");
     if (input && input.value !== settings.loveStartDate) input.value = settings.loveStartDate;
+    if (display) display.textContent = formatLoveStartDisplay(settings.loveStartDate);
     if (!count) return;
     const start = new Date(`${settings.loveStartDate}T00:00:00`);
     const days = Number.isNaN(start.getTime()) ? 1 : Math.max(1, -dayDiff(start) + 1);
-    count.textContent = `恋爱第 ${days} 天`;
+    count.textContent = String(days);
   }
 
   function saveLoveStart(event) {
@@ -135,6 +147,7 @@
       return;
     }
     renderLoveDays();
+    byId("love-start-form")?.closest("details")?.removeAttribute("open");
     syncCurrent();
     notice("在一起日期已同步保存");
   }

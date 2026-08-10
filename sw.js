@@ -1,4 +1,4 @@
-const CACHE_NAME = "leo-emily-runtime-v31-click-fix";
+const CACHE_NAME = "leo-emily-runtime-v32-ourday-photo";
 const REMINDER_DB = "leo-emily-reminders-v1";
 const REMINDER_STORE = "settings";
 const OFFLINE_ASSETS = [
@@ -7,6 +7,8 @@ const OFFLINE_ASSETS = [
   "./styles.css",
   "./styles.css?v=20260810-final-tabs-v2",
   "./styles.css?v=20260810-final-tabs-v3",
+  "./styles.css?v=20260810-ourday-v1",
+  "./assets/our-day-bg.jpg",
   "./styles.css?v=20260810-home-six-v1",
   "./styles.css?v=20260810-world-v1",
   "./styles.css?v=20260810-lp-pet-menu-v4",
@@ -22,6 +24,7 @@ const OFFLINE_ASSETS = [
   "./app.js",
   "./app.js?v=20260810-final-tabs-v2",
   "./app.js?v=20260810-final-tabs-v3",
+  "./app.js?v=20260810-ourday-v1",
   "./app.js?v=20260810-home-six-v1",
   "./app.js?v=20260810-world-v1",
   "./app.js?v=20260810-lp-pet-menu-v4",
@@ -36,6 +39,7 @@ const OFFLINE_ASSETS = [
   "./shared-sync.js",
   "./shared-sync.js?v=20260810-final-tabs-v2",
   "./shared-sync.js?v=20260810-final-tabs-v3",
+  "./shared-sync.js?v=20260810-ourday-v1",
   "./shared-sync.js?v=20260810-home-six-v1",
   "./shared-sync.js?v=20260804-identity-mind-voice-v1",
   "./shared-sync.js?v=20260803-cloud-sync-v2",
@@ -43,6 +47,7 @@ const OFFLINE_ASSETS = [
   "./shared-interactions.js",
   "./shared-interactions.js?v=20260810-final-tabs-v2",
   "./shared-interactions.js?v=20260810-final-tabs-v3",
+  "./shared-interactions.js?v=20260810-ourday-v1",
   "./shared-interactions.js?v=20260810-home-six-v1",
   "./shared-interactions.js?v=20260810-world-v1",
   "./shared-interactions.js?v=20260804-identity-mind-voice-v1",
@@ -52,6 +57,7 @@ const OFFLINE_ASSETS = [
   "./home-chat.js",
   "./home-chat.js?v=20260810-final-tabs-v2",
   "./home-chat.js?v=20260810-final-tabs-v3",
+  "./home-chat.js?v=20260810-ourday-v1",
   "./home-chat.js?v=20260810-home-six-v1",
   "./home-chat.js?v=20260810-world-v1",
   "./home-chat.js?v=20260804-identity-mind-voice-v1",
@@ -66,6 +72,7 @@ const OFFLINE_ASSETS = [
   "./cloud-sync.js",
   "./cloud-sync.js?v=20260810-final-tabs-v2",
   "./cloud-sync.js?v=20260810-final-tabs-v3",
+  "./cloud-sync.js?v=20260810-ourday-v1",
   "./cloud-sync.js?v=20260810-home-six-v1",
   "./cloud-sync.js?v=20260804-identity-mind-voice-v1",
   "./cloud-sync.js?v=20260803-cloud-sync-v2",
@@ -76,6 +83,7 @@ const OFFLINE_ASSETS = [
   "./pwa.js",
   "./pwa.js?v=20260810-final-tabs-v2",
   "./pwa.js?v=20260810-final-tabs-v3",
+  "./pwa.js?v=20260810-ourday-v1",
   "./pwa.js?v=20260810-home-six-v1",
   "./pwa.js?v=20260804-identity-mind-voice-v1",
   "./pwa.js?v=20260803-pwa-update",

@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" href="apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=20260810-final-tabs-v3">
+  <link rel="stylesheet" href="styles.css?v=20260810-ourday-v1">
 </head>
 <body>
   <div class="ambient" aria-hidden="true">
@@ -43,19 +43,27 @@
 
       <div class="home-tab-panel home-dashboard is-home-tab-active" data-home-tab-panel="today">
         <section class="love-day-hero" aria-labelledby="home-title">
-          <div>
-            <p class="eyebrow">OUR DAY</p>
-            <h1 id="home-title" tabindex="-1">蔡子珊和刘平壹</h1>
-            <p>一起走过的每一天，都会被好好记住。</p>
+          <div class="our-day-copy">
+            <p>一起走过的每一天，</p>
+            <p>都是心动的证明 💕</p>
           </div>
-          <strong id="love-days-count" role="status" aria-live="polite">第 1 天</strong>
-          <form class="love-start-form" id="love-start-form" aria-label="设置在一起日期">
-            <label for="love-start-date">在一起的第一天</label>
-            <div>
-              <input id="love-start-date" type="date" required>
-              <button type="submit">保存</button>
-            </div>
-          </form>
+          <div class="our-day-main">
+            <h1 id="home-title" tabindex="-1">恋爱第 <strong id="love-days-count" role="status" aria-live="polite">1</strong> 天</h1>
+          </div>
+          <div class="our-day-startline">
+            <span aria-hidden="true">♡</span>
+            <p>始于 <b id="love-start-display">2026.06.23 星期二</b></p>
+            <details class="our-day-date-settings">
+              <summary aria-label="修改在一起日期">修改</summary>
+              <form class="love-start-form" id="love-start-form" aria-label="设置在一起日期">
+                <label for="love-start-date">在一起的第一天</label>
+                <div>
+                  <input id="love-start-date" type="date" required>
+                  <button type="submit">保存</button>
+                </div>
+              </form>
+            </details>
+          </div>
         </section>
 
         <section class="home-weather-section" aria-labelledby="home-weather-title">
@@ -896,12 +904,12 @@
   <script src="https://static.cloudbase.net/cloudbase-js-sdk/3.7.0/cloudbase.full.js"></script>
   <script src="cloud-config.js?v=20260804-identity-mind-voice-v1"></script>
   <script src="backup.js?v=20260804-identity-mind-voice-v1"></script>
-  <script src="app.js?v=20260810-final-tabs-v3"></script>
-  <script src="pet-theme.js?v=20260810-final-tabs-v3"></script>
-  <script src="shared-sync.js?v=20260810-final-tabs-v3"></script>
-  <script src="shared-interactions.js?v=20260810-final-tabs-v3"></script>
-  <script src="home-chat.js?v=20260810-final-tabs-v3"></script>
-  <script src="cloud-sync.js?v=20260810-final-tabs-v3"></script>
-  <script src="pwa.js?v=20260810-final-tabs-v3"></script>
+  <script src="app.js?v=20260810-ourday-v1"></script>
+  <script src="pet-theme.js?v=20260810-ourday-v1"></script>
+  <script src="shared-sync.js?v=20260810-ourday-v1"></script>
+  <script src="shared-interactions.js?v=20260810-ourday-v1"></script>
+  <script src="home-chat.js?v=20260810-ourday-v1"></script>
+  <script src="cloud-sync.js?v=20260810-ourday-v1"></script>
+  <script src="pwa.js?v=20260810-ourday-v1"></script>
 </body>
 </html>
