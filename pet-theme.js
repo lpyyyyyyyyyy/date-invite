@@ -8,8 +8,6 @@
   const actor = root.querySelector("#lp-pet-actor");
   const sprite = root.querySelector("#lp-pet-sprite");
   const bubble = root.querySelector("#lp-pet-bubble");
-  const talkForm = root.querySelector("#lp-pet-talk-form");
-  const talkInput = root.querySelector("#lp-pet-talk-input");
   const dashboard = document.querySelector("#lp-pet-dashboard");
   const reminderDialog = document.querySelector("#lp-pet-reminder");
   const reminderForm = document.querySelector("#lp-pet-reminder-form");
@@ -42,7 +40,6 @@
   const ACTIONS = [
     { id: "pet-head", state: "pet", duration: 2000, gain: 3, mood: 2, label: "摸摸头", emoji: "🫳", feedback: ["谢谢刘平壹摸摸~", "子珊会一直陪着刘平壹。", "今天也辛苦啦，给你一个微笑。"] },
     { id: "feed-snack", state: "eat", duration: 2500, gain: 5, mood: 3, label: "喂点心", emoji: "🍪", feedback: ["谢谢刘平壹的点心！", "子珊会好好享用的~", "刘平壹挑的最好吃。"] },
-    { id: "chat-talk", state: "chat", duration: 2000, gain: 2, mood: 2, label: "和她聊天", emoji: "💬", feedback: ["刘平壹想聊什么呢？", "子珊在认真听。", "只要刘平壹需要，子珊都在。"] },
     { id: "sleep-time", state: "sleep", duration: 3000, gain: 1, mood: 1, label: "让她休息", emoji: "😴", feedback: ["晚安，刘平壹~", "子珊先休息一会儿，等你回来。", "明天也会准时陪着刘平壹。"] },
   ];
 
@@ -175,27 +172,6 @@
       if (active.id === "idle" && !root.hidden) setState("blink", { duration: STATES.blink.frames.length * STATES.blink.ms });
       scheduleBlink();
     }, 2000 + Math.random() * 4000);
-  }
-
-  function planContext() {
-    const plan = safeRead("cute-date-invite-v1", null);
-    if (!plan || typeof plan !== "object" || !plan.date) return null;
-    const date = new Date(`${plan.date}T${plan.time || "17:00"}:00`);
-    return Number.isNaN(date.getTime()) ? null : { ...plan, target: date };
-  }
-
-  function replyFor(text) {
-    const value = String(text || "").trim();
-    const plan = planContext();
-    if (/你好|嗨|子珊|宠物/.test(value)) return { state: "happy", text: "你好呀，刘平壹！子珊已经听见你啦。" };
-    if (/想你|喜欢|爱你|晚安/.test(value)) return { state: "happy", text: "这句话我收好啦，子珊会一直陪着你。" };
-    if (/约会|见面|什么时候/.test(value) && plan) {
-      const days = Math.max(0, Math.ceil((plan.target.getTime() - Date.now()) / 86400000));
-      return { state: "notify", text: `距离下一次见面还有 ${days} 天，${plan.activity || "一起约会"}，记得期待一下。` };
-    }
-    if (/吃|火锅|烤肉|菜单/.test(value)) return { state: "eat", text: `下次可以吃${plan?.menu || "你们喜欢的东西"}，子珊负责陪你吃到开心。` };
-    if (/玩|电影|散步|游乐园|活动/.test(value)) return { state: "happy", text: `那就安排${plan?.activity || "一个让你们都开心的活动"}吧！` };
-    return { state: "chat", text: `子珊听到了：“${value.slice(0, 38)}”，还想再和我说一点吗？` };
   }
 
   function triggerAction(id, customText = "") {
@@ -348,7 +324,6 @@
 
   function bindActions() {
     document.querySelectorAll("[data-lp-pet-action]").forEach((button) => { if (!button.dataset.lpPetBound) { button.dataset.lpPetBound = "true"; button.addEventListener("click", () => triggerAction(button.dataset.lpPetAction)); } });
-    talkForm?.addEventListener("submit", (event) => { event.preventDefault(); const text = talkInput?.value.trim(); if (!text) { talkInput?.focus(); return; } const reply = replyFor(text); if (talkInput) talkInput.value = ""; setState(reply.state, { duration: 2000, feedback: reply.text }); recordInteraction(ACTIONS.find((item) => item.id === "chat-talk")); });
   }
 
   function bindSettings() {
@@ -376,6 +351,25 @@
     window.addEventListener("resize", () => setPosition(petPosition.x, petPosition.y), { passive: true });
     window.addEventListener("shared-sync-applied", () => { if (!root.hidden) showBubble("子珊也看见你们空间更新啦。", 1800); });
     window.addEventListener("visibilitychange", () => { companionStartedAt = Date.now(); });
+    window.addEventListener("leo-emily-pet-activate", activatePet);
+    if ("MutationObserver" in window) {
+      const observer = new MutationObserver(() => { if (!root.hidden) activatePet(); });
+      observer.observe(root, { attributes: true, attributeFilter: ["hidden", "class"] });
+    }
+  }
+
+  function activatePet() {
+    if (root.hidden) return;
+    if (settings.clickThrough) {
+      settings.clickThrough = false;
+      saveSettings();
+    }
+    companionStartedAt = Date.now();
+    window.requestAnimationFrame(() => {
+      setPosition(petPosition.x, petPosition.y);
+      setState("happy", { duration: 900, feedback: "刘平壹，我在这里，点我就会回应啦。", feedbackDuration: 1800 });
+      actor.focus?.({ preventScroll: true });
+    });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, { once: true });

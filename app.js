@@ -681,7 +681,10 @@
       if (!futureLetterDate.value) futureLetterDate.value = getTomorrow();
       renderFutureLetters();
     }
-    if (screenNumber === 17 && catMascot) updateCatMascot();
+    if (screenNumber === 17) {
+      if (catMascot) updateCatMascot();
+      window.dispatchEvent(new CustomEvent("leo-emily-pet-activate"));
+    }
 
     window.scrollTo({ top: 0, behavior: "auto" });
     const heading = document.querySelector(`[data-screen="${screenNumber}"] h1`);
