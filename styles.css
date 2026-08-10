@@ -2721,8 +2721,7 @@ body {
 .lp-pet-header,
 .lp-pet-stage,
 .lp-pet-stats,
-.lp-pet-actions,
-.lp-pet-talk {
+.lp-pet-actions {
   width: min(100%, 760px);
   margin-inline: auto;
 }
@@ -3020,50 +3019,6 @@ body {
 .lp-pet-dashboard-launch span {
   font-size: 20px;
   line-height: 1;
-}
-
-.lp-pet-talk {
-  display: grid;
-  gap: 8px;
-  text-align: left;
-}
-
-.lp-pet-talk label {
-  color: #9c6479;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.lp-pet-talk div {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.lp-pet-talk input {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 50px;
-  padding: 0 14px;
-  border: 1px solid #efd3dc;
-  border-radius: 16px;
-  color: #5a3443;
-  background: rgba(255, 255, 255, .96);
-  font: inherit;
-}
-
-.lp-pet-talk input:focus {
-  border-color: #f0a2b8;
-  outline: 3px solid rgba(244, 95, 118, .12);
-  outline-offset: 1px;
-}
-
-.lp-pet-talk .primary-button {
-  width: auto;
-  min-width: 92px;
-  margin: 0;
-  padding-right: 18px;
-  padding-left: 18px;
 }
 
 .lp-pet-dialog {
@@ -3383,8 +3338,7 @@ body {
   .lp-pet-stage,
   .lp-pet-stats,
   .lp-pet-actions,
-  .lp-pet-extra-actions,
-  .lp-pet-talk {
+  .lp-pet-extra-actions {
     width: min(100%, 680px);
   }
 
@@ -3471,15 +3425,6 @@ body {
 
   .lp-pet-actions button {
     min-height: 72px;
-  }
-
-  .lp-pet-talk div {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .lp-pet-talk .primary-button {
-    width: 100%;
   }
 
   .lp-pet-dialog {
@@ -5724,5 +5669,158 @@ dialog::backdrop {
 @media (max-width: 390px) {
   .photo-library-categories {
     grid-template-columns: 1fr !important;
+  }
+}
+
+/* 2026-08-10 interaction comfort pass: prevent cramped labels and add softer motion */
+.home-feature-hero,
+.world-hero,
+.us-hero,
+.lp-pet-header {
+  min-height: auto !important;
+}
+
+.world-hero {
+  min-height: 116px !important;
+}
+
+.home-feature-hero p,
+.world-hero p,
+.us-hero p,
+.lp-pet-header p:not(.eyebrow) {
+  display: none !important;
+}
+
+button,
+.home-feature-card,
+.us-module,
+.lp-pet-actions button,
+.lp-pet-dashboard-launch,
+.repair-mood,
+.world-post footer button,
+.world-comment button,
+.photo-library-category-filter,
+.photo-library-photo {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.home-feature-card strong,
+.home-feature-card small,
+.us-module strong,
+.us-module small,
+.lp-pet-actions button b,
+.home-bottom-nav b {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.home-bottom-nav {
+  gap: 4px !important;
+  padding: 7px 6px !important;
+}
+
+.home-bottom-nav button {
+  min-height: 50px !important;
+  padding: 5px 1px !important;
+}
+
+.home-bottom-nav b {
+  white-space: normal !important;
+  text-overflow: clip !important;
+  line-height: 1.08 !important;
+  font-size: clamp(9px, 2.35vw, 11px) !important;
+}
+
+.home-feature-grid,
+.us-module-list,
+.lp-pet-actions {
+  gap: clamp(9px, 2.5vw, 13px) !important;
+}
+
+.lp-pet-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.lp-pet-actions button {
+  min-height: 86px !important;
+  padding: 12px 6px 10px !important;
+}
+
+.lp-pet-actions button b {
+  font-size: clamp(11px, 3vw, 13px) !important;
+  line-height: 1.18 !important;
+}
+
+.home-feature-card,
+.us-module,
+.lp-pet-actions button,
+.lp-pet-dashboard-launch,
+.world-photo-button,
+.world-post footer button,
+.photo-library-category-filter,
+.photo-library-photo {
+  transition:
+    transform 240ms cubic-bezier(.2, .9, .22, 1),
+    box-shadow 240ms cubic-bezier(.2, .9, .22, 1),
+    border-color 180ms ease,
+    background 220ms ease,
+    filter 220ms ease !important;
+}
+
+.home-feature-card:hover,
+.us-module:hover,
+.lp-pet-actions button:hover,
+.lp-pet-dashboard-launch:hover,
+.photo-library-category-filter:hover,
+.photo-library-photo:hover {
+  transform: translateY(-3px) scale(1.012);
+  filter: saturate(1.04);
+}
+
+.home-feature-card:active,
+.us-module:active,
+.lp-pet-actions button:active,
+.lp-pet-dashboard-launch:active,
+.world-photo-button:active,
+.world-post footer button:active,
+.photo-library-category-filter:active,
+.photo-library-photo:active {
+  transform: translateY(1px) scale(.982) !important;
+}
+
+.home-tab-panel.is-home-tab-active > * {
+  animation: panel-item-rise 360ms cubic-bezier(.2, .9, .22, 1) both;
+}
+
+.home-tab-panel.is-home-tab-active > *:nth-child(2) { animation-delay: 35ms; }
+.home-tab-panel.is-home-tab-active > *:nth-child(3) { animation-delay: 70ms; }
+.home-tab-panel.is-home-tab-active > *:nth-child(4) { animation-delay: 105ms; }
+
+@keyframes panel-item-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 380px) {
+  .home-feature-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .lp-pet-actions {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .lp-pet-actions button:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-tab-panel.is-home-tab-active,
+  .screen.is-active,
+  .home-tab-panel.is-home-tab-active > * {
+    animation: none !important;
   }
 }
