@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" href="apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=20260810-album-only-v1">
+  <link rel="stylesheet" href="styles.css?v=20260810-clean-tabs-v1">
 </head>
 <body>
   <div class="ambient" aria-hidden="true">
@@ -62,7 +62,7 @@
         </section>
 
         <section class="home-weather-section" aria-labelledby="home-weather-title">
-          <div class="home-section-heading"><h2 id="home-weather-title">三座城市的天气</h2><button type="button" id="weather-refresh">刷新</button></div>
+          <div class="home-section-heading"><h2 id="home-weather-title">我们生活的城市</h2><button type="button" id="weather-refresh">刷新</button></div>
           <div class="weather-grid" id="weather-grid" aria-live="polite">
             <article class="weather-card" data-weather-city="shanghai"><span>上海</span><strong>加载中</strong><small>正在看天气</small></article>
             <article class="weather-card" data-weather-city="toronto"><span>多伦多</span><strong>加载中</strong><small>正在看天气</small></article>
@@ -71,11 +71,11 @@
         </section>
 
         <section class="couple-calendar-section" aria-labelledby="couple-calendar-title">
-          <div class="home-section-heading"><h2 id="couple-calendar-title">下次情侣节日</h2><button class="anniversary-open" type="button">全部日子</button></div>
+          <div class="home-section-heading"><h2 id="couple-calendar-title">快到的节日</h2><button class="anniversary-open" type="button">全部日子</button></div>
           <div class="festival-countdown-card" id="festival-countdown-card" role="status" aria-live="polite">
-            <span>下一站</span><strong>正在计算</strong><small>会自动选择最近的情侣节日</small>
+            <span>下一站</span><strong>正在计算</strong><small>会自动选择最近的节日</small>
           </div>
-          <div class="festival-list" id="festival-list" aria-label="情侣节日倒计时"></div>
+          <div class="festival-list" id="festival-list" aria-label="快到的节日倒计时"></div>
         </section>
 
         <section class="home-countdown-summary home-countdown-lower" aria-labelledby="home-countdown-label">
@@ -89,8 +89,7 @@
           <header class="home-chat-header">
             <div class="couple-avatars" aria-hidden="true"><span>蔡</span><span>刘</span></div>
             <div class="home-chat-person">
-              <p class="eyebrow">CHAT</p>
-              <h2 id="chat-tab-title">只属于你们的聊天</h2>
+              <h2 id="chat-tab-title" class="sr-only">聊天</h2>
               <p id="home-chat-status" role="status" aria-live="polite">我们的聊天，正在慢慢变成回忆。</p>
             </div>
             <span class="home-chat-online" id="home-chat-presence"><i aria-hidden="true"></i>一起在线</span>
@@ -118,8 +117,7 @@
       <section class="home-tab-panel world-panel" data-home-tab-panel="world" aria-labelledby="world-title" hidden>
         <header class="world-hero">
           <div>
-            <p class="eyebrow">ONLY OURS</p>
-            <h2 id="world-title">我们的世界</h2>
+            <h2 id="world-title" class="sr-only">我们的世界</h2>
             <p>只与你分享的生活碎片。</p>
           </div>
         </header>
@@ -138,8 +136,7 @@
 
       <section class="home-tab-panel home-feature-panel" data-home-tab-panel="theme" aria-labelledby="home-list-title" hidden>
         <div class="home-feature-hero home-list-hero">
-          <p class="eyebrow">TOGETHER LIST</p>
-          <h2 id="home-list-title">目标</h2>
+          <h2 id="home-list-title" class="sr-only">目标</h2>
           <p>蔡子珊和刘平壹要一起完成的一百件小事。</p>
         </div>
         <div class="home-feature-grid">
@@ -149,8 +146,7 @@
 
       <section class="home-tab-panel home-feature-panel" data-home-tab-panel="game" aria-labelledby="home-game-title" hidden>
         <div class="home-feature-hero home-game-hero">
-          <p class="eyebrow">PLAY ROOM</p>
-          <h2 id="home-game-title">小游戏</h2>
+          <h2 id="home-game-title" class="sr-only">小游戏</h2>
           <p>真心话、大话骰子和宠物都放在这里。</p>
         </div>
         <div class="home-feature-grid">
@@ -162,8 +158,7 @@
 
       <section class="home-tab-panel us-panel" data-home-tab-panel="us" aria-labelledby="home-us-title" hidden>
         <header class="us-hero">
-          <p class="eyebrow">SECRET GARDEN</p>
-          <h2 id="home-us-title">蔡子珊和刘平壹</h2>
+          <h2 id="home-us-title" class="sr-only">我们</h2>
           <strong>两个人已连接 ♥</strong>
           <p>正在共享同一个秘密花园。</p>
         </header>
@@ -899,12 +894,12 @@
   <script src="https://static.cloudbase.net/cloudbase-js-sdk/3.7.0/cloudbase.full.js"></script>
   <script src="cloud-config.js?v=20260804-identity-mind-voice-v1"></script>
   <script src="backup.js?v=20260804-identity-mind-voice-v1"></script>
-  <script src="app.js?v=20260810-album-only-v1"></script>
-  <script src="pet-theme.js?v=20260810-album-only-v1"></script>
-  <script src="shared-sync.js?v=20260810-album-only-v1"></script>
-  <script src="shared-interactions.js?v=20260810-album-only-v1"></script>
-  <script src="home-chat.js?v=20260810-album-only-v1"></script>
-  <script src="cloud-sync.js?v=20260810-album-only-v1"></script>
-  <script src="pwa.js?v=20260810-album-only-v1"></script>
+  <script src="app.js?v=20260810-clean-tabs-v1"></script>
+  <script src="pet-theme.js?v=20260810-clean-tabs-v1"></script>
+  <script src="shared-sync.js?v=20260810-clean-tabs-v1"></script>
+  <script src="shared-interactions.js?v=20260810-clean-tabs-v1"></script>
+  <script src="home-chat.js?v=20260810-clean-tabs-v1"></script>
+  <script src="cloud-sync.js?v=20260810-clean-tabs-v1"></script>
+  <script src="pwa.js?v=20260810-clean-tabs-v1"></script>
 </body>
 </html>
