@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" href="apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=20260808-lp-pet-v1">
+  <link rel="stylesheet" href="styles.css?v=20260810-lp-pet-menu-v3">
 </head>
 <body>
   <div class="ambient" aria-hidden="true">
@@ -538,7 +538,6 @@
           <h1 id="lp-pet-title" tabindex="-1">刘平壹的专属宠物</h1>
           <p>她会像电脑桌面上一样陪着你。轻触会回应，按住可以拖动。</p>
         </div>
-        <button class="lp-pet-more" id="lp-pet-more" type="button" aria-label="打开宠物菜单" aria-expanded="false">⋯</button>
       </header>
 
       <div class="lp-pet-stage" id="lp-pet-stage" tabindex="0" role="application" aria-label="刘平壹的专属宠物互动区域">
@@ -566,18 +565,15 @@
         <button type="button" data-lp-pet-action="sleep-time"><span aria-hidden="true">😴</span><b>让她休息</b></button>
       </div>
 
+      <div class="lp-pet-extra-actions">
+        <button type="button" class="lp-pet-foot-launch" data-lp-pet-action="show-foot"><span aria-hidden="true">🦶</span><b>看看脚</b></button>
+        <button type="button" class="lp-pet-dashboard-launch" data-lp-pet-open="dashboard"><span aria-hidden="true">🏠</span><b>刘平壹的小屋</b></button>
+      </div>
+
       <form class="lp-pet-talk" id="lp-pet-talk-form" aria-label="和宠物聊天">
         <label for="lp-pet-talk-input">和子珊说句话</label>
         <div><input id="lp-pet-talk-input" type="text" maxlength="80" autocomplete="off" placeholder="比如：下次约会想吃什么？"><button class="primary-button coral-button" type="submit">发送</button></div>
       </form>
-
-      <nav class="lp-pet-context-menu" id="lp-pet-context-menu" hidden aria-label="宠物菜单">
-        <button type="button" data-lp-pet-menu="reminder">⏰ 添加提醒</button>
-        <button type="button" data-lp-pet-menu="dashboard">🏠 刘平壹的小屋</button>
-        <button type="button" data-lp-pet-menu="snap">📌 贴到最近的边</button>
-        <button type="button" data-lp-pet-menu="click-through">🖱️ <span>开启鼠标穿透</span></button>
-        <button type="button" data-lp-pet-menu="hide">🙈 隐藏宠物</button>
-      </nav>
     </section>
 
     <section class="screen reconcile-screen" data-screen="18" aria-labelledby="step-18-title" hidden>
@@ -644,7 +640,7 @@
       <button type="button" data-lp-pet-scale="0.65">小</button><button type="button" data-lp-pet-scale="0.8" aria-pressed="true">标准</button><button type="button" data-lp-pet-scale="1">大</button><button type="button" data-lp-pet-scale="1.2">超大</button>
     </div>
     <div class="lp-pet-dashboard-reminders">
-      <div><h3>提醒</h3><button type="button" class="secondary-button" data-lp-pet-menu="reminder">添加提醒</button></div>
+      <div><h3>提醒</h3><button type="button" class="secondary-button" data-lp-pet-open="reminder">添加提醒</button></div>
       <div id="lp-pet-reminder-list" aria-live="polite"></div>
     </div>
   </dialog>
@@ -879,8 +875,8 @@
   <script src="https://static.cloudbase.net/cloudbase-js-sdk/3.7.0/cloudbase.full.js"></script>
   <script src="cloud-config.js?v=20260804-identity-mind-voice-v1"></script>
   <script src="backup.js?v=20260804-identity-mind-voice-v1"></script>
-  <script src="app.js?v=20260808-lp-pet-v1"></script>
-  <script src="pet-theme.js?v=20260808-lp-pet-v1"></script>
+  <script src="app.js?v=20260810-lp-pet-menu-v3"></script>
+  <script src="pet-theme.js?v=20260810-lp-pet-menu-v3"></script>
   <script src="shared-sync.js?v=20260804-identity-mind-voice-v1"></script>
   <script src="shared-interactions.js?v=20260804-identity-mind-voice-v1"></script>
   <script src="home-chat.js?v=20260804-identity-mind-voice-v1"></script>

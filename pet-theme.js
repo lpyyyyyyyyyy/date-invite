@@ -8,8 +8,6 @@
   const actor = root.querySelector("#lp-pet-actor");
   const sprite = root.querySelector("#lp-pet-sprite");
   const bubble = root.querySelector("#lp-pet-bubble");
-  const menu = root.querySelector("#lp-pet-context-menu");
-  const more = root.querySelector("#lp-pet-more");
   const talkForm = root.querySelector("#lp-pet-talk-form");
   const talkInput = root.querySelector("#lp-pet-talk-input");
   const dashboard = document.querySelector("#lp-pet-dashboard");
@@ -31,6 +29,7 @@
     idle: { frames: ["idle-01.png", "idle-02.png", "idle-03.png", "idle-04.png"], ms: 900, loop: true },
     blink: { frames: ["blink-01.png", "blink-02.png", "blink-03.png", "blink-04.png", "blink-05.png"], ms: 80 },
     happy: { frames: ["happy-01.png", "happy-02.png", "happy-03.png", "happy-04.png", "happy-05.png"], ms: 260 },
+    "foot-wave": { frames: ["idle-01.png", "happy-01.png", "happy-02.png", "happy-03.png", "happy-02.png", "happy-01.png"], ms: 260, loop: true },
     notify: { frames: ["notify-01.png", "notify-02.png", "notify-03.png", "notify-04.png", "notify-05.png"], ms: 120 },
     peek: { frames: ["peek-01.png", "peek-02.png", "peek-03.png", "peek-04.png", "peek-05.png"], ms: 120 },
     pet: { frames: ["pet-01.png", "pet-02.png", "pet-03.png", "pet-04.png", "pet-05.png"], ms: 150, loop: true },
@@ -46,6 +45,7 @@
     { id: "feed-snack", state: "eat", duration: 2500, gain: 5, mood: 3, label: "喂点心", emoji: "🍪", feedback: ["谢谢刘平壹的点心！", "子珊会好好享用的~", "刘平壹挑的最好吃。"] },
     { id: "chat-talk", state: "chat", duration: 2000, gain: 2, mood: 2, label: "和她聊天", emoji: "💬", feedback: ["刘平壹想聊什么呢？", "子珊在认真听。", "只要刘平壹需要，子珊都在。"] },
     { id: "sleep-time", state: "sleep", duration: 3000, gain: 1, mood: 1, label: "让她休息", emoji: "😴", feedback: ["晚安，刘平壹~", "子珊先休息一会儿，等你回来。", "明天也会准时陪着刘平壹。"] },
+    { id: "show-foot", state: "foot-wave", duration: 5000, gain: 2, mood: 2, label: "看看脚", emoji: "🦶", feedback: ["她有点害羞地抬起脚尖：只看一下下哦。", "她脸红了一下，小声说：不要一直盯着啦。", "她轻轻绷了绷脚尖，又害羞地放回去了。"] },
   ];
 
   const fallbackStats = { affection: 0, mood: 80, todayInteractions: 0, totalCompanionMs: 0, lastInteractionDate: TODAY() };
@@ -71,9 +71,9 @@
   let frameUrls = new Map();
   let blinkTimer = null;
   let bubbleTimer = null;
+  let footActionTimer = null;
   let pointer = null;
   let suppressTapUntil = 0;
-  let lastMenuPoint = { x: 12, y: 12 };
   let petPosition = { x: 50, y: 56 };
 
   function frameUrl(file) {
@@ -122,8 +122,6 @@
     top?.setAttribute("aria-checked", String(Boolean(settings.alwaysOnTop)));
     through?.setAttribute("aria-checked", String(Boolean(settings.clickThrough)));
     root.classList.toggle("lp-pet-click-through", Boolean(settings.clickThrough));
-    const throughLabel = menu?.querySelector('[data-lp-pet-menu="click-through"] span');
-    if (throughLabel) throughLabel.textContent = settings.clickThrough ? "关闭鼠标穿透" : "开启鼠标穿透";
     document.querySelectorAll("[data-lp-pet-scale]").forEach((button) => button.setAttribute("aria-pressed", String(Math.abs(Number(button.dataset.lpPetScale) - Number(settings.scale)) < 0.01)));
   }
 
@@ -207,6 +205,9 @@
     const action = ACTIONS.find((item) => item.id === id);
     if (!action || root.classList.contains("lp-pet-click-through")) return;
     recordInteraction(action);
+    if (footActionTimer) clearTimeout(footActionTimer);
+    actor.classList.toggle("is-foot-wave", action.id === "show-foot");
+    if (action.id === "show-foot") footActionTimer = window.setTimeout(() => actor.classList.remove("is-foot-wave"), action.duration);
     setState(action.state, { duration: action.duration, feedback: customText || randomItem(action.feedback) });
     document.querySelectorAll("[data-lp-pet-action]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.lpPetAction === id)));
     window.setTimeout(() => document.querySelectorAll("[data-lp-pet-action]").forEach((button) => button.setAttribute("aria-pressed", "false")), action.duration);
@@ -242,25 +243,6 @@
     const nearest = choices.sort((a, b) => a.d - b.d)[0];
     setPosition(nearest.x, nearest.y);
     setState("peek", { duration: STATES.peek.frames.length * STATES.peek.ms, feedback: "贴到边边啦，刘平壹随时都能找到我。" });
-  }
-
-  function openMenu(x = lastMenuPoint.x, y = lastMenuPoint.y) {
-    if (!menu) return;
-    menu.hidden = false;
-    menu.setAttribute("aria-hidden", "false");
-    more?.setAttribute("aria-expanded", "true");
-    const rect = stage.getBoundingClientRect();
-    lastMenuPoint = { x: clamp(Number(x) || 12, 8, Math.max(8, rect.width - 170)), y: clamp(Number(y) || 12, 8, Math.max(8, rect.height - 190)) };
-    menu.style.left = `${lastMenuPoint.x}px`;
-    menu.style.top = `${lastMenuPoint.y}px`;
-    window.setTimeout(() => menu.querySelector("button")?.focus(), 0);
-  }
-
-  function closeMenu() {
-    if (!menu) return;
-    menu.hidden = true;
-    menu.setAttribute("aria-hidden", "true");
-    more?.setAttribute("aria-expanded", "false");
   }
 
   function showDialog(dialog) {
@@ -313,7 +295,6 @@
   }
 
   function openReminderDialog() {
-    closeMenu();
     if (reminderText) reminderText.value = "";
     if (reminderTime) reminderTime.value = localTimeValue();
     if (reminderStatus) reminderStatus.textContent = "";
@@ -338,7 +319,7 @@
       const rect = stage.getBoundingClientRect();
       pointer = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false, longPressed: false, startX: petPosition.x, startY: petPosition.y, stageRect: rect };
       actor.setPointerCapture?.(event.pointerId);
-      pointer.longPressTimer = window.setTimeout(() => { if (pointer && !pointer.moved) { pointer.longPressed = true; openMenu((event.clientX - rect.left) / rect.width * 100, (event.clientY - rect.top) / rect.height * 100); } }, 520);
+      pointer.longPressTimer = window.setTimeout(() => { if (pointer && !pointer.moved) pointer.longPressed = true; }, 520);
     });
     actor.addEventListener("pointermove", (event) => {
       if (!pointer || event.pointerId !== pointer.id) return;
@@ -362,24 +343,16 @@
   }
 
   function bindMenus() {
-    more?.addEventListener("click", () => menu?.hidden ? openMenu(12, 12) : closeMenu());
-    menu?.addEventListener("click", (event) => {
-      const button = event.target.closest("button[data-lp-pet-menu]"); if (!button) return;
-      const kind = button.dataset.lpPetMenu; closeMenu();
-      if (kind === "reminder") openReminderDialog();
-      else if (kind === "dashboard") { renderStats(); renderReminders(); showDialog(dashboard); }
-      else if (kind === "snap") snapToEdge();
-      else if (kind === "hide") root.querySelector(".back-button")?.click();
-      else if (kind === "click-through") { settings.clickThrough = !settings.clickThrough; saveSettings(); }
-    });
-    stage.addEventListener("contextmenu", (event) => { event.preventDefault(); if (!root.classList.contains("lp-pet-click-through")) { const rect = stage.getBoundingClientRect(); openMenu((event.clientX - rect.left) / rect.width * 100, (event.clientY - rect.top) / rect.height * 100); } });
-    document.addEventListener("pointerdown", (event) => { if (!menu?.hidden && !menu.contains(event.target) && event.target !== more) closeMenu(); });
     document.querySelectorAll("[data-lp-pet-close]").forEach((button) => button.addEventListener("click", () => { const kind = button.dataset.lpPetClose; closeDialog(kind === "dashboard" ? dashboard : reminderDialog); }));
     [dashboard, reminderDialog].forEach((dialog) => dialog?.addEventListener("cancel", () => closeDialog(dialog)));
+    root.querySelectorAll("[data-lp-pet-open]").forEach((button) => button.addEventListener("click", () => {
+      const kind = button.dataset.lpPetOpen;
+      if (kind === "dashboard") { renderStats(); renderReminders(); showDialog(dashboard); }
+      if (kind === "reminder") openReminderDialog();
+    }));
   }
 
   function bindActions() {
-    root.querySelectorAll("[data-lp-pet-action]").forEach((button) => button.addEventListener("click", () => triggerAction(button.dataset.lpPetAction)));
     document.querySelectorAll("[data-lp-pet-action]").forEach((button) => { if (!button.dataset.lpPetBound) { button.dataset.lpPetBound = "true"; button.addEventListener("click", () => triggerAction(button.dataset.lpPetAction)); } });
     talkForm?.addEventListener("submit", (event) => { event.preventDefault(); const text = talkInput?.value.trim(); if (!text) { talkInput?.focus(); return; } const reply = replyFor(text); if (talkInput) talkInput.value = ""; setState(reply.state, { duration: 2000, feedback: reply.text }); recordInteraction(ACTIONS.find((item) => item.id === "chat-talk")); });
   }

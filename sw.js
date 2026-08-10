@@ -1,10 +1,13 @@
-const CACHE_NAME = "leo-emily-runtime-v25-identity-mind-voice-pet";
+const CACHE_NAME = "leo-emily-runtime-v26-pet-menu-polish";
 const REMINDER_DB = "leo-emily-reminders-v1";
 const REMINDER_STORE = "settings";
 const OFFLINE_ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
+  "./styles.css?v=20260810-lp-pet-menu-v3",
+  "./styles.css?v=20260810-lp-pet-menu-v2",
+  "./styles.css?v=20260810-lp-pet-menu-v1",
   "./styles.css?v=20260808-lp-pet-v1",
   "./styles.css?v=20260804-identity-mind-voice-v1",
   "./backup.js",
@@ -12,6 +15,9 @@ const OFFLINE_ASSETS = [
   "./backup.js?v=20260803-cloud-sync-v2",
   "./backup.js?v=20260803-cloud-sync-v3",
   "./app.js",
+  "./app.js?v=20260810-lp-pet-menu-v3",
+  "./app.js?v=20260810-lp-pet-menu-v2",
+  "./app.js?v=20260810-lp-pet-menu-v1",
   "./app.js?v=20260808-lp-pet-v1",
   "./app.js?v=20260804-identity-mind-voice-v1",
   "./app.js?v=20260803-cloud-sync-v2",
@@ -53,6 +59,9 @@ const OFFLINE_ASSETS = [
   "./icon-192.png",
   "./icon-512.png",
   "./pet-theme.js",
+  "./pet-theme.js?v=20260810-lp-pet-menu-v3",
+  "./pet-theme.js?v=20260810-lp-pet-menu-v2",
+  "./pet-theme.js?v=20260810-lp-pet-menu-v1",
   "./pet-theme.js?v=20260808-lp-pet-v1",
   "./pet-assets/blink-01.png",
   "./pet-assets/blink-02.png",
