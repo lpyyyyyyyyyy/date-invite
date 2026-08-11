@@ -1,4 +1,4 @@
-const CACHE_NAME = "leo-emily-runtime-v41-app-polish";
+const CACHE_NAME = "leo-emily-runtime-v45-borderless-calm";
 const REMINDER_DB = "leo-emily-reminders-v1";
 const REMINDER_STORE = "settings";
 const OFFLINE_ASSETS = [
@@ -17,6 +17,10 @@ const OFFLINE_ASSETS = [
   "./styles.css?v=20260810-fixed-room-v1",
   "./styles.css?v=20260810-pet-ready-v1",
   "./styles.css?v=20260810-app-polish-v1",
+  "./styles.css?v=20260811-quiet-premium-v1",
+  "./styles.css?v=20260811-dreamy-premium-v1",
+  "./styles.css?v=20260811-round-airy-v1",
+  "./styles.css?v=20260811-borderless-calm-v1",
   "./assets/our-day-bg.jpg",
   "./styles.css?v=20260810-home-six-v1",
   "./styles.css?v=20260810-world-v1",
