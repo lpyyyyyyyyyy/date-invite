@@ -187,6 +187,172 @@
   let diceCupPointerId = null;
   let diceCupStartY = 0;
 
+  function createSwipeGallery(options = {}) {
+    const stage = options.stage;
+    const track = options.track;
+    const slides = track ? [...track.querySelectorAll("[data-swipe-gallery-slide]")] : [];
+    if (!stage || !track || slides.length !== 3) return null;
+
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    const duration = reducedMotion ? 0 : 260;
+    let activeIndex = 0;
+    let activePointerId = null;
+    let startX = 0;
+    let startY = 0;
+    let lastX = 0;
+    let lastTime = 0;
+    let velocityX = 0;
+    let axis = "";
+    let animating = false;
+    let transitionTimer = null;
+
+    const count = () => Math.max(0, Number(options.getCount?.()) || 0);
+    const clampIndex = (value) => Math.max(0, Math.min(Math.max(0, count() - 1), Number(value) || 0));
+    const canMove = (step) => {
+      const next = activeIndex + step;
+      return next >= 0 && next < count();
+    };
+    const setOffset = (offset, animate = false) => {
+      track.style.transition = animate && duration
+        ? `transform ${duration}ms cubic-bezier(.2,.86,.24,1)`
+        : "none";
+      track.style.transform = `translate3d(calc(-33.333333% + ${Math.round(offset)}px), 0, 0)`;
+    };
+    const render = () => {
+      activeIndex = clampIndex(activeIndex);
+      options.render?.({ index: activeIndex, count: count(), slides });
+    };
+    const clearPointer = () => {
+      const pointerId = activePointerId;
+      if (pointerId !== null) {
+        try {
+          if (stage.hasPointerCapture?.(pointerId)) stage.releasePointerCapture(pointerId);
+        } catch (error) { /* capture may already be released */ }
+      }
+      activePointerId = null;
+      axis = "";
+      stage.classList.remove("is-dragging");
+    };
+    const settle = (step = 0) => {
+      if (transitionTimer) window.clearTimeout(transitionTimer);
+      animating = true;
+      if (!step || !canMove(step)) {
+        setOffset(0, true);
+        transitionTimer = window.setTimeout(() => {
+          transitionTimer = null;
+          track.style.transition = "none";
+          animating = false;
+        }, duration + 24);
+        return;
+      }
+      const width = Math.max(1, stage.getBoundingClientRect().width);
+      setOffset(step > 0 ? -width : width, true);
+      transitionTimer = window.setTimeout(() => {
+        transitionTimer = null;
+        activeIndex = clampIndex(activeIndex + step);
+        options.onIndexChange?.(activeIndex);
+        render();
+        setOffset(0, false);
+        track.getBoundingClientRect();
+        animating = false;
+      }, duration + 24);
+    };
+
+    const onPointerDown = (event) => {
+      if (animating || activePointerId !== null || event.isPrimary === false) return;
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      activePointerId = event.pointerId;
+      startX = lastX = event.clientX;
+      startY = event.clientY;
+      lastTime = performance.now();
+      velocityX = 0;
+      axis = "";
+      stage.classList.add("is-dragging");
+      try { stage.setPointerCapture(event.pointerId); } catch (error) { /* capture is optional */ }
+    };
+    const onPointerMove = (event) => {
+      if (event.pointerId !== activePointerId) return;
+      const deltaX = event.clientX - startX;
+      const deltaY = event.clientY - startY;
+      if (!axis) {
+        if (Math.hypot(deltaX, deltaY) < 7) return;
+        axis = Math.abs(deltaX) > Math.abs(deltaY) * 1.2 ? "x" : "y";
+        if (axis === "y") {
+          clearPointer();
+          setOffset(0, false);
+          return;
+        }
+      }
+      if (axis !== "x") return;
+      if (Math.abs(deltaY) > Math.abs(deltaX) * 1.35 && Math.abs(deltaY) > 22) {
+        clearPointer();
+        settle(0);
+        return;
+      }
+      event.preventDefault();
+      const now = performance.now();
+      const elapsed = Math.max(1, now - lastTime);
+      velocityX = (event.clientX - lastX) / elapsed;
+      lastX = event.clientX;
+      lastTime = now;
+      const step = deltaX < 0 ? 1 : -1;
+      const resisted = canMove(step) ? deltaX : deltaX * .28;
+      setOffset(resisted, false);
+    };
+    const onPointerEnd = (event) => {
+      if (event.pointerId !== activePointerId) return;
+      const deltaX = event.clientX - startX;
+      const horizontal = axis === "x";
+      const width = Math.max(1, stage.getBoundingClientRect().width);
+      const threshold = Math.max(52, width * .18);
+      const fastSwipe = Math.abs(velocityX) > .48 && Math.abs(deltaX) > 24;
+      const step = deltaX < 0 ? 1 : -1;
+      clearPointer();
+      if (horizontal && canMove(step) && (Math.abs(deltaX) >= threshold || fastSwipe)) settle(step);
+      else settle(0);
+    };
+    const onPointerCancel = (event) => {
+      if (event.pointerId !== activePointerId) return;
+      clearPointer();
+      settle(0);
+    };
+
+    stage.addEventListener("pointerdown", onPointerDown);
+    stage.addEventListener("pointermove", onPointerMove, { passive: false });
+    stage.addEventListener("pointerup", onPointerEnd);
+    stage.addEventListener("pointercancel", onPointerCancel);
+    stage.addEventListener("dragstart", (event) => event.preventDefault());
+    window.addEventListener("resize", () => {
+      if (!animating) setOffset(0, false);
+    }, { passive: true });
+
+    const api = {
+      setIndex(index) {
+        if (transitionTimer) window.clearTimeout(transitionTimer);
+        transitionTimer = null;
+        animating = false;
+        activeIndex = clampIndex(index);
+        options.onIndexChange?.(activeIndex);
+        render();
+        setOffset(0, false);
+      },
+      move(step) {
+        if (!animating) settle(step < 0 ? -1 : 1);
+      },
+      cancel() {
+        if (transitionTimer) window.clearTimeout(transitionTimer);
+        transitionTimer = null;
+        clearPointer();
+        animating = false;
+        setOffset(0, false);
+      }
+    };
+    api.setIndex(Number(options.initialIndex) || 0);
+    return api;
+  }
+
+  window.DateInviteSwipeGallery = { create: createSwipeGallery };
+
   function localDateString(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -607,6 +773,7 @@
       const observer = new ResizeObserver(scheduleDodgeRecalculation);
       observer.observe(actionZone);
     }
+    bindEdgeSwipeBack();
   }
 
   function bindHomeTabs() {
@@ -692,6 +859,138 @@
       ? document.querySelector('.home-bottom-nav [aria-current="page"]')
       : document.querySelector(`[data-screen="${screenNumber}"] h1`);
     requestAnimationFrame(() => focusTarget?.focus({ preventScroll: true }));
+  }
+
+  function bindEdgeSwipeBack() {
+    if (!("PointerEvent" in window)) return;
+
+    const ignoredSelector = [
+      "input", "textarea", "select", "button", "a", "label", "canvas", "audio", "video",
+      "[contenteditable]", "[role='slider']", ".world-image-lightbox", ".photo-library-lightbox",
+      ".dice-table", ".dice-cup", ".lp-pet-stage", ".lp-pet-actor", ".cat-mascot",
+      ".ld-note-presets", ".home-chat-media-preview"
+    ].join(",");
+    let gesture = null;
+    let settleTimer = null;
+
+    const visibleButton = (root, selector) => {
+      const button = root?.querySelector(selector);
+      return button && !button.hidden && button.getAttribute("aria-hidden") !== "true" ? button : null;
+    };
+    const resolveSwipeTarget = (eventTarget) => {
+      if (document.activeElement?.matches?.("input, textarea, select, [contenteditable]")) return null;
+      if (eventTarget?.closest?.(ignoredSelector)) return null;
+      if (document.querySelector(".world-image-lightbox[open], .photo-library-lightbox[open]")) return null;
+
+      const dialog = eventTarget?.closest?.("dialog[open]");
+      if (dialog?.matches?.("#photo-library-dialog")) {
+        return {
+          container: dialog,
+          button: visibleButton(dialog, ".photo-library-view-back") || visibleButton(dialog, ".photo-library-close")
+        };
+      }
+      if (dialog?.matches?.("#interactions-dialog")) return { container: dialog, button: visibleButton(dialog, "#interactions-close") };
+      if (dialog?.matches?.("#shared-dialog")) return { container: dialog, button: visibleButton(dialog, "#shared-close") };
+      if (dialog?.matches?.(".ld-dialog")) return { container: dialog, button: visibleButton(dialog, "[data-ld-close]") };
+      if (dialog?.matches?.("#lp-pet-reminder")) return { container: dialog, button: visibleButton(dialog, "[data-lp-pet-close='reminder']") };
+      if (dialog?.matches?.("#lp-pet-dashboard") && document.querySelector("#lp-pet-reminder[open]")) return null;
+      if (dialog?.matches?.("#lp-pet-dashboard")) return { container: dialog, button: visibleButton(dialog, "[data-lp-pet-close='dashboard']") };
+      if (dialog?.matches?.("#roulette-dialog")) return { container: dialog, button: visibleButton(dialog, "#roulette-close") };
+      if (dialog) return null;
+
+      if (document.querySelector("dialog[open]")) return null;
+      const screen = document.querySelector(".screen.is-active:not(.home-screen)");
+      if (!screen) return null;
+      return {
+        container: screen,
+        button: visibleButton(screen, ".back-button, .library-back, .memory-back")
+      };
+    };
+    const setTransform = (container, value, animate) => {
+      container.style.setProperty("will-change", "transform", "important");
+      container.style.setProperty(
+        "transition",
+        animate ? "transform 250ms cubic-bezier(.2,.86,.24,1), opacity 250ms ease" : "none",
+        "important"
+      );
+      container.style.setProperty("transform", `translate3d(${Math.round(value)}px,0,0)`, "important");
+      container.style.setProperty("opacity", String(Math.max(.72, 1 - value / Math.max(1, window.innerWidth) * .24)), "important");
+    };
+    const cleanup = (container) => {
+      ["will-change", "transition", "transform", "opacity"].forEach((property) => {
+        container?.style.removeProperty(property);
+      });
+      gesture = null;
+    };
+    const cancelGesture = () => {
+      if (!gesture) return;
+      const container = gesture.container;
+      setTransform(container, 0, true);
+      window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(() => cleanup(container), 270);
+    };
+
+    document.addEventListener("pointerdown", (event) => {
+      if (gesture || event.isPrimary === false || !["touch", "pen"].includes(event.pointerType)) return;
+      if (event.clientX > Math.max(28, window.innerWidth * .07)) return;
+      const target = resolveSwipeTarget(event.target);
+      if (!target?.container || !target.button) return;
+      gesture = {
+        pointerId: event.pointerId,
+        container: target.container,
+        button: target.button,
+        startX: event.clientX,
+        startY: event.clientY,
+        lastX: event.clientX,
+        lastTime: performance.now(),
+        velocityX: 0,
+        axis: ""
+      };
+    }, { passive: true });
+
+    document.addEventListener("pointermove", (event) => {
+      if (!gesture || event.pointerId !== gesture.pointerId) return;
+      const deltaX = Math.max(0, event.clientX - gesture.startX);
+      const deltaY = event.clientY - gesture.startY;
+      if (!gesture.axis) {
+        if (Math.hypot(deltaX, deltaY) < 8) return;
+        gesture.axis = deltaX > Math.abs(deltaY) * 1.2 ? "x" : "y";
+        if (gesture.axis === "y") {
+          cleanup(gesture.container);
+          return;
+        }
+      }
+      if (gesture.axis !== "x") return;
+      event.preventDefault();
+      const now = performance.now();
+      const elapsed = Math.max(1, now - gesture.lastTime);
+      gesture.velocityX = (event.clientX - gesture.lastX) / elapsed;
+      gesture.lastX = event.clientX;
+      gesture.lastTime = now;
+      setTransform(gesture.container, Math.min(window.innerWidth, deltaX), false);
+    }, { passive: false });
+
+    const finishGesture = (event) => {
+      if (!gesture || event.pointerId !== gesture.pointerId) return;
+      const active = gesture;
+      const deltaX = Math.max(0, event.clientX - active.startX);
+      const shouldReturn = active.axis === "x" && (
+        deltaX >= Math.max(72, window.innerWidth * .22) ||
+        (deltaX > 34 && active.velocityX > .55)
+      );
+      if (!shouldReturn) {
+        cancelGesture();
+        return;
+      }
+      setTransform(active.container, window.innerWidth, true);
+      window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(() => {
+        cleanup(active.container);
+        active.button.click();
+      }, 250);
+    };
+    document.addEventListener("pointerup", finishGesture, { passive: true });
+    document.addEventListener("pointercancel", cancelGesture, { passive: true });
   }
 
   function handleNoClick() {

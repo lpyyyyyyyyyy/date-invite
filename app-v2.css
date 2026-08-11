@@ -1924,3 +1924,187 @@ button:not(:disabled):active {
     animation: none !important;
   }
 }
+
+/* Touch-first navigation and photo galleries. */
+.screen:not(.home-screen),
+.photo-library-dialog,
+.interactions-dialog,
+.shared-dialog,
+.ld-dialog,
+.lp-pet-dialog,
+.roulette-dialog {
+  touch-action: pan-y pinch-zoom;
+}
+
+.swipe-gallery-stage {
+  position: relative;
+  width: 100%;
+  height: min(72dvh, 700px);
+  overflow: hidden;
+  touch-action: pan-y pinch-zoom;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+  background: #100d10;
+}
+
+.swipe-gallery-stage.is-dragging { cursor: grabbing; }
+
+.swipe-gallery-track {
+  display: flex;
+  width: 300%;
+  height: 100%;
+  align-items: stretch;
+  transform: translate3d(-33.333333%, 0, 0);
+  will-change: transform;
+}
+
+.swipe-gallery-track > img {
+  display: block !important;
+  flex: 0 0 33.333333%;
+  width: 33.333333% !important;
+  height: 100% !important;
+  max-height: none !important;
+  object-fit: contain;
+  border-radius: 0 !important;
+  background: #100d10 !important;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.swipe-gallery-track > img.is-empty { opacity: 0; }
+.world-image-stage { height: min(82dvh, 760px); }
+#photo-library-lightbox-stage { height: min(64dvh, 620px); }
+
+.world-image-nav:disabled,
+.photo-library-lightbox-nav:disabled {
+  opacity: .22 !important;
+  pointer-events: none;
+}
+
+.world-image-close,
+.photo-library-lightbox-close {
+  top: calc(10px + env(safe-area-inset-top)) !important;
+  right: calc(10px + env(safe-area-inset-right)) !important;
+  width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  z-index: 6 !important;
+}
+
+[data-world-preview-counter] {
+  bottom: calc(12px + env(safe-area-inset-bottom)) !important;
+}
+
+/* Keep the whole chat surface inside the visual viewport while the keyboard animates. */
+html.is-chat-keyboard-open,
+body.is-chat-keyboard-open {
+  height: var(--app-viewport-height, 100dvh) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+html.is-chat-keyboard-open .app-shell {
+  position: fixed !important;
+  z-index: 100;
+  top: var(--app-viewport-offset-top, 0px) !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: var(--app-viewport-center-x, 50%) !important;
+  width: min(var(--app-viewport-width, 100vw), 560px) !important;
+  height: var(--app-viewport-height, 100dvh) !important;
+  min-height: 0 !important;
+  max-height: var(--app-viewport-height, 100dvh) !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  transform: translateX(-50%) !important;
+}
+
+.home-screen.is-chat-keyboard {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  animation: none !important;
+}
+
+.home-screen.is-chat-keyboard .chat-tab-panel,
+.home-screen.is-chat-keyboard .home-chat-panel {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+.home-screen.is-chat-keyboard .home-chat-messages {
+  min-height: 0 !important;
+  scroll-padding-bottom: 18px;
+}
+
+.home-screen.is-chat-keyboard .home-chat-time-hint,
+.home-screen.is-chat-keyboard .home-chat-next-meet {
+  display: none !important;
+}
+
+.home-screen.is-chat-keyboard .home-chat-header {
+  grid-row: 1 !important;
+  min-height: 0 !important;
+  padding: 6px 10px !important;
+}
+
+.home-screen.is-chat-keyboard .home-chat-time-hint { grid-row: 2 !important; }
+
+.home-screen.is-chat-keyboard .home-chat-messages { grid-row: 3 !important; }
+
+.home-screen.is-chat-keyboard .home-chat-composer {
+  grid-row: 4 !important;
+  min-height: calc(64px + env(safe-area-inset-bottom)) !important;
+}
+
+@keyframes v2-route-in {
+  from { opacity: .18; transform: translate3d(24px, 0, 0) scale(.995); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+.screen:not(.home-screen).is-active {
+  animation: v2-route-in 360ms cubic-bezier(.2,.86,.24,1) both !important;
+}
+
+@media (pointer: coarse) {
+  .world-image-lightbox.has-swipe-gallery .world-image-nav,
+  .photo-library-lightbox.has-swipe-gallery .photo-library-lightbox-nav {
+    display: none !important;
+  }
+}
+
+@media (pointer: coarse), (max-width: 699px) {
+
+  .world-image-lightbox {
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-width: none !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .world-image-stage { height: 100dvh; }
+
+  .photo-library-lightbox {
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-width: none !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    overflow-y: auto !important;
+    border-radius: 0 !important;
+  }
+
+  #photo-library-lightbox-stage {
+    height: max(280px, calc(100dvh - 210px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swipe-gallery-track { transition-duration: 1ms !important; }
+  .screen:not(.home-screen).is-active { animation: none !important; }
+}

@@ -1,27 +1,27 @@
-const CACHE_NAME = "leo-emily-runtime-v48-no-next-meet";
+const CACHE_NAME = "leo-emily-runtime-v49-swipe-chat";
 const REMINDER_DB = "leo-emily-reminders-v1";
 const REMINDER_STORE = "settings";
 const CORE_ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=20260811-no-next-meet-v1",
-  "./app-v2.css?v=20260811-no-next-meet-v1",
-  "./long-distance.css?v=20260811-no-next-meet-v1",
+  "./styles.css?v=20260811-swipe-chat-v1",
+  "./app-v2.css?v=20260811-swipe-chat-v1",
+  "./long-distance.css?v=20260811-swipe-chat-v1",
   "./assets/our-day-bg.jpg",
-  "./backup.js?v=20260811-no-next-meet-v1",
-  "./app.js?v=20260811-no-next-meet-v1",
-  "./shared-sync.js?v=20260811-no-next-meet-v1",
-  "./shared-interactions.js?v=20260811-no-next-meet-v1",
-  "./home-chat.js?v=20260811-no-next-meet-v1",
-  "./cloud-config.js?v=20260811-no-next-meet-v1",
-  "./cloud-sync.js?v=20260811-no-next-meet-v1",
-  "./long-distance.js?v=20260811-no-next-meet-v1",
-  "./pwa.js?v=20260811-no-next-meet-v1",
+  "./backup.js?v=20260811-swipe-chat-v1",
+  "./app.js?v=20260811-swipe-chat-v1",
+  "./shared-sync.js?v=20260811-swipe-chat-v1",
+  "./shared-interactions.js?v=20260811-swipe-chat-v1",
+  "./home-chat.js?v=20260811-swipe-chat-v1",
+  "./cloud-config.js?v=20260811-swipe-chat-v1",
+  "./cloud-sync.js?v=20260811-swipe-chat-v1",
+  "./long-distance.js?v=20260811-swipe-chat-v1",
+  "./pwa.js?v=20260811-swipe-chat-v1",
   "./manifest.webmanifest",
   "./apple-touch-icon.png",
   "./icon-192.png",
   "./icon-512.png",
-  "./pet-theme.js?v=20260811-no-next-meet-v1",
+  "./pet-theme.js?v=20260811-swipe-chat-v1",
   "./pet-assets/idle-01.png",
 ];
 

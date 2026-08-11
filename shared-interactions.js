@@ -582,6 +582,7 @@
   let pendingMemoryPhotos = null;
   let activePhotoLibraryPhotoId = "";
   let activePhotoLibraryPhotoIds = [];
+  let photoLibraryGallery = null;
 
   function photoElement(id) { return document.getElementById(id); }
   function openPhotoDialog(dialog) {
@@ -731,27 +732,62 @@
     });
   }
 
+  function renderPhotoLibraryLightbox(index, slides = null) {
+    const state = readPhotoLibrary();
+    const safeIndex = Math.max(0, Math.min(Number(index) || 0, activePhotoLibraryPhotoIds.length - 1));
+    const photoId = activePhotoLibraryPhotoIds[safeIndex];
+    const photo = state.photos.find((entry) => entry.id === photoId);
+    if (!photo) return;
+    activePhotoLibraryPhotoId = photo.id;
+    const slideNodes = slides || [...(photoElement("photo-library-lightbox-track")?.querySelectorAll("[data-swipe-gallery-slide]") || [])];
+    [-1, 0, 1].forEach((offset, slideIndex) => {
+      const image = slideNodes[slideIndex];
+      const adjacentId = activePhotoLibraryPhotoIds[safeIndex + offset];
+      const adjacent = state.photos.find((entry) => entry.id === adjacentId);
+      if (!image) return;
+      image.classList.toggle("is-empty", !adjacent);
+      image.setAttribute("aria-hidden", String(offset !== 0 || !adjacent));
+      if (!adjacent) {
+        image.removeAttribute("src");
+        image.alt = "";
+        return;
+      }
+      if (image.src !== adjacent.imageData) image.src = adjacent.imageData;
+      image.alt = offset === 0 ? `${photoLibraryCategoryName(adjacent.categoryId, state)} · ${adjacent.sourceLabel}` : "";
+      image.decode?.().catch(() => undefined);
+    });
+    const title = photoElement("photo-library-lightbox-title");
+    const copy = photoElement("photo-library-lightbox-copy");
+    if (title) title.textContent = photoLibraryCategoryName(photo.categoryId, state);
+    if (copy) copy.textContent = photo.caption || photo.sourceLabel;
+    const previousButton = photoElement("photo-library-lightbox-prev");
+    const nextButton = photoElement("photo-library-lightbox-next");
+    if (previousButton) previousButton.disabled = safeIndex <= 0;
+    if (nextButton) nextButton.disabled = safeIndex >= activePhotoLibraryPhotoIds.length - 1;
+  }
+
   function openPhotoLibraryLightbox(id) {
     const state = readPhotoLibrary();
     const photo = state.photos.find((entry) => entry.id === id);
     if (!photo) return;
-    activePhotoLibraryPhotoId = photo.id;
     const idsInCategory = state.photos.filter((entry) => entry.categoryId === photo.categoryId).map((entry) => entry.id);
     activePhotoLibraryPhotoIds = idsInCategory.length ? idsInCategory : [photo.id];
-    const image = photoElement("photo-library-lightbox-image");
-    const title = photoElement("photo-library-lightbox-title");
-    const copy = photoElement("photo-library-lightbox-copy");
-    if (image) { image.src = photo.imageData; image.alt = `${photoLibraryCategoryName(photo.categoryId, state)} · ${photo.sourceLabel}`; }
-    if (title) title.textContent = photoLibraryCategoryName(photo.categoryId, state);
-    if (copy) copy.textContent = photo.caption || photo.sourceLabel;
+    const index = Math.max(0, activePhotoLibraryPhotoIds.indexOf(photo.id));
+    activePhotoLibraryPhotoId = photo.id;
+    if (photoLibraryGallery) photoLibraryGallery.setIndex(index);
+    else renderPhotoLibraryLightbox(index);
     openPhotoDialog(photoElement("photo-library-lightbox"));
   }
 
   function movePhotoLibraryLightbox(step) {
     if (!activePhotoLibraryPhotoIds.length || !activePhotoLibraryPhotoId) return;
+    if (photoLibraryGallery) {
+      photoLibraryGallery.move(step);
+      return;
+    }
     const current = Math.max(0, activePhotoLibraryPhotoIds.indexOf(activePhotoLibraryPhotoId));
-    const next = (current + step + activePhotoLibraryPhotoIds.length) % activePhotoLibraryPhotoIds.length;
-    openPhotoLibraryLightbox(activePhotoLibraryPhotoIds[next]);
+    const next = Math.max(0, Math.min(current + step, activePhotoLibraryPhotoIds.length - 1));
+    renderPhotoLibraryLightbox(next);
   }
 
   function captionActivePhotoLibraryPhoto() {
@@ -902,20 +938,14 @@
     photoElement("photo-library-lightbox-close")?.addEventListener("click", () => closePhotoDialog(lightbox));
     photoElement("photo-library-lightbox-prev")?.addEventListener("click", () => movePhotoLibraryLightbox(-1));
     photoElement("photo-library-lightbox-next")?.addEventListener("click", () => movePhotoLibraryLightbox(1));
-    let photoSwipeStart = null;
-    lightbox?.addEventListener("touchstart", (event) => {
-      const touch = event.touches?.[0];
-      if (touch) photoSwipeStart = { x: touch.clientX, y: touch.clientY };
-    }, { passive: true });
-    lightbox?.addEventListener("touchend", (event) => {
-      const touch = event.changedTouches?.[0];
-      if (!touch || !photoSwipeStart) return;
-      const deltaX = touch.clientX - photoSwipeStart.x;
-      const deltaY = touch.clientY - photoSwipeStart.y;
-      photoSwipeStart = null;
-      if (Math.abs(deltaX) < 52 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.2) return;
-      movePhotoLibraryLightbox(deltaX > 0 ? -1 : 1);
-    }, { passive: true });
+    photoLibraryGallery = window.DateInviteSwipeGallery?.create?.({
+      stage: photoElement("photo-library-lightbox-stage"),
+      track: photoElement("photo-library-lightbox-track"),
+      getCount: () => activePhotoLibraryPhotoIds.length,
+      render: ({ index, slides }) => renderPhotoLibraryLightbox(index, slides),
+      onIndexChange: (index) => { activePhotoLibraryPhotoId = activePhotoLibraryPhotoIds[index] || ""; }
+    }) || null;
+    lightbox?.classList.toggle("has-swipe-gallery", Boolean(photoLibraryGallery));
     photoElement("photo-library-caption")?.addEventListener("click", captionActivePhotoLibraryPhoto);
     lightbox?.addEventListener("keydown", (event) => {
       if (event.key === "ArrowLeft") movePhotoLibraryLightbox(-1);
@@ -933,7 +963,10 @@
         renderPhotoLibrary();
       }
     });
-    lightbox?.addEventListener("close", () => { activePhotoLibraryPhotoId = ""; });
+    lightbox?.addEventListener("close", () => {
+      photoLibraryGallery?.cancel?.();
+      activePhotoLibraryPhotoId = "";
+    });
 
     window.addEventListener("date-invite-memory-photos-added", (event) => showPhotoLibraryAsk(event.detail));
     window.addEventListener(PHOTO_LIBRARY_EVENT, () => { if (libraryDialog?.open) renderPhotoLibrary(); });

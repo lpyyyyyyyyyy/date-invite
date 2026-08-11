@@ -26,6 +26,7 @@
   let activeChatActionMessageId = "";
   let worldPreviewPhotos = [];
   let worldPreviewIndex = 0;
+  let worldPreviewGallery = null;
   let selectedPolaroidFrame = "";
   let voiceRecorder = null;
   let voiceStartedAt = 0;
@@ -895,6 +896,8 @@
       return;
     }
     if (currentPanel) homeTabScroll.set(activeHomeTab, currentPanel.scrollTop || 0);
+    const chatInput = byId("home-chat-input");
+    if (selected !== "chat" && document.activeElement === chatInput) chatInput.blur();
     activeHomeTab = selected;
     document.querySelector(".home-screen")?.setAttribute("data-home-active-tab", selected);
     document.querySelectorAll("[data-home-tab-panel]").forEach((panel) => {
@@ -911,7 +914,10 @@
     if (selected === "world") renderWorldPosts();
     if (selected === "today") renderLatestWorldCard();
     const nextPanel = document.querySelector(`[data-home-tab-panel="${selected}"]`);
-    requestAnimationFrame(() => { if (nextPanel) nextPanel.scrollTop = homeTabScroll.get(selected) || 0; });
+    requestAnimationFrame(() => {
+      if (nextPanel) nextPanel.scrollTop = homeTabScroll.get(selected) || 0;
+      window.dispatchEvent(new Event("date-invite-chat-viewport-sync"));
+    });
     homeTabsReady = true;
   }
 
@@ -944,21 +950,46 @@
     try { window.DateInviteBackups?.capture?.(`我们的世界-${action}`); } catch (error) { /* 备份失败不影响发布 */ }
   }
 
-  function updateWorldImagePreview() {
+  function renderWorldImagePreview(index = worldPreviewIndex, slides = null) {
     const dialog = byId("world-image-lightbox");
-    const image = dialog?.querySelector("img");
     const counter = dialog?.querySelector("[data-world-preview-counter]");
-    const current = worldPreviewPhotos[worldPreviewIndex];
-    if (!dialog || !image || !current) return;
-    image.src = current.source;
-    image.alt = current.title;
+    const previousButton = dialog?.querySelector(".world-image-nav.is-prev");
+    const nextButton = dialog?.querySelector(".world-image-nav.is-next");
+    const slideNodes = slides || [...(dialog?.querySelectorAll("[data-swipe-gallery-slide]") || [])];
+    if (!dialog || !worldPreviewPhotos.length || slideNodes.length !== 3) return;
+    worldPreviewIndex = Math.max(0, Math.min(Number(index) || 0, worldPreviewPhotos.length - 1));
+    [-1, 0, 1].forEach((offset, slideIndex) => {
+      const image = slideNodes[slideIndex];
+      const item = worldPreviewPhotos[worldPreviewIndex + offset];
+      image.classList.toggle("is-empty", !item);
+      image.setAttribute("aria-hidden", String(offset !== 0 || !item));
+      if (!item) {
+        image.removeAttribute("src");
+        image.alt = "";
+        return;
+      }
+      if (image.src !== item.source) image.src = item.source;
+      image.alt = offset === 0 ? item.title : "";
+      image.decode?.().catch(() => undefined);
+    });
     if (counter) counter.textContent = `${worldPreviewIndex + 1} / ${worldPreviewPhotos.length}`;
+    if (previousButton) previousButton.disabled = worldPreviewIndex <= 0;
+    if (nextButton) nextButton.disabled = worldPreviewIndex >= worldPreviewPhotos.length - 1;
+  }
+
+  function updateWorldImagePreview() {
+    if (worldPreviewGallery) worldPreviewGallery.setIndex(worldPreviewIndex);
+    else renderWorldImagePreview();
   }
 
   function moveWorldImagePreview(step) {
     if (!worldPreviewPhotos.length) return;
-    worldPreviewIndex = (worldPreviewIndex + step + worldPreviewPhotos.length) % worldPreviewPhotos.length;
-    updateWorldImagePreview();
+    if (worldPreviewGallery) {
+      worldPreviewGallery.move(step);
+      return;
+    }
+    worldPreviewIndex = Math.max(0, Math.min(worldPreviewIndex + step, worldPreviewPhotos.length - 1));
+    renderWorldImagePreview();
   }
 
   function openImagePreview(source, title = "原图预览", group = null, index = 0) {
@@ -972,31 +1003,32 @@
         <button class="world-image-close" type="button" aria-label="关闭照片预览">×</button>
         <button class="world-image-nav is-prev" type="button" aria-label="上一张照片">‹</button>
         <button class="world-image-nav is-next" type="button" aria-label="下一张照片">›</button>
-        <img alt="照片预览">
+        <div class="swipe-gallery-stage world-image-stage">
+          <div class="swipe-gallery-track">
+            <img data-swipe-gallery-slide="previous" alt="" aria-hidden="true">
+            <img data-swipe-gallery-slide="current" alt="照片预览">
+            <img data-swipe-gallery-slide="next" alt="" aria-hidden="true">
+          </div>
+        </div>
         <span data-world-preview-counter>1 / 1</span>`;
       document.body.append(dialog);
       dialog.querySelector(".world-image-close")?.addEventListener("click", () => dialog.close?.());
       dialog.querySelector(".world-image-nav.is-prev")?.addEventListener("click", () => moveWorldImagePreview(-1));
       dialog.querySelector(".world-image-nav.is-next")?.addEventListener("click", () => moveWorldImagePreview(1));
-      let swipeStart = null;
-      dialog.addEventListener("touchstart", (event) => {
-        const touch = event.touches?.[0];
-        if (touch) swipeStart = { x: touch.clientX, y: touch.clientY };
-      }, { passive: true });
-      dialog.addEventListener("touchend", (event) => {
-        const touch = event.changedTouches?.[0];
-        if (!touch || !swipeStart) return;
-        const deltaX = touch.clientX - swipeStart.x;
-        const deltaY = touch.clientY - swipeStart.y;
-        swipeStart = null;
-        if (Math.abs(deltaX) < 52 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.2) return;
-        moveWorldImagePreview(deltaX > 0 ? -1 : 1);
-      }, { passive: true });
+      worldPreviewGallery = window.DateInviteSwipeGallery?.create?.({
+        stage: dialog.querySelector(".swipe-gallery-stage"),
+        track: dialog.querySelector(".swipe-gallery-track"),
+        getCount: () => worldPreviewPhotos.length,
+        render: ({ index: previewIndex, slides }) => renderWorldImagePreview(previewIndex, slides),
+        onIndexChange: (previewIndex) => { worldPreviewIndex = previewIndex; }
+      }) || null;
+      dialog.classList.toggle("has-swipe-gallery", Boolean(worldPreviewGallery));
       dialog.addEventListener("keydown", (event) => {
         if (event.key === "ArrowLeft") moveWorldImagePreview(-1);
         if (event.key === "ArrowRight") moveWorldImagePreview(1);
       });
       dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close?.(); });
+      dialog.addEventListener("close", () => worldPreviewGallery?.cancel?.());
     }
     const photos = Array.isArray(group) && group.length ? group : [{ source, title }];
     worldPreviewPhotos = photos.map((item, itemIndex) => ({
@@ -1943,20 +1975,123 @@
       button.addEventListener("click", () => switchHomeTab(button.dataset.homeTabJump));
     });
     const chatInput = byId("home-chat-input");
-    const updateMobileViewport = () => {
-      const viewport = window.visualViewport;
-      const height = Math.round(viewport?.height || window.innerHeight || document.documentElement.clientHeight);
-      document.documentElement.style.setProperty("--app-viewport-height", `${height}px`);
-      const home = document.querySelector(".home-screen");
-      const keyboardTarget = document.activeElement === chatInput;
-      const touchLayout = window.matchMedia?.("(pointer: coarse)")?.matches || window.innerWidth <= 600;
-      home?.classList.toggle("is-chat-keyboard", Boolean(keyboardTarget && touchLayout && home?.dataset.homeActiveTab === "chat"));
+    let mobileViewportFrame = null;
+    let keyboardLayoutActive = false;
+    let keyboardRestoreScrollY = 0;
+    let keyboardBaselineHeight = Math.max(1, Math.round(window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight));
+    let keyboardBaselineWidth = Math.max(1, Math.round(window.visualViewport?.width || window.innerWidth || document.documentElement.clientWidth));
+    let keyboardFocusPendingUntil = 0;
+    let keyboardClosingUntil = 0;
+    let keyboardOrientationResetUntil = 0;
+    let keyboardOrientationTimer = null;
+    const beginKeyboardOrientationReset = () => {
+      if (document.activeElement === chatInput) chatInput.blur();
+      const resetAt = performance.now() + 1100;
+      keyboardFocusPendingUntil = 0;
+      keyboardClosingUntil = Math.max(keyboardClosingUntil, resetAt);
+      keyboardOrientationResetUntil = resetAt;
+      if (keyboardOrientationTimer) window.clearTimeout(keyboardOrientationTimer);
+      keyboardOrientationTimer = window.setTimeout(() => {
+        keyboardOrientationTimer = null;
+        const viewport = window.visualViewport;
+        keyboardBaselineHeight = Math.max(1, Math.round(viewport?.height || window.innerHeight || document.documentElement.clientHeight));
+        keyboardBaselineWidth = Math.max(1, Math.round(viewport?.width || window.innerWidth || document.documentElement.clientWidth));
+        keyboardClosingUntil = 0;
+        keyboardOrientationResetUntil = 0;
+        updateMobileViewport();
+      }, 1120);
     };
-    chatInput?.addEventListener("focus", updateMobileViewport);
-    chatInput?.addEventListener("blur", () => window.setTimeout(updateMobileViewport, 80));
+    const updateMobileViewport = () => {
+      if (mobileViewportFrame) window.cancelAnimationFrame(mobileViewportFrame);
+      mobileViewportFrame = window.requestAnimationFrame(() => {
+        mobileViewportFrame = null;
+        const viewport = window.visualViewport;
+        const root = document.documentElement;
+        const home = document.querySelector(".home-screen");
+        const list = byId("home-chat-list");
+        const wasNearBottom = !list || list.scrollHeight - list.scrollTop - list.clientHeight < 96;
+        const height = Math.max(1, Math.round(viewport?.height || window.innerHeight || root.clientHeight));
+        const width = Math.max(1, Math.round(viewport?.width || window.innerWidth || root.clientWidth));
+        const offsetTop = Math.max(0, Math.round(viewport?.offsetTop || 0));
+        const offsetLeft = Math.max(0, Math.round(viewport?.offsetLeft || 0));
+        root.style.setProperty("--app-viewport-height", `${height}px`);
+        root.style.setProperty("--app-viewport-width", `${width}px`);
+        root.style.setProperty("--app-viewport-offset-top", `${offsetTop}px`);
+        root.style.setProperty("--app-viewport-center-x", `${offsetLeft + width / 2}px`);
+
+        let keyboardTarget = document.activeElement === chatInput;
+        const touchLayout = window.matchMedia?.("(pointer: coarse)")?.matches || window.innerWidth <= 600;
+        const chatActive = home?.dataset.homeActiveTab === "chat";
+        const now = performance.now();
+        const orientationChanged = Math.abs(width - keyboardBaselineWidth) > 72;
+        if (orientationChanged && (keyboardLayoutActive || keyboardTarget) && now >= keyboardOrientationResetUntil) {
+          beginKeyboardOrientationReset();
+          keyboardTarget = document.activeElement === chatInput;
+        }
+        if (!keyboardLayoutActive && !keyboardTarget && now >= keyboardOrientationResetUntil) {
+          keyboardBaselineHeight = height;
+          keyboardBaselineWidth = width;
+        }
+        const viewportDeficit = Math.max(0, keyboardBaselineHeight - height);
+        const keyboardVisible = viewportDeficit > Math.max(72, keyboardBaselineHeight * .12);
+        const viewportRecovered = viewportDeficit < 36 && offsetTop < 4;
+        const opening = keyboardTarget && now < keyboardFocusPendingUntil;
+        const closing = keyboardLayoutActive && !keyboardTarget && now < keyboardClosingUntil && (
+          !viewportRecovered || now < keyboardOrientationResetUntil
+        );
+        const keyboardOpen = Boolean(touchLayout && chatActive && (
+          opening || (keyboardTarget && keyboardVisible) || closing
+        ));
+        root.classList.toggle("is-chat-keyboard-open", keyboardOpen);
+        document.body.classList.toggle("is-chat-keyboard-open", keyboardOpen);
+        home?.classList.toggle("is-chat-keyboard", keyboardOpen);
+        if (keyboardOpen && wasNearBottom && list) {
+          window.requestAnimationFrame(() => { list.scrollTop = list.scrollHeight; });
+        }
+        if (!keyboardOpen && keyboardLayoutActive) {
+          window.requestAnimationFrame(() => window.scrollTo({ top: keyboardRestoreScrollY, left: 0, behavior: "auto" }));
+          if (!keyboardTarget) {
+            keyboardBaselineHeight = height;
+            keyboardBaselineWidth = width;
+          }
+        }
+        keyboardLayoutActive = keyboardOpen;
+      });
+    };
+    const syncDuringKeyboardAnimation = () => {
+      updateMobileViewport();
+      window.setTimeout(updateMobileViewport, 80);
+      window.setTimeout(updateMobileViewport, 320);
+      window.setTimeout(updateMobileViewport, 420);
+      window.setTimeout(updateMobileViewport, 720);
+      window.setTimeout(updateMobileViewport, 900);
+    };
+    chatInput?.addEventListener("focus", () => {
+      if (keyboardOrientationTimer) window.clearTimeout(keyboardOrientationTimer);
+      keyboardOrientationTimer = null;
+      keyboardOrientationResetUntil = 0;
+      keyboardRestoreScrollY = window.scrollY || 0;
+      const viewport = window.visualViewport;
+      const width = Math.max(1, Math.round(viewport?.width || window.innerWidth || document.documentElement.clientWidth));
+      const height = Math.max(1, Math.round(viewport?.height || window.innerHeight || document.documentElement.clientHeight));
+      if (Math.abs(width - keyboardBaselineWidth) > 72) keyboardBaselineHeight = height;
+      else keyboardBaselineHeight = Math.max(keyboardBaselineHeight, height);
+      keyboardBaselineWidth = width;
+      keyboardFocusPendingUntil = performance.now() + 360;
+      keyboardClosingUntil = 0;
+      syncDuringKeyboardAnimation();
+    });
+    chatInput?.addEventListener("blur", () => {
+      keyboardFocusPendingUntil = 0;
+      keyboardClosingUntil = Math.max(keyboardClosingUntil, performance.now() + 760);
+      syncDuringKeyboardAnimation();
+    });
     window.visualViewport?.addEventListener("resize", updateMobileViewport);
     window.visualViewport?.addEventListener("scroll", updateMobileViewport);
-    window.addEventListener("orientationchange", () => window.setTimeout(updateMobileViewport, 120));
+    window.addEventListener("resize", updateMobileViewport, { passive: true });
+    window.addEventListener("pageshow", updateMobileViewport);
+    window.addEventListener("orientationchange", beginKeyboardOrientationReset);
+    window.addEventListener("date-invite-chat-viewport-sync", updateMobileViewport);
     updateMobileViewport();
     byId("home-message-actions")?.addEventListener("click", (event) => {
       const button = event.target?.closest?.("[data-message-action]");

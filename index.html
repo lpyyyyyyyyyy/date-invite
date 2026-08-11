@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="theme-color" content="#fff9f6">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -11,9 +11,9 @@
   <link rel="icon" type="image/png" href="apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=20260811-no-next-meet-v1">
-  <link rel="stylesheet" href="app-v2.css?v=20260811-no-next-meet-v1">
-  <link rel="stylesheet" href="long-distance.css?v=20260811-no-next-meet-v1">
+  <link rel="stylesheet" href="styles.css?v=20260811-swipe-chat-v1">
+  <link rel="stylesheet" href="app-v2.css?v=20260811-swipe-chat-v1">
+  <link rel="stylesheet" href="long-distance.css?v=20260811-swipe-chat-v1">
 </head>
 <body>
   <div class="ambient" aria-hidden="true">
@@ -891,7 +891,13 @@
     <button class="photo-library-lightbox-close" id="photo-library-lightbox-close" type="button" aria-label="关闭照片预览">×</button>
     <button class="photo-library-lightbox-nav is-prev" id="photo-library-lightbox-prev" type="button" aria-label="上一张照片">‹</button>
     <button class="photo-library-lightbox-nav is-next" id="photo-library-lightbox-next" type="button" aria-label="下一张照片">›</button>
-    <img id="photo-library-lightbox-image" alt="恋爱相册预览">
+    <div class="swipe-gallery-stage" id="photo-library-lightbox-stage">
+      <div class="swipe-gallery-track" id="photo-library-lightbox-track">
+        <img data-swipe-gallery-slide="previous" alt="" aria-hidden="true">
+        <img id="photo-library-lightbox-image" data-swipe-gallery-slide="current" alt="恋爱相册预览">
+        <img data-swipe-gallery-slide="next" alt="" aria-hidden="true">
+      </div>
+    </div>
     <div class="photo-library-lightbox-meta">
       <h2 id="photo-library-lightbox-title">恋爱照片</h2>
       <p id="photo-library-lightbox-copy"></p>
@@ -945,15 +951,15 @@
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   <div class="sr-only" id="movement-status" aria-live="polite"></div>
   <script src="https://static.cloudbase.net/cloudbase-js-sdk/3.7.0/cloudbase.full.js"></script>
-  <script src="cloud-config.js?v=20260811-no-next-meet-v1"></script>
-  <script src="backup.js?v=20260811-no-next-meet-v1"></script>
-  <script src="app.js?v=20260811-no-next-meet-v1"></script>
-  <script src="pet-theme.js?v=20260811-no-next-meet-v1"></script>
-  <script src="shared-sync.js?v=20260811-no-next-meet-v1"></script>
-  <script src="shared-interactions.js?v=20260811-no-next-meet-v1"></script>
-  <script src="long-distance.js?v=20260811-no-next-meet-v1"></script>
-  <script src="home-chat.js?v=20260811-no-next-meet-v1"></script>
-  <script src="cloud-sync.js?v=20260811-no-next-meet-v1"></script>
-  <script src="pwa.js?v=20260811-no-next-meet-v1"></script>
+  <script src="cloud-config.js?v=20260811-swipe-chat-v1"></script>
+  <script src="backup.js?v=20260811-swipe-chat-v1"></script>
+  <script src="app.js?v=20260811-swipe-chat-v1"></script>
+  <script src="pet-theme.js?v=20260811-swipe-chat-v1"></script>
+  <script src="shared-sync.js?v=20260811-swipe-chat-v1"></script>
+  <script src="shared-interactions.js?v=20260811-swipe-chat-v1"></script>
+  <script src="long-distance.js?v=20260811-swipe-chat-v1"></script>
+  <script src="home-chat.js?v=20260811-swipe-chat-v1"></script>
+  <script src="cloud-sync.js?v=20260811-swipe-chat-v1"></script>
+  <script src="pwa.js?v=20260811-swipe-chat-v1"></script>
 </body>
 </html>
