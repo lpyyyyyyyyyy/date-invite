@@ -5,7 +5,7 @@
   // 发布新版本时也不会覆盖已有资料。仅保留最近 30 份，避免无限占用手机空间。
   const DB_NAME = "leo-emily-local-backups-v1";
   const STORE_NAME = "snapshots";
-  const APP_VERSION = "20260803-cloud-sync";
+  const APP_VERSION = "20260811-long-distance-v1";
   const MAX_BACKUPS = 30;
   const BOOT_MARKER_KEY = `leo-emily-backup-boot-${APP_VERSION}`;
   const DATA_KEYS = [
@@ -17,11 +17,14 @@
     "cute-date-invite-future-letters-v1",
     "cute-date-invite-repair-v1",
     "cute-date-invite-cat-v1",
+    "cute-date-invite-home-settings-v1",
     "cute-date-invite-shared-messages-v1",
     "cute-date-invite-polaroids-v1",
     "cute-date-invite-voice-postcards-v1",
     "cute-date-invite-mind-matches-v1",
     "cute-date-invite-message-wall-v1",
+    "cute-date-invite-world-posts-v1",
+    "cute-date-invite-distance-signals-v1",
   ];
 
   let databasePromise = null;

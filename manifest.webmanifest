@@ -5,7 +5,7 @@
   "start_url": "/date-invite/",
   "display": "standalone",
   "background_color": "#fff8f3",
-  "theme_color": "#ff8fa3",
+  "theme_color": "#fff9f6",
   "icons": [
     {
       "src": "icon-192.png",

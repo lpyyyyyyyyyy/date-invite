@@ -82,7 +82,7 @@
   const memoryText = document.querySelector("#memory-text");
   const memoryPhoto = document.querySelector("#memory-photo");
   const memoryPhotos = document.querySelector("#memory-photos");
-  const homeCountdown = document.querySelector("#home-countdown");
+  const homeChatNextMeet = document.querySelector("#home-chat-next-meet");
   const reminderToggle = document.querySelector("#reminder-toggle");
   const reminderPermissionButton = document.querySelector("#reminder-permission-button");
   const reminderStatus = document.querySelector("#reminder-status");
@@ -456,7 +456,7 @@
     renderRepairState();
     window.setInterval(updateHomeCountdown, 60000);
 
-    bindHomeTabs();
+    // HomeChat owns the five-tab navigation so a single tap cannot be handled twice.
     document.querySelectorAll(".home-plan").forEach((button) => button.addEventListener("click", () => showScreen(1)));
     document.querySelectorAll(".anniversary-open").forEach((button) => button.addEventListener("click", () => showScreen(9)));
     document.querySelectorAll(".things-open").forEach((button) => button.addEventListener("click", () => showScreen(10)));
@@ -614,7 +614,8 @@
     const buttons = [...document.querySelectorAll("[data-home-tab]")];
     if (!panels.length || !buttons.length) return;
     const showHomeTab = (tab) => {
-      const selected = ["today", "chat", "world", "theme", "game", "us"].includes(tab) ? tab : "today";
+      const mapped = tab === "theme" || tab === "game" ? "together" : tab;
+      const selected = ["today", "chat", "world", "together", "us"].includes(mapped) ? mapped : "today";
       document.querySelector(".home-screen")?.setAttribute("data-home-active-tab", selected);
       document.querySelector("#theme-menu")?.removeAttribute("open");
       panels.forEach((panel) => {
@@ -687,8 +688,10 @@
     }
 
     window.scrollTo({ top: 0, behavior: "auto" });
-    const heading = document.querySelector(`[data-screen="${screenNumber}"] h1`);
-    requestAnimationFrame(() => heading?.focus({ preventScroll: true }));
+    const focusTarget = screenNumber === 0
+      ? document.querySelector('.home-bottom-nav [aria-current="page"]')
+      : document.querySelector(`[data-screen="${screenNumber}"] h1`);
+    requestAnimationFrame(() => focusTarget?.focus({ preventScroll: true }));
   }
 
   function handleNoClick() {
@@ -1944,7 +1947,7 @@
 
   function updateHomeCountdown() {
     const next = getNextPlan();
-    homeCountdown.textContent = next ? `${getCountdownText(next)} · ${formatDateForDisplay(next.date)}` : "还没有下一次约会计划";
+    if (homeChatNextMeet) homeChatNextMeet.textContent = next ? `${formatDateForDisplay(next.date)} ${next.time || ""}`.trim() : "等待一起计划";
   }
 
   function getCatName() {

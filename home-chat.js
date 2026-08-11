@@ -34,14 +34,17 @@
   let voiceStopping = false;
   let voiceDiscarded = false;
   let activeMindId = "";
+  let activeHomeTab = "today";
+  let homeTabsReady = false;
+  const homeTabScroll = new Map();
   // 实时心有灵犀：云端与旧版点对点房间都可作为运输层。
   let mindTransportCleanup = null;
   let mindTransportSource = null;
   const attachmentSources = new Map();
   const weatherCities = [
-    { id: "shanghai", name: "上海", lat: 31.2304, lon: 121.4737 },
-    { id: "toronto", name: "多伦多", lat: 43.6532, lon: -79.3832 },
-    { id: "chongqing", name: "重庆", lat: 29.5630, lon: 106.5516 }
+    { id: "toronto", name: "多伦多", lat: 43.6532, lon: -79.3832, timeZone: "America/Toronto" },
+    { id: "shanghai", name: "上海", lat: 31.2304, lon: 121.4737, timeZone: "Asia/Shanghai" },
+    { id: "chongqing", name: "重庆", lat: 29.563, lon: 106.5516, timeZone: "Asia/Shanghai" }
   ];
   const coupleFestivals = [
     { name: "情人节", month: 2, day: 14, note: "给她准备一点甜" },
@@ -121,21 +124,84 @@
   }
 
   function readHomeSettings() {
+    const saved = safeReadObject(HOME_SETTINGS_KEY, {});
+    const coverImage = typeof saved.coverImage === "string" && (/^data:image\//i.test(saved.coverImage) || /^assets\//.test(saved.coverImage))
+      ? saved.coverImage
+      : "assets/our-day-bg.jpg";
     return {
       loveStartDate: LOVE_START_DATE,
-      updatedAt: Date.now()
+      coverImage,
+      updatedAt: Number(saved.updatedAt) || Date.now()
     };
+  }
+
+  function persistHomeSettings(patch) {
+    const next = { ...readHomeSettings(), ...patch, loveStartDate: LOVE_START_DATE, updatedAt: Date.now() };
+    if (!safeWriteObject(HOME_SETTINGS_KEY, next)) return false;
+    return true;
   }
 
   function renderLoveDays() {
     const settings = readHomeSettings();
     const count = byId("love-days-count");
     const display = byId("love-start-display");
+    const cover = byId("couple-cover-image");
     if (display) display.textContent = formatLoveStartDisplay(settings.loveStartDate);
+    if (cover && cover.getAttribute("src") !== settings.coverImage) cover.src = settings.coverImage;
     if (!count) return;
     const start = new Date(`${settings.loveStartDate}T00:00:00`);
     const days = Number.isNaN(start.getTime()) ? 1 : Math.max(1, -dayDiff(start) + 1);
     count.textContent = String(days);
+  }
+
+  function resizeCover(file) {
+    return new Promise((resolve, reject) => {
+      if (!file || !/^image\//i.test(file.type || "")) { reject(new Error("请选择一张照片")); return; }
+      if (file.size > 20 * 1024 * 1024) { reject(new Error("照片请不要超过 20MB")); return; }
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("照片读取失败，请重新选择"));
+      reader.onload = () => {
+        const image = new Image();
+        image.onerror = () => reject(new Error("这张照片暂时无法使用"));
+        image.onload = () => {
+          const maxWidth = 1600;
+          const maxHeight = 1200;
+          const scale = Math.min(1, maxWidth / image.naturalWidth, maxHeight / image.naturalHeight);
+          const width = Math.max(1, Math.round(image.naturalWidth * scale));
+          const height = Math.max(1, Math.round(image.naturalHeight * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext("2d");
+          if (!context) { reject(new Error("浏览器暂时无法处理照片")); return; }
+          context.drawImage(image, 0, 0, width, height);
+          try { resolve(canvas.toDataURL("image/jpeg", 0.82)); }
+          catch (error) { reject(new Error("照片处理失败，请重试")); }
+        };
+        image.src = String(reader.result || "");
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function chooseCoupleCover() {
+    const input = byId("couple-cover-input");
+    const file = input?.files?.[0];
+    if (!file) return;
+    const button = byId("couple-cover-change");
+    if (button) { button.disabled = true; button.textContent = "处理中…"; }
+    try {
+      const coverImage = await resizeCover(file);
+      if (!persistHomeSettings({ coverImage })) throw new Error("本机存储空间不足，封面没有保存");
+      renderLoveDays();
+      syncCurrent();
+      notice("共同封面已经换好啦");
+    } catch (error) {
+      notice(error?.message || "封面更换失败，请重试");
+    } finally {
+      if (input) input.value = "";
+      if (button) { button.disabled = false; button.textContent = "更换封面"; }
+    }
   }
 
   function festivalDate(item, year) {
@@ -188,12 +254,141 @@
     return "天气变化中";
   }
 
+  function timeZoneHour(date, timeZone) {
+    try {
+      const part = new Intl.DateTimeFormat("zh-CN", { timeZone, hour: "2-digit", hourCycle: "h23" })
+        .formatToParts(date)
+        .find((item) => item.type === "hour");
+      return Number(part?.value);
+    } catch (error) { return date.getHours(); }
+  }
+
+  function timeZoneClock(date, timeZone) {
+    try {
+      const parts = new Intl.DateTimeFormat("zh-CN", {
+        timeZone,
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23"
+      }).formatToParts(date);
+      const hour = Number(parts.find((part) => part.type === "hour")?.value);
+      const minute = Number(parts.find((part) => part.type === "minute")?.value);
+      return { hour, minute, label: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}` };
+    } catch (error) {
+      return { hour: date.getHours(), minute: date.getMinutes(), label: `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}` };
+    }
+  }
+
+  function comfortableContactTime(date) {
+    return weatherCities.every((city) => {
+      const { hour } = timeZoneClock(date, city.timeZone);
+      return hour >= 8 && hour < 23;
+    });
+  }
+
+  function nextContactOverlap() {
+    const now = new Date();
+    const rounded = new Date(Math.ceil(now.getTime() / 1800000) * 1800000);
+    for (let step = 0; step < 96; step += 1) {
+      const start = new Date(rounded.getTime() + step * 1800000);
+      const middle = new Date(start.getTime() + 60 * 60000);
+      const end = new Date(start.getTime() + 120 * 60000);
+      if (!comfortableContactTime(start) || !comfortableContactTime(middle) || !comfortableContactTime(new Date(end.getTime() - 60000))) continue;
+      return {
+        active: start.getTime() - now.getTime() <= 30 * 60000,
+        shanghai: `${timeZoneClock(start, "Asia/Shanghai").label}–${timeZoneClock(end, "Asia/Shanghai").label}`,
+        toronto: `${timeZoneClock(start, "America/Toronto").label}–${timeZoneClock(end, "America/Toronto").label}`
+      };
+    }
+    return null;
+  }
+
+  function renderDistanceHeartbeat() {
+    const overlap = nextContactOverlap();
+    const label = byId("distance-overlap-label");
+    const partnerStatus = byId("distance-partner-status");
+    if (label) {
+      label.textContent = overlap
+        ? `${overlap.active ? "现在正合适" : "下一段"} · 上海 ${overlap.shanghai} / 多伦多 ${overlap.toronto}`
+        : "今天的舒服时间还在计算";
+    }
+    const signal = window.DateInviteDistance?.getPartnerSignal?.();
+    if (partnerStatus) {
+      const statusLabels = { miss: "正在想你", available: "现在可以通话", busy: "正在忙，晚点找你", rest: "准备休息啦" };
+      partnerStatus.textContent = signal
+        ? `${displayName(signal.role) || "对方"} · ${statusLabels[signal.status] || "留下了新状态"}${signal.note ? ` · ${signal.note}` : ""}`
+        : "留个状态，让她不用猜";
+      partnerStatus.title = partnerStatus.textContent;
+    }
+  }
+
+  function renderCityClocks() {
+    const now = new Date();
+    weatherCities.forEach((city) => {
+      const card = document.querySelector(`[data-weather-city="${city.id}"]`);
+      if (!card) return;
+      const time = card.querySelector("[data-city-time]");
+      const daypart = card.querySelector("[data-city-daypart]");
+      const contact = card.querySelector("[data-contact-window]");
+      const hour = timeZoneHour(now, city.timeZone);
+      let timeLabel = "--:--";
+      let dateLabel = "";
+      try {
+        timeLabel = new Intl.DateTimeFormat("zh-CN", { timeZone: city.timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
+        dateLabel = new Intl.DateTimeFormat("zh-CN", { timeZone: city.timeZone, weekday: "short", month: "numeric", day: "numeric" }).format(now);
+      } catch (error) { /* Keep the fallback clock text. */ }
+      if (time) { time.textContent = timeLabel; time.setAttribute("datetime", now.toISOString()); }
+      if (daypart) daypart.textContent = `${dateLabel} · ${hour < 6 ? "深夜" : hour < 12 ? "早上" : hour < 18 ? "白天" : hour < 23 ? "晚上" : "深夜"}`;
+      if (contact) {
+        const comfortable = hour >= 8 && hour < 23;
+        contact.textContent = comfortable ? "现在适合联系" : "现在可能在休息";
+        contact.dataset.tone = comfortable ? "awake" : "rest";
+      }
+    });
+    renderPartnerTimeHint();
+  }
+
+  function partnerCityContext(date = new Date()) {
+    const myRole = roomState().role === "guest" ? "guest" : "host";
+    const partnerRole = myRole === "guest" ? "host" : "guest";
+    const myName = displayName(myRole);
+    const looksLikeLeo = /leo|刘|平壹/i.test(myName);
+    const looksLikeEmily = /emily|蔡|子珊/i.test(myName);
+    const partnerCity = looksLikeLeo || (!looksLikeEmily && myRole === "host")
+      ? weatherCities.find((city) => city.id === "shanghai")
+      : weatherCities.find((city) => city.id === "toronto");
+    return {
+      city: partnerCity,
+      clock: timeZoneClock(date, partnerCity.timeZone),
+      name: displayName(partnerRole) || "对方"
+    };
+  }
+
+  function renderPartnerTimeHint() {
+    const hint = byId("home-chat-time-hint");
+    if (!hint) return;
+    const partner = partnerCityContext();
+    const resting = partner.clock.hour < 8 || partner.clock.hour >= 23;
+    const overlap = nextContactOverlap();
+    let message;
+    if (resting) {
+      message = `${partner.name}那里是 ${partner.city.name} ${partner.clock.label} · 消息会安静送达`;
+    } else if (overlap?.active) {
+      message = `${partner.name}那里是 ${partner.city.name} ${partner.clock.label} · 现在正适合说说话`;
+    } else {
+      message = `${partner.name}那里是 ${partner.city.name} ${partner.clock.label} · 下一段同频 ${overlap?.shanghai || "正在计算"}`;
+    }
+    hint.textContent = message;
+    hint.title = message;
+    hint.dataset.tone = resting ? "rest" : overlap?.active ? "together" : "waiting";
+  }
+
   async function loadWeather() {
     await Promise.all(weatherCities.map(async (city) => {
       const card = document.querySelector(`[data-weather-city="${city.id}"]`);
       if (!card) return;
-      const title = card.querySelector("strong");
-      const sub = card.querySelector("small");
+      const title = card.querySelector("[data-weather-current]");
+      const sub = card.querySelector("[data-weather-note]");
       if (title) title.textContent = "加载中";
       if (sub) sub.textContent = "正在看天气";
       try {
@@ -205,12 +400,14 @@
         const temp = Math.round(Number(data?.current?.temperature_2m));
         const code = Number(data?.current?.weather_code);
         if (title) title.textContent = Number.isFinite(temp) ? `${temp}℃ · ${weatherText(code)}` : weatherText(code);
-        if (sub) sub.textContent = `适合想你一下 · ${city.name}`;
+        if (sub) sub.textContent = `${city.name}当前天气`;
       } catch (error) {
         if (title) title.textContent = "暂时未取到";
         if (sub) sub.textContent = "联网后再刷新";
       }
     }));
+    renderCityClocks();
+    renderDistanceHeartbeat();
   }
 
   function mindTransport() {
@@ -525,42 +722,7 @@
     const presence = byId("home-chat-presence");
     if (!status) return;
     const state = roomState();
-    const setPresence = (online, label) => {
-      if (!presence) return;
-      presence.classList.toggle("is-online", Boolean(online));
-      const dot = document.createElement("i");
-      dot.setAttribute("aria-hidden", "true");
-      presence.replaceChildren(dot, document.createTextNode(label));
-    };
-    if (!state.room) {
-      status.textContent = "还没有连接你们的空间 · 点右上角主题里的「两人空间」创建一次就好";
-      status.dataset.tone = "offline";
-      setPresence(false, "还未连接");
-      return;
-    }
-    if (state.kind === "cloud") {
-      const cloudStatus = cloud()?.getStatus?.() || {};
-      if (cloudStatus.kind === "waiting") {
-        status.textContent = "本机已保存，云端正在等待网络恢复后自动同步";
-        status.dataset.tone = "offline";
-        setPresence(false, "等待连接");
-      } else {
-        status.textContent = state.online ? "云端已连上，她也正在这个共同空间里 ♡" : "云端已记住你们的空间，她打开网站就会看到最新消息";
-        status.dataset.tone = state.online ? "online" : "waiting";
-        setPresence(state.online, state.online ? "一起在线" : "云端已连接");
-      }
-      return;
-    }
-    status.textContent = state.online ? "你们已连上，可以实时聊天啦 ♥" : "已记住你们的空间，正在等对方上线…";
-    status.dataset.tone = state.online ? "online" : "waiting";
-    setPresence(state.online, state.online ? "一起在线" : "等待对方");
-  }
-
-  function renderChatStatus() {
-    const status = byId("home-chat-status");
-    const presence = byId("home-chat-presence");
-    if (!status) return;
-    const state = roomState();
+    renderPartnerTimeHint();
     const setPresence = (online, label) => {
       if (!presence) return;
       presence.classList.toggle("is-online", Boolean(online));
@@ -691,6 +853,7 @@
     messages.forEach((message) => {
       const card = document.createElement("article");
       card.className = `home-chat-bubble ${message.author === mine ? "is-me" : "is-them"}`;
+      card.classList.add(`is-role-${message.author === "guest" ? "guest" : "host"}`);
       card.dataset.messageId = message.id;
       card.classList.toggle("is-favorite", favorites.has(message.id));
       if ((message.type === "date-plan" || message.kind === "date-plan") && message.plan) {
@@ -719,8 +882,20 @@
     list.scrollTop = list.scrollHeight;
   }
 
+  function normalizeHomeTab(tab) {
+    if (tab === "theme" || tab === "game") return "together";
+    return ["today", "chat", "world", "together", "us"].includes(tab) ? tab : "today";
+  }
+
   function switchHomeTab(tab) {
-    const selected = ["today", "chat", "world", "theme", "game", "us"].includes(tab) ? tab : "today";
+    const selected = normalizeHomeTab(tab);
+    const currentPanel = document.querySelector(`[data-home-tab-panel="${activeHomeTab}"]`);
+    if (homeTabsReady && selected === activeHomeTab) {
+      currentPanel?.scrollTo?.({ top: 0, behavior: "smooth" });
+      return;
+    }
+    if (currentPanel) homeTabScroll.set(activeHomeTab, currentPanel.scrollTop || 0);
+    activeHomeTab = selected;
     document.querySelector(".home-screen")?.setAttribute("data-home-active-tab", selected);
     document.querySelectorAll("[data-home-tab-panel]").forEach((panel) => {
       const active = panel.dataset.homeTabPanel === selected;
@@ -729,10 +904,15 @@
     });
     document.querySelectorAll("[data-home-tab]").forEach((button) => {
       button.setAttribute("aria-pressed", String(button.dataset.homeTab === selected));
+      if (button.dataset.homeTab === selected) button.setAttribute("aria-current", "page");
+      else button.removeAttribute("aria-current");
     });
     if (selected === "chat") renderHomeChat();
     if (selected === "world") renderWorldPosts();
     if (selected === "today") renderLatestWorldCard();
+    const nextPanel = document.querySelector(`[data-home-tab-panel="${selected}"]`);
+    requestAnimationFrame(() => { if (nextPanel) nextPanel.scrollTop = homeTabScroll.get(selected) || 0; });
+    homeTabsReady = true;
   }
 
   function worldPostAuthor(authorName) {
@@ -798,6 +978,20 @@
       dialog.querySelector(".world-image-close")?.addEventListener("click", () => dialog.close?.());
       dialog.querySelector(".world-image-nav.is-prev")?.addEventListener("click", () => moveWorldImagePreview(-1));
       dialog.querySelector(".world-image-nav.is-next")?.addEventListener("click", () => moveWorldImagePreview(1));
+      let swipeStart = null;
+      dialog.addEventListener("touchstart", (event) => {
+        const touch = event.touches?.[0];
+        if (touch) swipeStart = { x: touch.clientX, y: touch.clientY };
+      }, { passive: true });
+      dialog.addEventListener("touchend", (event) => {
+        const touch = event.changedTouches?.[0];
+        if (!touch || !swipeStart) return;
+        const deltaX = touch.clientX - swipeStart.x;
+        const deltaY = touch.clientY - swipeStart.y;
+        swipeStart = null;
+        if (Math.abs(deltaX) < 52 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.2) return;
+        moveWorldImagePreview(deltaX > 0 ? -1 : 1);
+      }, { passive: true });
       dialog.addEventListener("keydown", (event) => {
         if (event.key === "ArrowLeft") moveWorldImagePreview(-1);
         if (event.key === "ArrowRight") moveWorldImagePreview(1);
@@ -891,6 +1085,7 @@
     card.tabIndex = 0;
     card.setAttribute("role", "button");
     card.setAttribute("aria-label", "打开我们的世界最近动态");
+    card.onclick = () => switchHomeTab("world");
     card.onkeydown = (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
@@ -927,7 +1122,6 @@
     copy.textContent = `${text} · ${formatTime(latest.createdAt)}`;
     body.append(title, copy);
     card.append(body);
-    card.onclick = () => switchHomeTab("world");
   }
 
   async function chooseWorldPhotos() {
@@ -1740,12 +1934,30 @@
   function bindEvents() {
     byId("home-chat-form")?.addEventListener("submit", submitHomeChat);
     byId("weather-refresh")?.addEventListener("click", loadWeather);
+    byId("couple-cover-change")?.addEventListener("click", () => byId("couple-cover-input")?.click());
+    byId("couple-cover-input")?.addEventListener("change", chooseCoupleCover);
     document.querySelectorAll("[data-home-tab]").forEach((button) => {
       button.addEventListener("click", () => switchHomeTab(button.dataset.homeTab));
     });
     document.querySelectorAll("[data-home-tab-jump]").forEach((button) => {
       button.addEventListener("click", () => switchHomeTab(button.dataset.homeTabJump));
     });
+    const chatInput = byId("home-chat-input");
+    const updateMobileViewport = () => {
+      const viewport = window.visualViewport;
+      const height = Math.round(viewport?.height || window.innerHeight || document.documentElement.clientHeight);
+      document.documentElement.style.setProperty("--app-viewport-height", `${height}px`);
+      const home = document.querySelector(".home-screen");
+      const keyboardTarget = document.activeElement === chatInput;
+      const touchLayout = window.matchMedia?.("(pointer: coarse)")?.matches || window.innerWidth <= 600;
+      home?.classList.toggle("is-chat-keyboard", Boolean(keyboardTarget && touchLayout && home?.dataset.homeActiveTab === "chat"));
+    };
+    chatInput?.addEventListener("focus", updateMobileViewport);
+    chatInput?.addEventListener("blur", () => window.setTimeout(updateMobileViewport, 80));
+    window.visualViewport?.addEventListener("resize", updateMobileViewport);
+    window.visualViewport?.addEventListener("scroll", updateMobileViewport);
+    window.addEventListener("orientationchange", () => window.setTimeout(updateMobileViewport, 120));
+    updateMobileViewport();
     byId("home-message-actions")?.addEventListener("click", (event) => {
       const button = event.target?.closest?.("[data-message-action]");
       if (button) handleMessageAction(button.dataset.messageAction);
@@ -1821,17 +2033,24 @@
       renderChatStatus();
       renderHomeChat();
       renderMind();
+      renderDistanceHeartbeat();
+      renderPartnerTimeHint();
     });
     window.addEventListener("date-invite-identity-changed", () => {
       renderChatStatus();
       renderHomeChat();
       renderWorldPosts();
+      renderDistanceHeartbeat();
+    });
+    window.addEventListener("date-invite-distance-changed", () => {
+      renderDistanceHeartbeat();
+      renderPartnerTimeHint();
     });
     window.addEventListener("date-invite-cloud-sync-applied", () => {
-      renderChatStatus(); renderHomeChat(); renderPolaroids(); renderVoicePostcards(); renderWall(); renderWorldPosts(); renderLoveDays(); renderFestivalCalendar();
+      renderChatStatus(); renderHomeChat(); renderPolaroids(); renderVoicePostcards(); renderWall(); renderWorldPosts(); renderLoveDays(); renderFestivalCalendar(); renderDistanceHeartbeat();
     });
     window.addEventListener("shared-sync-applied", () => {
-      renderHomeChat(); renderPolaroids(); renderVoicePostcards(); renderWall(); renderWorldPosts(); renderLoveDays(); renderFestivalCalendar();
+      renderHomeChat(); renderPolaroids(); renderVoicePostcards(); renderWall(); renderWorldPosts(); renderLoveDays(); renderFestivalCalendar(); renderDistanceHeartbeat(); renderPartnerTimeHint();
     });
     window.addEventListener(data.EVENT_NAME, () => {
       renderPolaroids(); renderVoicePostcards(); renderWall(); renderWorldPosts();
@@ -1849,6 +2068,9 @@
     renderChatStatus();
     renderLoveDays();
     renderFestivalCalendar();
+    renderCityClocks();
+    renderDistanceHeartbeat();
+    renderPartnerTimeHint();
     loadWeather();
     renderHomeChat();
     renderPolaroids();
@@ -1859,6 +2081,8 @@
     updateMediaPreview();
     renderWorldPreview();
     switchHomeTab("today");
+    window.setInterval(renderCityClocks, 60000);
+    window.setInterval(renderDistanceHeartbeat, 60000);
   }
 
   window.DateInviteHomeChat = {

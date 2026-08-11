@@ -27,6 +27,7 @@
     "cute-date-invite-future-letters-v1",
     "cute-date-invite-repair-v1",
     "cute-date-invite-home-settings-v1",
+    "cute-date-invite-distance-signals-v1",
     CHAT_KEY,
     ...INTERACTION_KEYS,
   ];
@@ -918,6 +919,7 @@
     messages.forEach((message) => {
       const item = document.createElement("article");
       item.className = `shared-message ${message.author === myRole ? "is-me" : "is-them"}`;
+      item.classList.add(`is-role-${message.author === "guest" ? "guest" : "host"}`);
       if (message.text) {
         const content = document.createElement("span");
         content.className = "shared-message-text";

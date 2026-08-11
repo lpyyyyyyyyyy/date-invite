@@ -902,6 +902,20 @@
     photoElement("photo-library-lightbox-close")?.addEventListener("click", () => closePhotoDialog(lightbox));
     photoElement("photo-library-lightbox-prev")?.addEventListener("click", () => movePhotoLibraryLightbox(-1));
     photoElement("photo-library-lightbox-next")?.addEventListener("click", () => movePhotoLibraryLightbox(1));
+    let photoSwipeStart = null;
+    lightbox?.addEventListener("touchstart", (event) => {
+      const touch = event.touches?.[0];
+      if (touch) photoSwipeStart = { x: touch.clientX, y: touch.clientY };
+    }, { passive: true });
+    lightbox?.addEventListener("touchend", (event) => {
+      const touch = event.changedTouches?.[0];
+      if (!touch || !photoSwipeStart) return;
+      const deltaX = touch.clientX - photoSwipeStart.x;
+      const deltaY = touch.clientY - photoSwipeStart.y;
+      photoSwipeStart = null;
+      if (Math.abs(deltaX) < 52 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.2) return;
+      movePhotoLibraryLightbox(deltaX > 0 ? -1 : 1);
+    }, { passive: true });
     photoElement("photo-library-caption")?.addEventListener("click", captionActivePhotoLibraryPhoto);
     lightbox?.addEventListener("keydown", (event) => {
       if (event.key === "ArrowLeft") movePhotoLibraryLightbox(-1);

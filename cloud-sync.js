@@ -39,7 +39,8 @@
     "cute-date-invite-voice-postcards-v1",
     "cute-date-invite-mind-matches-v1",
     "cute-date-invite-message-wall-v1",
-    "cute-date-invite-world-posts-v1"
+    "cute-date-invite-world-posts-v1",
+    "cute-date-invite-distance-signals-v1"
   ];
   const SYNC_KEY_SET = new Set(SYNC_KEYS);
   const encoder = typeof TextEncoder === "function" ? new TextEncoder() : null;

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#ff8fa3">
+  <meta name="theme-color" content="#fff9f6">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Leo And Emily">
@@ -11,7 +11,9 @@
   <link rel="icon" type="image/png" href="apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=20260811-borderless-calm-v1">
+  <link rel="stylesheet" href="styles.css?v=20260811-no-next-meet-v1">
+  <link rel="stylesheet" href="app-v2.css?v=20260811-no-next-meet-v1">
+  <link rel="stylesheet" href="long-distance.css?v=20260811-no-next-meet-v1">
 </head>
 <body>
   <div class="ambient" aria-hidden="true">
@@ -45,6 +47,17 @@
 
       <div class="home-tab-panel home-dashboard is-home-tab-active" data-home-tab-panel="today">
         <section class="love-day-hero" aria-labelledby="home-title">
+          <img class="couple-cover-image" id="couple-cover-image" src="assets/our-day-bg.jpg" alt="Leo 和 Emily 的共同封面">
+          <div class="couple-cover-shade" aria-hidden="true"></div>
+          <div class="couple-cover-identity" aria-label="Leo 和 Emily">
+            <span class="couple-avatar is-leo" aria-hidden="true">L</span>
+            <span class="couple-avatar is-emily" aria-hidden="true">E</span>
+            <b>LEO &amp; EMILY</b>
+          </div>
+          <div class="couple-cover-actions">
+            <button class="couple-cover-change" id="couple-cover-change" type="button" aria-label="更换共同封面">更换封面</button>
+            <input class="sr-only" id="couple-cover-input" type="file" accept="image/*">
+          </div>
           <div class="our-day-copy">
             <p>一起走过的每一天，</p>
             <p>都是心动的证明 💕</p>
@@ -57,27 +70,41 @@
             <p>始于 <b id="love-start-display">2026.06.23 星期二</b></p>
           </div>
         </section>
+        <script>
+          (() => {
+            const today = new Date();
+            const startDay = Date.UTC(2026, 5, 23);
+            const currentDay = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+            const count = Math.max(1, Math.floor((currentDay - startDay) / 86400000) + 1);
+            const output = document.querySelector("#love-days-count");
+            if (output) output.textContent = String(count);
+          })();
+        </script>
 
         <section class="home-weather-section" aria-labelledby="home-weather-title">
-          <div class="home-section-heading"><h2 id="home-weather-title">我们生活的城市</h2><button type="button" id="weather-refresh">刷新</button></div>
+          <div class="home-section-heading"><h2 id="home-weather-title">异地同频</h2><button type="button" id="weather-refresh" aria-label="刷新三座城市天气">刷新</button></div>
           <div class="weather-grid" id="weather-grid" aria-live="polite">
-            <article class="weather-card" data-weather-city="shanghai"><span>上海</span><strong>加载中</strong><small>正在看天气</small></article>
-            <article class="weather-card" data-weather-city="toronto"><span>多伦多</span><strong>加载中</strong><small>正在看天气</small></article>
-            <article class="weather-card" data-weather-city="chongqing"><span>重庆</span><strong>加载中</strong><small>正在看天气</small></article>
+            <article class="weather-card city-sync-card" data-weather-city="toronto">
+              <div class="city-sync-top"><span>多伦多</span><time data-city-time datetime="">--:--</time></div>
+              <strong data-weather-current>加载中</strong>
+              <p><span data-city-daypart>当地日期</span></p>
+            </article>
+            <article class="weather-card city-sync-card" data-weather-city="shanghai">
+              <div class="city-sync-top"><span>上海</span><time data-city-time datetime="">--:--</time></div>
+              <strong data-weather-current>加载中</strong>
+              <p><span data-city-daypart>当地日期</span></p>
+            </article>
+            <article class="weather-card city-sync-card" data-weather-city="chongqing">
+              <div class="city-sync-top"><span>重庆</span><time data-city-time datetime="">--:--</time></div>
+              <strong data-weather-current>加载中</strong>
+              <p><span data-city-daypart>当地日期</span></p>
+            </article>
           </div>
         </section>
 
         <section class="couple-calendar-section" aria-labelledby="couple-calendar-title">
           <div class="home-section-heading"><h2 id="couple-calendar-title">快到的节日</h2></div>
-          <div class="festival-countdown-card" id="festival-countdown-card" role="status" aria-live="polite">
-            <span>下一站</span><strong>正在计算</strong><small>会自动选择最近的节日</small>
-          </div>
           <div class="festival-list" id="festival-list" aria-label="快到的节日倒计时"></div>
-        </section>
-
-        <section class="home-countdown-summary home-countdown-lower" aria-labelledby="home-countdown-label">
-          <span class="home-countdown-kicker" id="home-countdown-label">NEXT TIME WE MEET</span>
-          <strong id="home-countdown" role="status" aria-live="polite">还没有下一次约会计划</strong>
         </section>
 
         <section class="home-latest-section" aria-labelledby="home-latest-title">
@@ -99,9 +126,12 @@
             <div class="home-chat-person">
               <h2 id="chat-tab-title" class="sr-only">聊天</h2>
               <p id="home-chat-status" role="status" aria-live="polite">我们的聊天，正在慢慢变成回忆。</p>
+              <p class="home-chat-next-meet">下次见面 · <b id="home-chat-next-meet">等待一起计划</b></p>
             </div>
             <span class="home-chat-online" id="home-chat-presence"><i aria-hidden="true"></i>一起在线</span>
           </header>
+
+          <p class="home-chat-time-hint" id="home-chat-time-hint" role="status" aria-live="polite">正在看看她那边的时间…</p>
 
           <div class="home-chat-messages" id="home-chat-list" role="log" aria-live="polite" aria-relevant="additions text">
             <article class="home-message home-message-them">
@@ -144,24 +174,35 @@
         <div class="world-feed" id="world-feed" aria-live="polite"></div>
       </section>
 
-      <section class="home-tab-panel home-feature-panel" data-home-tab-panel="theme" aria-labelledby="home-list-title" hidden>
-        <div class="home-feature-hero home-list-hero">
-          <h2 id="home-list-title" class="sr-only">目标</h2>
-        </div>
-        <div class="home-feature-grid">
-          <button class="home-feature-card things-open goal-main-card" type="button"><span aria-hidden="true">100</span><strong>一起做的一百件小事</strong><small>完成一件就一起打勾，双方都会同步</small></button>
-        </div>
-      </section>
-
-      <section class="home-tab-panel home-feature-panel" data-home-tab-panel="game" aria-labelledby="home-game-title" hidden>
-        <div class="home-feature-hero home-game-hero">
-          <h2 id="home-game-title" class="sr-only">小游戏</h2>
-        </div>
-        <div class="home-feature-grid">
-          <button class="home-feature-card truth-open" type="button"><span aria-hidden="true">?</span><strong>真心话</strong><small>转盘随机抽一个问题</small></button>
-          <button class="home-feature-card dice-open" type="button"><span aria-hidden="true">⚄</span><strong>大话骰子</strong><small>摇骰、开盅、重新开局</small></button>
-          <button class="home-feature-card pet-open" type="button"><span aria-hidden="true">🐾</span><strong>宠物</strong><small>18🈲</small></button>
-        </div>
+      <section class="home-tab-panel together-panel" data-home-tab-panel="together" aria-labelledby="home-together-title" hidden>
+        <header class="together-hero">
+          <p>OUR LITTLE THINGS</p>
+          <h2 id="home-together-title">一起</h2>
+          <span>把计划、心事和好玩的，都放在同一个地方。</span>
+        </header>
+        <section class="together-group together-plan-group" aria-labelledby="together-plan-title">
+          <div class="together-group-heading"><span aria-hidden="true">01</span><div><h3 id="together-plan-title">一起计划</h3><p>从下一次见面，到慢慢完成的小愿望。</p></div></div>
+          <div class="together-action-list">
+            <button class="together-action home-plan" type="button"><span aria-hidden="true">♡</span><strong>发起约会计划</strong><small>选择日期、地点、想玩和想吃</small><b aria-hidden="true">›</b></button>
+            <button class="together-action things-open" type="button"><span aria-hidden="true">100</span><strong>一起做的一百件事</strong><small>完成一件，双方一起点亮</small><b aria-hidden="true">›</b></button>
+          </div>
+        </section>
+        <section class="together-group together-heart-group" aria-labelledby="together-heart-title">
+          <div class="together-group-heading"><span aria-hidden="true">02</span><div><h3 id="together-heart-title">一起靠近</h3><p>不只聊天，也认真听见彼此。</p></div></div>
+          <div class="together-action-grid">
+            <button class="together-action interactions-open" type="button"><span aria-hidden="true">✦</span><strong>双人互动</strong><small>心有灵犀、拍立得、声音与留言</small></button>
+            <button class="together-action future-letter-open" type="button"><span aria-hidden="true">◇</span><strong>给未来的信</strong><small>到约定那天再一起打开</small></button>
+            <button class="together-action repair-open" type="button"><span aria-hidden="true">○</span><strong>和好小屋</strong><small>先把情绪放好，再慢慢说</small></button>
+          </div>
+        </section>
+        <section class="together-group together-game-group" aria-labelledby="together-game-title">
+          <div class="together-group-heading"><span aria-hidden="true">03</span><div><h3 id="together-game-title">一起玩</h3><p>没有任务压力，只在想玩的时候打开。</p></div></div>
+          <div class="together-action-grid">
+            <button class="together-action truth-open" type="button"><span aria-hidden="true">?</span><strong>真心话</strong><small>随机抽一个问题</small></button>
+            <button class="together-action dice-open" type="button"><span aria-hidden="true">⚄</span><strong>大话骰子</strong><small>摇骰、开盅、重新开局</small></button>
+            <button class="together-action pet-open" type="button"><span aria-hidden="true">◎</span><strong>宠物</strong><small>蔡子珊电子宠物互动</small></button>
+          </div>
+        </section>
       </section>
 
       <section class="home-tab-panel us-panel" data-home-tab-panel="us" aria-labelledby="home-us-title" hidden>
@@ -170,18 +211,18 @@
           <strong>两个人已连接 ♥</strong>
         </header>
         <div class="us-module-list">
-          <button class="us-module home-plan" type="button"><span aria-hidden="true">💌</span><strong>约会计划</strong><small>邀请、选时间地点，最后生成约会清单</small><b>›</b></button>
           <button class="us-module anniversary-open" type="button"><span aria-hidden="true">♡</span><strong>纪念日</strong><small>在一起多久、还有多久到重要日子</small><b>›</b></button>
           <button class="us-module love-album-open" type="button"><span aria-hidden="true">▧</span><strong>恋爱相册</strong><small>创建文件夹，收藏关于我们的照片</small><b>›</b></button>
+          <button class="us-module distance-open" type="button"><span aria-hidden="true">◎</span><strong>异国心意</strong><small>状态同频、适合联系时间和跨越时区的抱抱</small><b>›</b></button>
+          <button class="us-module shared-open" type="button"><span aria-hidden="true">⌁</span><strong>连接与数据</strong><small>身份、加密同步和本机备份</small><b>›</b></button>
         </div>
       </section>
 
       <nav class="home-bottom-nav" aria-label="首页栏目">
         <button type="button" data-home-tab="today" aria-pressed="true"><span aria-hidden="true">⌂</span><b>今日</b></button>
         <button type="button" data-home-tab="chat" aria-pressed="false"><span aria-hidden="true">✎</span><b>聊天</b></button>
-        <button type="button" data-home-tab="world" aria-pressed="false"><span aria-hidden="true">♡</span><b>我们的世界</b></button>
-        <button type="button" data-home-tab="theme" aria-pressed="false"><span aria-hidden="true">▦</span><b>目标</b></button>
-        <button type="button" data-home-tab="game" aria-pressed="false"><span aria-hidden="true">⚄</span><b>小游戏</b></button>
+        <button type="button" data-home-tab="world" aria-pressed="false"><span aria-hidden="true">♡</span><b>世界</b></button>
+        <button type="button" data-home-tab="together" aria-pressed="false"><span aria-hidden="true">＋</span><b>一起</b></button>
         <button type="button" data-home-tab="us" aria-pressed="false"><span aria-hidden="true">☻</span><b>我们</b></button>
       </nav>
     </section>
@@ -489,7 +530,7 @@
     </section>
 
     <section class="screen truth-screen" data-screen="12" aria-labelledby="step-12-title" hidden>
-      <button class="back-button" type="button" data-back="11" aria-label="返回游戏区"><span aria-hidden="true">←</span></button>
+      <button class="back-button" type="button" data-back="0" aria-label="返回一起"><span aria-hidden="true">←</span></button>
       <p class="eyebrow">TRUTH WHEEL</p>
       <h1 id="step-12-title" tabindex="-1">真心话</h1>
       <p class="supporting-copy compact-copy">1,000 个问题已经混在一起，转到什么就认真回答什么。</p>
@@ -499,7 +540,7 @@
     </section>
 
     <section class="screen dice-screen" data-screen="13" aria-labelledby="step-13-title" hidden>
-      <button class="back-button" type="button" data-back="11" aria-label="返回游戏区"><span aria-hidden="true">←</span></button>
+      <button class="back-button" type="button" data-back="0" aria-label="返回一起"><span aria-hidden="true">←</span></button>
       <p class="eyebrow">LIAR'S DICE</p>
       <h1 id="step-13-title" tabindex="-1">大话骰子</h1>
       <p class="supporting-copy compact-copy">每局只能摇一次。在骰盅上向上滑掀开，向下滑合上。</p>
@@ -904,14 +945,15 @@
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   <div class="sr-only" id="movement-status" aria-live="polite"></div>
   <script src="https://static.cloudbase.net/cloudbase-js-sdk/3.7.0/cloudbase.full.js"></script>
-  <script src="cloud-config.js?v=20260810-fixed-room-v1"></script>
-  <script src="backup.js?v=20260804-identity-mind-voice-v1"></script>
-  <script src="app.js?v=20260810-app-polish-v1"></script>
-  <script src="pet-theme.js?v=20260810-app-polish-v1"></script>
-  <script src="shared-sync.js?v=20260810-app-polish-v1"></script>
-  <script src="shared-interactions.js?v=20260810-app-polish-v1"></script>
-  <script src="home-chat.js?v=20260810-app-polish-v1"></script>
-  <script src="cloud-sync.js?v=20260810-fixed-room-v1"></script>
-  <script src="pwa.js?v=20260810-fixed-room-v1"></script>
+  <script src="cloud-config.js?v=20260811-no-next-meet-v1"></script>
+  <script src="backup.js?v=20260811-no-next-meet-v1"></script>
+  <script src="app.js?v=20260811-no-next-meet-v1"></script>
+  <script src="pet-theme.js?v=20260811-no-next-meet-v1"></script>
+  <script src="shared-sync.js?v=20260811-no-next-meet-v1"></script>
+  <script src="shared-interactions.js?v=20260811-no-next-meet-v1"></script>
+  <script src="long-distance.js?v=20260811-no-next-meet-v1"></script>
+  <script src="home-chat.js?v=20260811-no-next-meet-v1"></script>
+  <script src="cloud-sync.js?v=20260811-no-next-meet-v1"></script>
+  <script src="pwa.js?v=20260811-no-next-meet-v1"></script>
 </body>
 </html>
