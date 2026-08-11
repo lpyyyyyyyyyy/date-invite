@@ -7,6 +7,7 @@
   const LOVE_START_DATE = "2026-06-23";
   const LOCAL_USER_KEY = "cute-date-invite-local-user-v1";
   const CHAT_KEY = "cute-date-invite-shared-messages-v1";
+  const CHAT_FAVORITES_KEY = "leo-emily-chat-favorites-v1";
   const CHAT_EVENT = "date-invite-chat-changed";
   const DATE_PLAN_CHAT_EVENT = "date-invite-plan-card-created";
   const MIND_PROMPTS = [
@@ -22,6 +23,9 @@
   let pendingAttachment = null;
   let mediaSending = false;
   let selectedWorldPhotos = [];
+  let activeChatActionMessageId = "";
+  let worldPreviewPhotos = [];
+  let worldPreviewIndex = 0;
   let selectedPolaroidFrame = "";
   let voiceRecorder = null;
   let voiceStartedAt = 0;
@@ -313,6 +317,41 @@
     }
   }
 
+  function currentChatMessages() {
+    return cloudIsActive()
+      ? (cloud()?.getMessages?.() || []).map(normalizeStoredChatMessage).filter(Boolean).sort((left, right) => left.createdAt - right.createdAt).slice(-100)
+      : (readStoredChatMessages().length ? readStoredChatMessages() : (shared()?.getMessages?.() || []).map(normalizeStoredChatMessage).filter(Boolean));
+  }
+
+  function writeChatMessages(messages) {
+    const normalized = Array.isArray(messages)
+      ? messages.map(normalizeStoredChatMessage).filter(Boolean).sort((left, right) => left.createdAt - right.createdAt).slice(-100)
+      : [];
+    try {
+      try { window.DateInviteBackups?.capture?.("聊天消息变更前"); } catch (backupError) { /* 备份失败不阻塞聊天。 */ }
+      window.localStorage.setItem(CHAT_KEY, JSON.stringify(normalized));
+      window.dispatchEvent(new CustomEvent(CHAT_EVENT, { detail: { messages: normalized } }));
+      syncCurrent();
+      return true;
+    } catch (error) {
+      notice("这条消息暂时没有保存成功，请稍后再试。");
+      return false;
+    }
+  }
+
+  function chatFavoriteIds() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(CHAT_FAVORITES_KEY) || "[]");
+      return new Set(Array.isArray(parsed) ? parsed.map(String) : []);
+    } catch (error) {
+      return new Set();
+    }
+  }
+
+  function writeChatFavoriteIds(ids) {
+    try { localStorage.setItem(CHAT_FAVORITES_KEY, JSON.stringify([...ids].slice(-200))); } catch (error) { /* 本机收藏失败不阻塞聊天。 */ }
+  }
+
   function formatPlanDate(value) {
     const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!match) return String(value || "待定");
@@ -517,6 +556,42 @@
     setPresence(state.online, state.online ? "一起在线" : "等待对方");
   }
 
+  function renderChatStatus() {
+    const status = byId("home-chat-status");
+    const presence = byId("home-chat-presence");
+    if (!status) return;
+    const state = roomState();
+    const setPresence = (online, label) => {
+      if (!presence) return;
+      presence.classList.toggle("is-online", Boolean(online));
+      const dot = document.createElement("i");
+      dot.setAttribute("aria-hidden", "true");
+      presence.replaceChildren(dot, document.createTextNode(label));
+    };
+    if (!state.room) {
+      status.textContent = "未连接 · 正在准备双人空间";
+      status.dataset.tone = "offline";
+      setPresence(false, "未连接");
+      return;
+    }
+    if (state.kind === "cloud") {
+      const cloudStatus = cloud()?.getStatus?.() || {};
+      if (cloudStatus.kind === "waiting") {
+        status.textContent = "已保存 · 等网络恢复后同步";
+        status.dataset.tone = "offline";
+        setPresence(false, "等待同步");
+      } else {
+        status.textContent = state.online ? "已连接 · 对方正在这里" : "已连接 · 对方打开就能看到";
+        status.dataset.tone = state.online ? "online" : "waiting";
+        setPresence(state.online, state.online ? "一起在线" : "云端在线");
+      }
+      return;
+    }
+    status.textContent = state.online ? "已连接 · 对方正在这里" : "已连接 · 等对方打开";
+    status.dataset.tone = state.online ? "online" : "waiting";
+    setPresence(state.online, state.online ? "一起在线" : "等待对方");
+  }
+
   function openInteractions() {
     const dialog = byId("interactions-dialog");
     if (!dialog) return;
@@ -537,13 +612,74 @@
     else dialog.removeAttribute("open");
   }
 
+  function hideMessageActions() {
+    const menu = byId("home-message-actions");
+    activeChatActionMessageId = "";
+    if (menu) menu.hidden = true;
+  }
+
+  function showMessageActions(message, anchor) {
+    const menu = byId("home-message-actions");
+    if (!menu || !message?.id || !anchor) return;
+    activeChatActionMessageId = message.id;
+    const rect = anchor.getBoundingClientRect();
+    menu.hidden = false;
+    menu.style.left = `${Math.min(window.innerWidth - 170, Math.max(12, rect.left + rect.width / 2 - 78))}px`;
+    menu.style.top = `${Math.max(12, rect.top - 48)}px`;
+    menu.dataset.hasText = message.text ? "true" : "false";
+  }
+
+  function bindChatBubbleActions(card, message) {
+    let pressTimer = 0;
+    const start = () => {
+      window.clearTimeout(pressTimer);
+      pressTimer = window.setTimeout(() => showMessageActions(message, card), 520);
+    };
+    const stop = () => window.clearTimeout(pressTimer);
+    card.addEventListener("pointerdown", start);
+    card.addEventListener("pointerup", stop);
+    card.addEventListener("pointerleave", stop);
+    card.addEventListener("pointercancel", stop);
+    card.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      showMessageActions(message, card);
+    });
+    card.addEventListener("dblclick", () => showMessageActions(message, card));
+  }
+
+  function handleMessageAction(action) {
+    const id = activeChatActionMessageId;
+    if (!id) return hideMessageActions();
+    const messages = currentChatMessages();
+    const message = messages.find((item) => item.id === id);
+    if (!message) return hideMessageActions();
+    if (action === "copy") {
+      const text = message.text || (message.plan ? datePlanText(message.plan) : "");
+      if (!text) notice("这条消息没有可复制的文字。");
+      else navigator.clipboard?.writeText(text).then(() => notice("已复制")).catch(() => notice(text));
+    } else if (action === "favorite") {
+      const ids = chatFavoriteIds();
+      if (ids.has(id)) ids.delete(id);
+      else ids.add(id);
+      writeChatFavoriteIds(ids);
+      renderHomeChat();
+      notice(ids.has(id) ? "已收藏这条消息" : "已取消收藏");
+    } else if (action === "delete") {
+      if (window.confirm("删除这条消息吗？双方同步后都会看不到。")) {
+        writeChatMessages(messages.filter((item) => item.id !== id));
+        renderHomeChat();
+        notice("消息已删除");
+      }
+    }
+    hideMessageActions();
+  }
+
   function renderHomeChat() {
     const list = byId("home-chat-list");
     if (!list) return;
-    const messages = cloudIsActive()
-      ? (cloud()?.getMessages?.() || [])
-      : (readStoredChatMessages().length ? readStoredChatMessages() : (shared()?.getMessages?.() || []));
+    const messages = currentChatMessages();
     const mine = roomState().role;
+    const favorites = chatFavoriteIds();
     list.replaceChildren();
     if (!messages.length) {
       const empty = document.createElement("p");
@@ -555,6 +691,8 @@
     messages.forEach((message) => {
       const card = document.createElement("article");
       card.className = `home-chat-bubble ${message.author === mine ? "is-me" : "is-them"}`;
+      card.dataset.messageId = message.id;
+      card.classList.toggle("is-favorite", favorites.has(message.id));
       if ((message.type === "date-plan" || message.kind === "date-plan") && message.plan) {
         card.classList.add("is-date-plan");
         appendDatePlanCard(card, message.plan);
@@ -568,6 +706,14 @@
       // 名字由首次取名后的固定身份映射得出；不会再因页面重开而交换“谁是谁”。
       meta.textContent = `${displayName(message.author)} · ${formatTime(message.createdAt)}`;
       card.append(meta);
+      if (favorites.has(message.id)) {
+        const star = document.createElement("span");
+        star.className = "home-chat-favorite-mark";
+        star.textContent = "★";
+        star.setAttribute("aria-label", "已收藏");
+        card.append(star);
+      }
+      bindChatBubbleActions(card, message);
       list.append(card);
     });
     list.scrollTop = list.scrollHeight;
@@ -584,7 +730,9 @@
     document.querySelectorAll("[data-home-tab]").forEach((button) => {
       button.setAttribute("aria-pressed", String(button.dataset.homeTab === selected));
     });
+    if (selected === "chat") renderHomeChat();
     if (selected === "world") renderWorldPosts();
+    if (selected === "today") renderLatestWorldCard();
   }
 
   function worldPostAuthor(authorName) {
@@ -616,21 +764,55 @@
     try { window.DateInviteBackups?.capture?.(`我们的世界-${action}`); } catch (error) { /* 备份失败不影响发布 */ }
   }
 
-  function openImagePreview(source, title = "原图预览") {
+  function updateWorldImagePreview() {
+    const dialog = byId("world-image-lightbox");
+    const image = dialog?.querySelector("img");
+    const counter = dialog?.querySelector("[data-world-preview-counter]");
+    const current = worldPreviewPhotos[worldPreviewIndex];
+    if (!dialog || !image || !current) return;
+    image.src = current.source;
+    image.alt = current.title;
+    if (counter) counter.textContent = `${worldPreviewIndex + 1} / ${worldPreviewPhotos.length}`;
+  }
+
+  function moveWorldImagePreview(step) {
+    if (!worldPreviewPhotos.length) return;
+    worldPreviewIndex = (worldPreviewIndex + step + worldPreviewPhotos.length) % worldPreviewPhotos.length;
+    updateWorldImagePreview();
+  }
+
+  function openImagePreview(source, title = "原图预览", group = null, index = 0) {
     if (!source) return;
     let dialog = byId("world-image-lightbox");
     if (!dialog) {
       dialog = document.createElement("dialog");
       dialog.id = "world-image-lightbox";
       dialog.className = "world-image-lightbox";
-      dialog.innerHTML = `<button type="button" aria-label="关闭照片预览">×</button><img alt="照片预览">`;
+      dialog.innerHTML = `
+        <button class="world-image-close" type="button" aria-label="关闭照片预览">×</button>
+        <button class="world-image-nav is-prev" type="button" aria-label="上一张照片">‹</button>
+        <button class="world-image-nav is-next" type="button" aria-label="下一张照片">›</button>
+        <img alt="照片预览">
+        <span data-world-preview-counter>1 / 1</span>`;
       document.body.append(dialog);
-      dialog.querySelector("button")?.addEventListener("click", () => dialog.close?.());
+      dialog.querySelector(".world-image-close")?.addEventListener("click", () => dialog.close?.());
+      dialog.querySelector(".world-image-nav.is-prev")?.addEventListener("click", () => moveWorldImagePreview(-1));
+      dialog.querySelector(".world-image-nav.is-next")?.addEventListener("click", () => moveWorldImagePreview(1));
+      dialog.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowLeft") moveWorldImagePreview(-1);
+        if (event.key === "ArrowRight") moveWorldImagePreview(1);
+      });
       dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close?.(); });
     }
-    const image = dialog.querySelector("img");
-    if (image) { image.src = source; image.alt = title; }
+    const photos = Array.isArray(group) && group.length ? group : [{ source, title }];
+    worldPreviewPhotos = photos.map((item, itemIndex) => ({
+      source: typeof item === "string" ? item : item.source,
+      title: typeof item === "string" ? `我们的世界照片 ${itemIndex + 1}` : (item.title || `我们的世界照片 ${itemIndex + 1}`)
+    })).filter((item) => item.source);
+    worldPreviewIndex = Math.max(0, Math.min(Number(index) || 0, worldPreviewPhotos.length - 1));
+    updateWorldImagePreview();
     try { dialog.showModal(); } catch (error) { dialog.setAttribute("open", ""); }
+    dialog.focus?.();
   }
 
   function worldLikeCount(post) {
@@ -703,6 +885,51 @@
     });
   }
 
+  function renderLatestWorldCard() {
+    const card = byId("home-latest-world");
+    if (!card) return;
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", "打开我们的世界最近动态");
+    card.onkeydown = (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        switchHomeTab("world");
+      }
+    };
+    const posts = (interactions()?.read?.("worldPosts") || []).slice().sort((left, right) => Number(right.createdAt) - Number(left.createdAt));
+    const latest = posts[0];
+    if (!latest) {
+      card.classList.remove("has-photo");
+      card.innerHTML = `<span aria-hidden="true">✦</span><div><strong>还没有新的动态</strong><small>发布一张照片或一句话，这里会自动出现。</small></div>`;
+      return;
+    }
+    const author = worldPostAuthor(latest.author);
+    const text = String(latest.message || (latest.photos?.length ? "分享了新的照片" : "更新了动态")).slice(0, 44);
+    const photo = latest.photos?.[0] || "";
+    card.classList.toggle("has-photo", Boolean(photo));
+    card.replaceChildren();
+    if (photo) {
+      const image = document.createElement("img");
+      image.src = photo;
+      image.alt = "最近动态照片";
+      card.append(image);
+    } else {
+      const icon = document.createElement("span");
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = "✦";
+      card.append(icon);
+    }
+    const body = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = `来自 ${author}`;
+    const copy = document.createElement("small");
+    copy.textContent = `${text} · ${formatTime(latest.createdAt)}`;
+    body.append(title, copy);
+    card.append(body);
+    card.onclick = () => switchHomeTab("world");
+  }
+
   async function chooseWorldPhotos() {
     const input = byId("world-photo-input");
     const files = Array.from(input?.files || []).filter((file) => file.type.startsWith("image/")).slice(0, 3);
@@ -724,6 +951,7 @@
     const feed = byId("world-feed");
     if (!feed) return;
     const posts = interactions()?.read?.("worldPosts") || [];
+    renderLatestWorldCard();
     feed.replaceChildren();
     if (!posts.length) {
       const empty = document.createElement("article");
@@ -772,7 +1000,12 @@
           button.className = "world-photo-view";
           button.setAttribute("aria-label", `查看第 ${index + 1} 张原图`);
           button.append(image);
-          button.addEventListener("click", () => openImagePreview(source, `我们的世界照片 ${index + 1}`));
+          button.addEventListener("click", () => openImagePreview(
+            source,
+            `我们的世界照片 ${index + 1}`,
+            post.photos.map((photoSource, photoIndex) => ({ source: photoSource, title: `我们的世界照片 ${photoIndex + 1}` })),
+            index
+          ));
           grid.append(button);
         });
         item.append(grid);
@@ -833,6 +1066,7 @@
       selectedWorldPhotos = [];
       renderWorldPreview();
       renderWorldPosts();
+      renderLatestWorldCard();
       syncCurrent();
       notice("已经发布到我们的世界");
     } catch (error) {
@@ -1508,6 +1742,18 @@
     byId("weather-refresh")?.addEventListener("click", loadWeather);
     document.querySelectorAll("[data-home-tab]").forEach((button) => {
       button.addEventListener("click", () => switchHomeTab(button.dataset.homeTab));
+    });
+    document.querySelectorAll("[data-home-tab-jump]").forEach((button) => {
+      button.addEventListener("click", () => switchHomeTab(button.dataset.homeTabJump));
+    });
+    byId("home-message-actions")?.addEventListener("click", (event) => {
+      const button = event.target?.closest?.("[data-message-action]");
+      if (button) handleMessageAction(button.dataset.messageAction);
+    });
+    document.addEventListener("click", (event) => {
+      const menu = byId("home-message-actions");
+      if (!menu || menu.hidden) return;
+      if (!menu.contains(event.target) && !event.target?.closest?.(".home-chat-bubble")) hideMessageActions();
     });
     byId("world-photo-button")?.addEventListener("click", () => byId("world-photo-input")?.click());
     byId("world-photo-input")?.addEventListener("change", chooseWorldPhotos);

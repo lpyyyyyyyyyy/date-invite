@@ -375,6 +375,7 @@
       imageData,
       recordId: libraryText(value.recordId, 100),
       sourceLabel: libraryText(value.sourceLabel, 72) || "恋爱相册",
+      caption: libraryText(value.caption, 120),
       createdAt,
       updatedAt: libraryTimestamp(value.updatedAt, createdAt),
       author: libraryText(value.author, 32)
@@ -423,6 +424,7 @@
       imageData: photo.imageData,
       recordId: photo.recordId,
       sourceLabel: photo.sourceLabel,
+      caption: photo.caption,
       createdAt: photo.createdAt,
       updatedAt: photo.updatedAt,
       author: photo.author
@@ -543,6 +545,7 @@
       imageData,
       recordId: libraryText(input.recordId, 100),
       sourceLabel,
+      caption: libraryText(input.caption, 120),
       createdAt: stamp + index,
       updatedAt: stamp + index,
       author: author(input.author)
@@ -562,11 +565,23 @@
     return true;
   }
 
+  function updatePhotoLibraryCaption(id, caption) {
+    const photoId = libraryText(id, 100);
+    const state = readPhotoLibrary();
+    const photo = state.photos.find((entry) => entry.id === photoId);
+    if (!photo) return false;
+    photo.caption = libraryText(caption, 120);
+    photo.updatedAt = now();
+    writePhotoLibrary(state, "update-photo-caption", { id: photoId });
+    return true;
+  }
+
   // 下面是照片库的轻量 UI；数据函数仍可被其它页面或未来模块复用。
   let activePhotoLibraryCategory = PHOTO_LIBRARY_MIXED_ID;
   let photoLibraryView = "folders";
   let pendingMemoryPhotos = null;
   let activePhotoLibraryPhotoId = "";
+  let activePhotoLibraryPhotoIds = [];
 
   function photoElement(id) { return document.getElementById(id); }
   function openPhotoDialog(dialog) {
@@ -687,7 +702,18 @@
       grid.append(empty);
       return;
     }
+    activePhotoLibraryPhotoIds = photos.map((photo) => photo.id);
+    let currentMonth = "";
     photos.forEach((photo) => {
+      const date = new Date(Number(photo.createdAt) || Date.now());
+      const monthLabel = `${date.getFullYear()}年${date.getMonth() + 1}月`;
+      if (monthLabel !== currentMonth) {
+        currentMonth = monthLabel;
+        const heading = document.createElement("h3");
+        heading.className = "photo-library-month-heading";
+        heading.textContent = monthLabel;
+        grid.append(heading);
+      }
       const button = document.createElement("button");
       button.type = "button";
       button.className = "photo-library-photo";
@@ -698,7 +724,7 @@
       image.loading = "lazy";
       image.decoding = "async";
       const label = document.createElement("span");
-      label.textContent = photo.sourceLabel;
+      label.textContent = photo.caption || photo.sourceLabel;
       button.append(image, label);
       button.addEventListener("click", () => openPhotoLibraryLightbox(photo.id));
       grid.append(button);
@@ -710,13 +736,34 @@
     const photo = state.photos.find((entry) => entry.id === id);
     if (!photo) return;
     activePhotoLibraryPhotoId = photo.id;
+    const idsInCategory = state.photos.filter((entry) => entry.categoryId === photo.categoryId).map((entry) => entry.id);
+    activePhotoLibraryPhotoIds = idsInCategory.length ? idsInCategory : [photo.id];
     const image = photoElement("photo-library-lightbox-image");
     const title = photoElement("photo-library-lightbox-title");
     const copy = photoElement("photo-library-lightbox-copy");
     if (image) { image.src = photo.imageData; image.alt = `${photoLibraryCategoryName(photo.categoryId, state)} · ${photo.sourceLabel}`; }
     if (title) title.textContent = photoLibraryCategoryName(photo.categoryId, state);
-    if (copy) copy.textContent = photo.sourceLabel;
+    if (copy) copy.textContent = photo.caption || photo.sourceLabel;
     openPhotoDialog(photoElement("photo-library-lightbox"));
+  }
+
+  function movePhotoLibraryLightbox(step) {
+    if (!activePhotoLibraryPhotoIds.length || !activePhotoLibraryPhotoId) return;
+    const current = Math.max(0, activePhotoLibraryPhotoIds.indexOf(activePhotoLibraryPhotoId));
+    const next = (current + step + activePhotoLibraryPhotoIds.length) % activePhotoLibraryPhotoIds.length;
+    openPhotoLibraryLightbox(activePhotoLibraryPhotoIds[next]);
+  }
+
+  function captionActivePhotoLibraryPhoto() {
+    const photo = readPhotoLibrary().photos.find((entry) => entry.id === activePhotoLibraryPhotoId);
+    if (!photo) return;
+    const caption = window.prompt("给这张照片写一句话：", photo.caption || "");
+    if (caption === null) return;
+    if (updatePhotoLibraryCaption(photo.id, caption)) {
+      openPhotoLibraryLightbox(photo.id);
+      renderPhotoLibrary();
+      notifyPhotoLibrary("这句话已经收进照片里了");
+    }
   }
 
   function downloadActivePhotoLibraryPhoto() {
@@ -853,6 +900,13 @@
     });
 
     photoElement("photo-library-lightbox-close")?.addEventListener("click", () => closePhotoDialog(lightbox));
+    photoElement("photo-library-lightbox-prev")?.addEventListener("click", () => movePhotoLibraryLightbox(-1));
+    photoElement("photo-library-lightbox-next")?.addEventListener("click", () => movePhotoLibraryLightbox(1));
+    photoElement("photo-library-caption")?.addEventListener("click", captionActivePhotoLibraryPhoto);
+    lightbox?.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowLeft") movePhotoLibraryLightbox(-1);
+      if (event.key === "ArrowRight") movePhotoLibraryLightbox(1);
+    });
     photoElement("photo-library-download")?.addEventListener("click", downloadActivePhotoLibraryPhoto);
     photoElement("photo-library-delete-photo")?.addEventListener("click", () => {
       const photo = readPhotoLibrary().photos.find((entry) => entry.id === activePhotoLibraryPhotoId);
@@ -883,7 +937,7 @@
     addWorldPost: (input) => add("worldPosts", input), updateWorldPost: (id, patch) => update("worldPosts", id, patch), removeWorldPost: (id) => remove("worldPosts", id),
     PHOTO_LIBRARY_ARCHIVE_KEY, PHOTO_LIBRARY_EVENT, PHOTO_LIBRARY_MIXED_ID,
     readPhotoLibrary: () => clone(readPhotoLibrary()),
-    addPhotoLibraryCategory, removePhotoLibraryCategory, addPhotosToLibrary, removePhotoLibraryPhoto,
+    addPhotoLibraryCategory, removePhotoLibraryCategory, addPhotosToLibrary, removePhotoLibraryPhoto, updatePhotoLibraryCaption,
     evaluateMindMatch, collectSyncSnapshot, applySyncSnapshot, clear, createVoiceRecorder,
     MIND_EVENT_NAME, configureMindMatchTransport, handleMindMatchPacket, prepareMindMatch, setMindReady, submitMindAnswer, setMindRoomPresence,
     getMindMatchSession: (id) => publicMindSession(mindSessions.get(id)),

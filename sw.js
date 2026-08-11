@@ -1,4 +1,4 @@
-const CACHE_NAME = "leo-emily-runtime-v40-pet-ready";
+const CACHE_NAME = "leo-emily-runtime-v41-app-polish";
 const REMINDER_DB = "leo-emily-reminders-v1";
 const REMINDER_STORE = "settings";
 const OFFLINE_ASSETS = [
@@ -16,6 +16,7 @@ const OFFLINE_ASSETS = [
   "./styles.css?v=20260810-album-sync-v1",
   "./styles.css?v=20260810-fixed-room-v1",
   "./styles.css?v=20260810-pet-ready-v1",
+  "./styles.css?v=20260810-app-polish-v1",
   "./assets/our-day-bg.jpg",
   "./styles.css?v=20260810-home-six-v1",
   "./styles.css?v=20260810-world-v1",
@@ -41,6 +42,7 @@ const OFFLINE_ASSETS = [
   "./app.js?v=20260810-album-sync-v1",
   "./app.js?v=20260810-fixed-room-v1",
   "./app.js?v=20260810-pet-ready-v1",
+  "./app.js?v=20260810-app-polish-v1",
   "./app.js?v=20260810-home-six-v1",
   "./app.js?v=20260810-world-v1",
   "./app.js?v=20260810-lp-pet-menu-v4",
@@ -63,6 +65,7 @@ const OFFLINE_ASSETS = [
   "./shared-sync.js?v=20260810-moe-polish-v1",
   "./shared-sync.js?v=20260810-album-sync-v1",
   "./shared-sync.js?v=20260810-fixed-room-v1",
+  "./shared-sync.js?v=20260810-app-polish-v1",
   "./shared-sync.js?v=20260810-home-six-v1",
   "./shared-sync.js?v=20260804-identity-mind-voice-v1",
   "./shared-sync.js?v=20260803-cloud-sync-v2",
@@ -78,6 +81,7 @@ const OFFLINE_ASSETS = [
   "./shared-interactions.js?v=20260810-moe-polish-v1",
   "./shared-interactions.js?v=20260810-album-sync-v1",
   "./shared-interactions.js?v=20260810-fixed-room-v1",
+  "./shared-interactions.js?v=20260810-app-polish-v1",
   "./shared-interactions.js?v=20260810-home-six-v1",
   "./shared-interactions.js?v=20260810-world-v1",
   "./shared-interactions.js?v=20260804-identity-mind-voice-v1",
@@ -95,6 +99,7 @@ const OFFLINE_ASSETS = [
   "./home-chat.js?v=20260810-moe-polish-v1",
   "./home-chat.js?v=20260810-album-sync-v1",
   "./home-chat.js?v=20260810-fixed-room-v1",
+  "./home-chat.js?v=20260810-app-polish-v1",
   "./home-chat.js?v=20260810-home-six-v1",
   "./home-chat.js?v=20260810-world-v1",
   "./home-chat.js?v=20260804-identity-mind-voice-v1",
@@ -154,6 +159,7 @@ const OFFLINE_ASSETS = [
   "./pet-theme.js?v=20260810-lp-pet-menu-v1",
   "./pet-theme.js?v=20260808-lp-pet-v1",
   "./pet-theme.js?v=20260810-pet-ready-v1",
+  "./pet-theme.js?v=20260810-app-polish-v1",
   "./pet-assets/blink-01.png",
   "./pet-assets/blink-02.png",
   "./pet-assets/blink-03.png",

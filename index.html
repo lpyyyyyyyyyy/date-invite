@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" href="apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=20260810-pet-ready-v1">
+  <link rel="stylesheet" href="styles.css?v=20260810-app-polish-v1">
 </head>
 <body>
   <div class="ambient" aria-hidden="true">
@@ -34,6 +34,13 @@
 
     <section class="screen home-screen is-active" data-screen="0" data-home-active-tab="today" aria-labelledby="home-title">
       <header class="home-topbar">
+        <div class="home-app-brand" aria-label="Leo And Emily">
+          <span aria-hidden="true">♡</span>
+          <div>
+            <strong>Leo & Emily</strong>
+            <small>已连接的双人空间</small>
+          </div>
+        </div>
       </header>
 
       <div class="home-tab-panel home-dashboard is-home-tab-active" data-home-tab-panel="today">
@@ -72,6 +79,17 @@
           <span class="home-countdown-kicker" id="home-countdown-label">NEXT TIME WE MEET</span>
           <strong id="home-countdown" role="status" aria-live="polite">还没有下一次约会计划</strong>
         </section>
+
+        <section class="home-latest-section" aria-labelledby="home-latest-title">
+          <div class="home-section-heading"><h2 id="home-latest-title">最近动态</h2><button type="button" data-home-tab-jump="world">去看看</button></div>
+          <article class="home-latest-card" id="home-latest-world" aria-live="polite">
+            <span aria-hidden="true">✦</span>
+            <div>
+              <strong>还没有新的动态</strong>
+              <small>发布一张照片或一句话，这里会自动出现。</small>
+            </div>
+          </article>
+        </section>
       </div>
 
       <div class="home-tab-panel chat-tab-panel" data-home-tab-panel="chat" hidden>
@@ -97,6 +115,9 @@
           </div>
 
           <form class="home-chat-composer is-text-only" id="home-chat-form" aria-label="发送文字消息">
+            <button class="chat-attach-button" id="home-media-button" type="button" aria-label="发送照片、视频或语音">＋</button>
+            <input id="home-media-input" class="sr-only" type="file" accept="image/*,video/*,audio/*" multiple>
+            <div class="home-chat-media-preview" id="home-chat-media-preview" hidden aria-live="polite"></div>
             <label class="sr-only" for="home-chat-input">写一条消息</label>
             <input id="home-chat-input" type="text" maxlength="500" autocomplete="off" placeholder="输入想说的话…">
             <button class="home-chat-send" id="home-chat-send" type="submit" aria-label="发送消息">发送</button>
@@ -827,16 +848,25 @@
 
   <dialog class="photo-library-lightbox" id="photo-library-lightbox" aria-labelledby="photo-library-lightbox-title">
     <button class="photo-library-lightbox-close" id="photo-library-lightbox-close" type="button" aria-label="关闭照片预览">×</button>
+    <button class="photo-library-lightbox-nav is-prev" id="photo-library-lightbox-prev" type="button" aria-label="上一张照片">‹</button>
+    <button class="photo-library-lightbox-nav is-next" id="photo-library-lightbox-next" type="button" aria-label="下一张照片">›</button>
     <img id="photo-library-lightbox-image" alt="恋爱相册预览">
     <div class="photo-library-lightbox-meta">
       <h2 id="photo-library-lightbox-title">恋爱照片</h2>
       <p id="photo-library-lightbox-copy"></p>
     </div>
     <div class="photo-library-lightbox-actions">
+      <button class="photo-library-caption" id="photo-library-caption" type="button">写一句话</button>
       <button class="photo-library-download" id="photo-library-download" type="button">下载照片</button>
       <button class="photo-library-delete-photo" id="photo-library-delete-photo" type="button">从相册删除</button>
     </div>
   </dialog>
+
+  <div class="home-message-actions" id="home-message-actions" hidden role="menu" aria-label="消息操作">
+    <button type="button" data-message-action="copy">复制</button>
+    <button type="button" data-message-action="favorite">收藏</button>
+    <button type="button" data-message-action="delete">删除</button>
+  </div>
 
   <dialog class="roulette-dialog" id="roulette-dialog" aria-labelledby="roulette-title">
     <button class="roulette-close" id="roulette-close" type="button" aria-label="关闭转盘">×</button>
@@ -876,11 +906,11 @@
   <script src="https://static.cloudbase.net/cloudbase-js-sdk/3.7.0/cloudbase.full.js"></script>
   <script src="cloud-config.js?v=20260810-fixed-room-v1"></script>
   <script src="backup.js?v=20260804-identity-mind-voice-v1"></script>
-  <script src="app.js?v=20260810-pet-ready-v1"></script>
-  <script src="pet-theme.js?v=20260810-pet-ready-v1"></script>
-  <script src="shared-sync.js?v=20260810-fixed-room-v1"></script>
-  <script src="shared-interactions.js?v=20260810-fixed-room-v1"></script>
-  <script src="home-chat.js?v=20260810-fixed-room-v1"></script>
+  <script src="app.js?v=20260810-app-polish-v1"></script>
+  <script src="pet-theme.js?v=20260810-app-polish-v1"></script>
+  <script src="shared-sync.js?v=20260810-app-polish-v1"></script>
+  <script src="shared-interactions.js?v=20260810-app-polish-v1"></script>
+  <script src="home-chat.js?v=20260810-app-polish-v1"></script>
   <script src="cloud-sync.js?v=20260810-fixed-room-v1"></script>
   <script src="pwa.js?v=20260810-fixed-room-v1"></script>
 </body>
